@@ -12,6 +12,7 @@ Do research on:
 
 Stuff to do (maybe):
 	- an ftp server
+	- proper GetLumaInfo command (and other Luma-related commands)
 
 Stuff to do for sure, and important:
 	- svc hooks (and therefore hooking up into IPC communications too)
@@ -23,7 +24,6 @@ Stuff to do for sure, and important:
 	- patch SVCs like svcMapMemoryBlock, svcControlProcessMemory, ... for mapping as RWX etc
 
 Stuff to do for sure, but minor:
-	- proper GetLumaInfo command (and other Luma-related commands)
 	- update Luma when everything is done and working
 	- adding battery percentage on the menu
 
