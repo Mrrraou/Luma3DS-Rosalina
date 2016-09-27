@@ -14,6 +14,7 @@ OC := arm-none-eabi-objcopy
 name := $(shell basename $(CURDIR))
 
 dir_source := source
+dir_include := include
 dir_build := build
 
 LIBS := -lctru
@@ -24,26 +25,31 @@ INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
 ASFLAGS := -mcpu=mpcore -mfloat-abi=hard -mtp=soft
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
-	  -ffunction-sections -fdata-sections $(INCLUDE) -DARM11 -D_3DS
-LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ASFLAGS)
+	  -ffunction-sections -fdata-sections $(INCLUDE) -I$(dir_include) -DARM11 -D_3DS
+LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ASFLAGS) -L$(DEVKITPRO)/libctru/lib
+
+# Luma3DS CFW info
+revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
+commit := $(shell git rev-parse --short=8 HEAD)
 
 objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c))
 
 .PHONY: all
-all: ../$(dir_build)/$(name).cxi
+all: $(name).cxi
 
 .PHONY: clean
 clean:
 	@rm -rf $(dir_build)
 
-../$(dir_build)/$(name).cxi: $(dir_build)/$(name).elf
-	@makerom -f ncch -rsf loader.rsf -nocodepadding -o $@ -elf $<
+$(name).cxi: $(dir_build)/$(name).elf
+	@makerom -f ncch -rsf rosalina.rsf -nocodepadding -o $@ -elf $<
 
 $(dir_build)/$(name).elf: $(objects)
 	$(LINK.o) $(OUTPUT_OPTION) $^ $(LIBPATHS) $(LIBS)
 
 $(dir_build)/memory.o : CFLAGS += -O3
+$(dir_build)/luma.o : CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
 
 $(dir_build)/%.o: $(dir_source)/%.c
 	@mkdir -p "$(@D)"

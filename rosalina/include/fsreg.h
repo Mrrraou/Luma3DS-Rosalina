@@ -11,5 +11,7 @@ Result FSREG_GetProgramInfo(exheader_header *exheader, u32 entry_count, u64 prog
 Result FSREG_UnloadProgram(u64 prog_handle);
 Result FSREG_Unregister(u32 pid);
 Result FSREG_Register(u32 pid, u64 prog_handle, FS_ProgramInfo *info, void *storageinfo);
+Result fsregSetupPermissions(void);
+Handle fsregGetHandle(void);
 
-void fsregUseHandle(Handle handle);
+u32 fsreg_pid_debug;

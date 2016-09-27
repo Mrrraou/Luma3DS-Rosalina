@@ -1,8 +1,7 @@
 #include <3ds.h>
 #include <string.h>
 #include "fsreg.h"
-#include "srvsys.h"
-#include "rosalina.h"
+#include "services.h"
 
 static Handle fsregHandle;
 static int fsregRefCount;
@@ -14,8 +13,7 @@ Result fsregInit(void)
   if(AtomicPostIncrement(&fsregRefCount))
     return 0;
 
-  //ret = srvSysGetServiceHandle(&fsregHandle, "fs:REG");
-  fsregHandle = Rosalina_GiveFSREGHandleCopy();
+  ret = srvGetServiceHandle(&fsregHandle, "fs:REG");
 
   if(R_FAILED(ret))
     AtomicDecrement(&fsregRefCount);
@@ -24,26 +22,47 @@ Result fsregInit(void)
 
 void fsregExit(void)
 {
-  if(AtomicDecrement(&fsregRefCount))
+  if(AtomicDecrement(&fsregRefCount) || !fsregHandle)
     return;
   svcCloseHandle(fsregHandle);
 }
 
-void fsregUseHandle(Handle handle)
+Handle fsregGetHandle(void)
 {
-  fsregHandle = handle;
+  return fsregHandle;
+}
+
+Result fsregSetupPermissions(void)
+{
+  u32 pid;
+  Result res;
+  FS_ProgramInfo info;
+  u32 storage[8] = {0};
+
+  storage[6] = 0x800 | 0x400 | 0x80 | 0x1; // SDMC access and NAND access flag
+  info.programId = 0x0004013000006902LL; // Rosalina TID
+  info.mediaType = MEDIATYPE_NAND;
+
+  if(R_SUCCEEDED(res = svcGetProcessId(&pid, 0xFFFF8001))) // 0xFFFF8001 is an handle to the active process
+  {
+    fsreg_pid_debug = pid;
+    res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, (u8*) storage);
+  }
+
+  return res;
 }
 
 Result FSREG_CheckHostLoadId(u64 prog_handle)
 {
   u32 *cmdbuf = getThreadCommandBuffer();
 
-  cmdbuf[0] = IPC_MakeHeader(0x406, 2, 0); // 0x4060080
+  cmdbuf[0] = IPC_MakeHeader(0x406,2,0); // 0x4060080
   cmdbuf[1] = (u32) (prog_handle);
   cmdbuf[2] = (u32) (prog_handle >> 32);
 
   Result ret = 0;
-  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle))) return ret;
+  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle)))
+    return ret;
 
   return cmdbuf[1];
 }
@@ -58,7 +77,8 @@ Result FSREG_LoadProgram(u64 *prog_handle, FS_ProgramInfo *title)
   memcpy(((u8 *)&cmdbuf[3])+1, &title->padding, 7);
 
   Result ret = 0;
-  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle))) return ret;
+  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle)))
+    return ret;
   *prog_handle = *(u64 *)&cmdbuf[2];
 
   return cmdbuf[1];
@@ -75,7 +95,8 @@ Result FSREG_GetProgramInfo(exheader_header *exheader, u32 entry_count, u64 prog
   cmdbuf[65] = (u32) exheader;
 
   Result ret = 0;
-  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle))) return ret;
+  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle)))
+    return ret;
 
   return cmdbuf[1];
 }
@@ -89,7 +110,8 @@ Result FSREG_UnloadProgram(u64 prog_handle)
   cmdbuf[2] = (u32) (prog_handle >> 32);
 
   Result ret = 0;
-  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle))) return ret;
+  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle)))
+    return ret;
 
   return cmdbuf[1];
 }
@@ -102,7 +124,8 @@ Result FSREG_Unregister(u32 pid)
   cmdbuf[1] = pid;
 
   Result ret = 0;
-  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle))) return ret;
+  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle)))
+    return ret;
 
   return cmdbuf[1];
 }
@@ -120,7 +143,8 @@ Result FSREG_Register(u32 pid, u64 prog_handle, FS_ProgramInfo *info, void *stor
   memcpy((u8 *)&cmdbuf[8], storageinfo, 32);
 
   Result ret = 0;
-  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle))) return ret;
+  if(R_FAILED(ret = svcSendSyncRequest(fsregHandle)))
+    return ret;
 
   return cmdbuf[1];
 }

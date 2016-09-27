@@ -36,7 +36,7 @@ typedef struct patchData {
 typedef struct __attribute__((packed))
 {
     char magic[4];
-        
+
     u8 versionMajor;
     u8 versionMinor;
     u8 versionBuild;
@@ -57,6 +57,8 @@ void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 void patchFirmWrites(u8 *pos, u32 size);
 void patchOldFirmWrites(u8 *pos, u32 size);
 void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
+u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size); // Rosalina
+u8 patchDebugSvcChecks(u8 *startPos, u32 size); // Rosalina
 void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
 void patchTwlBg(u8 *pos);

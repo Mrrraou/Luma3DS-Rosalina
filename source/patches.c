@@ -27,6 +27,7 @@
 #include "../build/svcGetCFWInfopatch.h"
 #include "../build/k11modulespatch.h"
 #include "../build/twl_k11modulespatch.h"
+#include "utils.h"
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
@@ -40,7 +41,7 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 }
 
 u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
-{    
+{
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
 
     *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, 4) - 0xB;
@@ -117,6 +118,59 @@ void patchOldFirmWrites(u8 *pos, u32 size)
     off[1] = writeBlockOld[1];
 }
 
+u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size)
+{
+  const u8 moduleAmountPattern[]  = {0x05, 0x00, 0x57, 0xE3}; // cmp r7, 5
+  const u8 moduleAmountPatch[]    = {0x06, 0x00, 0x57, 0xE3}; // cmp r7, 6
+
+  const u8 modulePidPattern[] =  {0x00, 0xF0, 0x20, 0xE3,  // nop
+                                  0x05, 0x00, 0xA0, 0xE3}; // mov r0, #5
+  const u8 modulePidPatch[]   =  {0x00, 0xF0, 0x20, 0xE3,  // nop
+                                  0x06, 0x00, 0xA0, 0xE3}; // mov r0, #6
+
+  // This needs to be patched, or K11 won't like it.
+  u32 maxModuleDst      = 0xDFF00000 + section0size - 4;
+  u32 maxModuleDstPatch = maxModuleDst + moduleSize;
+  u32 maxModuleSectionSize      = section0size;
+  u32 maxModuleSectionSizePatch = section0size + moduleSize;
+
+  u8 *off;
+  if(!(off = memsearch(startPos, moduleAmountPattern, size, 4)))
+    return 1;
+  memcpy(off, moduleAmountPatch, 4);
+
+  if(!(off = memsearch(startPos, modulePidPattern, size, 8)))
+    return 2;
+  memcpy(off, modulePidPatch, 8);
+
+  if(!(off = memsearch(startPos, (u8*)&maxModuleDst, size, 4)))
+    return 3;
+  memcpy(off, (u8*)&maxModuleDstPatch, 4);
+
+  if(!(off = memsearch(startPos, (u8*)&maxModuleSectionSize, size, 4)))
+    return 4;
+  memcpy(off, (u8*)&maxModuleSectionSizePatch, 4);
+
+  return 0;
+}
+
+u8 patchDebugSvcChecks(u8 *startPos, u32 size)
+{
+  const u8 debugSvcCheckPattern[] = {0x00, 0x00, 0x50, 0xE3,  // cmp r0, 0
+                                     0x0C, 0x02, 0x9F, 0x05,  // ldreq r0, [pc, 0x20c]
+                                     0x12, 0x00, 0x00, 0x0A}; // beq 0x50
+  const u8 debugSvcCheckPatch[]   = {0x00, 0xF0, 0x20, 0xE3,  // nop
+                                     0x00, 0xF0, 0x20, 0xE3,  // nop
+                                     0x00, 0xF0, 0x20, 0xE3}; // nop
+
+  u8 *off;
+  if(!(off = memsearch(startPos, debugSvcCheckPattern, size, 12)))
+    return 1;
+  memcpy(off, debugSvcCheckPatch, 12);
+
+  return 0;
+}
+
 void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
 {
     //Official implementation of svcBackdoor
@@ -140,39 +194,12 @@ void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
     }
 }
 
-
-void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
-{
-    memcpy(*freeK11Space, svcGetCFWInfo, svcGetCFWInfo_size);
-
-    CFWInfo *info = (CFWInfo *)memsearch(*freeK11Space, "LUMA", svcGetCFWInfo_size, 4);
-
-    const char *rev = REVISION;
-    bool isRelease;
-
-    info->commitHash = COMMIT_HASH;
-    info->config = configData.config;
-    info->versionMajor = (u8)(rev[1] - '0');
-    info->versionMinor = (u8)(rev[3] - '0');
-    if(rev[4] == '.')
-    {
-        info->versionBuild = (u8)(rev[5] - '0');
-        isRelease = rev[6] == 0;
-    }
-    else isRelease = rev[4] == 0;
-
-    info->flags = 1 /* dev branch */ | ((isRelease ? 1 : 0) << 1) /* is release */;
-
-    arm11SvcTable[0x2E] = 0xFFF00000 + *freeK11Space - pos; //Stubbed svc
-    (*freeK11Space) += svcGetCFWInfo_size;
-}
-
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0x0A, 0x81, 0x42, 0x02};
-    
+
     u8 *off = memsearch(pos, pattern, size, 4);
-    
+
     if(off != NULL) off[4] = 0xE0;
 }
 
@@ -222,13 +249,13 @@ void patchTwlBg(u8 *pos)
     u8 *dst = pos + (isN3DS ? 0xFEA4 : 0xFCA0);
 
     memcpy(dst, twl_k11modules, twl_k11modules_size); //Install K11 hook
-    
+
     u32 *off = (u32 *)memsearch(dst, "LAUN", twl_k11modules_size, 4);
     *off = isN3DS ? 0xCDE88 : 0xCD5F8; //Dev SRL launcher offset
 
     u16 *src1 = (u16 *)(pos + (isN3DS ? 0xE38 : 0xE3C)),
         *src2 = (u16 *)(pos + (isN3DS ? 0xE54 : 0xE58));
-    
+
     //Construct BLX instructions:
     src1[0] = 0xF000 | ((((u32)dst - (u32)src1 - 4) & (0xFFF << 11)) >> 12);
     src1[1] = 0xE800 | ((((u32)dst - (u32)src1 - 4) & 0xFFF) >> 1);
@@ -240,12 +267,12 @@ void patchTwlBg(u8 *pos)
 void getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset)
 {
     //This function has to succeed. Crash if it doesn't (we'll get an exception dump of it anyways)
-    
-    const u8 callExceptionDispatcherPattern[] = {0x0F, 0x00, 0xBD, 0xE8, 0x13, 0x00, 0x02, 0xF1};   
+
+    const u8 callExceptionDispatcherPattern[] = {0x0F, 0x00, 0xBD, 0xE8, 0x13, 0x00, 0x02, 0xF1};
     const u8 getTitleIDFromCodeSetPattern[] = {0xDC, 0x05, 0xC0, 0xE1, 0x20, 0x04, 0xA0, 0xE1};
-    
+
     *stackAddr = *((u32 *)memsearch(pos, callExceptionDispatcherPattern, size, 8) + 3);
-    
+
     u32 *loadCodeSet = (u32 *)memsearch(pos, getTitleIDFromCodeSetPattern, size, 8);
     while((*loadCodeSet >> 20) != 0xE59 || ((*loadCodeSet >> 12) & 0xF) != 0) //ldr r0, [rX, #offset]
         loadCodeSet--;
@@ -255,9 +282,9 @@ void getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *co
 void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 {
     const u8 pattern[] = {
-        0x18, 0x10, 0x80, 0xE5, 
-        0x10, 0x10, 0x80, 0xE5, 
-        0x20, 0x10, 0x80, 0xE5, 
+        0x18, 0x10, 0x80, 0xE5,
+        0x10, 0x10, 0x80, 0xE5,
+        0x20, 0x10, 0x80, 0xE5,
         0x28, 0x10, 0x80, 0xE5,
     }; //i.e when it stores ldr pc, [pc, #-4]
 
@@ -291,7 +318,7 @@ void patchSvcBreak9(u8 *pos, u32 size, u32 k9Address)
     //Stub svcBreak with "bkpt 65535" so we can debug the panic.
     //Thanks @yellows8 and others for mentioning this idea on #3dsdev.
     const u8 svcHandlerPattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
-    
+
     u32 *arm9SvcTable = (u32 *)memsearch(pos, svcHandlerPattern, size, 4);
     while(*arm9SvcTable) arm9SvcTable++; //Look for SVC0 (NULL)
 
@@ -311,7 +338,7 @@ void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType)
     if(firmType == TWL_FIRM || firmType == AGB_FIRM)
     {
         u8 *off = pos + (isN3DS ? 0x723C : 0x69A8);
-        *(u16 *)off = 0x4778;           //bx pc 
+        *(u16 *)off = 0x4778;           //bx pc
         *(u16 *)(off + 2) = 0x46C0;     //nop
         *(u32 *)(off + 4) = 0xE12FFF7E; //bkpt 65534
     }
@@ -343,13 +370,13 @@ void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
 {
     //We have to detour a function in the ARM11 kernel because builtin modules
     //are compressed in memory and are only decompressed at runtime.
-    
+
     //Inject our code into the free space
     memcpy(*freeK11Space, k11modules, k11modules_size);
     (*freeK11Space) += k11modules_size;
 
     //Find the code that decompresses the .code section of the builtin modules and detour it with a jump to our code
-    const u8 pattern[] = { 0x00, 0x00, 0x94, 0xE5, 0x18, 0x10, 0x90, 0xE5, 0x28, 0x20, 
+    const u8 pattern[] = { 0x00, 0x00, 0x94, 0xE5, 0x18, 0x10, 0x90, 0xE5, 0x28, 0x20,
                           0x90, 0xE5, 0x48, 0x00, 0x9D, 0xE5 };
 
     u32 *off = (u32 *)memsearch(pos, pattern, size, 16);

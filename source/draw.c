@@ -45,7 +45,7 @@ bool loadSplash(void)
     //Don't delay boot nor init the screens if no splash image is on the SD
     if(getFileSize("/luma/splash.bin") + getFileSize("/luma/splashbottom.bin") == 0)
         return false;
-    
+
     initScreens();
 
     fileRead(fb->top_left, "/luma/splash.bin");

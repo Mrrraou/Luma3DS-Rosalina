@@ -41,7 +41,10 @@ extern u16 launchedFirmTidLow[8]; //Defined in start.s
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 
-u32 emuOffset;
+u32 emuOffset,
+    rosalinaModuleSize;
+
+u8* topLeftFbPtr;
 
 bool isN3DS,
      isDevUnit,
@@ -145,6 +148,8 @@ void main(void)
             {
                 configMenu(pinExists);
 
+                topLeftFbPtr = fb->top_left;
+
                 //Update pressed buttons
                 pressed = HID_PAD;
             }
@@ -170,9 +175,9 @@ void main(void)
 
                 /* If L and R/A/Select or one of the single payload buttons are pressed,
                    chainload an external payload */
-                bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
+                /*bool shouldLoadPayload = (pressed & SINGLE_PAYLOAD_BUTTONS) || ((pressed & BUTTON_L1) && (pressed & L_PAYLOAD_BUTTONS));
 
-                if(shouldLoadPayload) loadPayload(pressed);
+                if(shouldLoadPayload) loadPayload(pressed);*/
 
                 if(!CONFIG(7)) loadSplash();
 
@@ -261,7 +266,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
             //We can't boot < 2.x SysNANDs and < 3.x EmuNANDs
             if(firmVersion < 0x18)
             {
-                if(firmSource != FIRMWARE_SYSNAND || firmVersion < 9) 
+                if(firmSource != FIRMWARE_SYSNAND || firmVersion < 9)
                     error("An old unsupported NAND has been detected.\nLuma3DS is unable to boot it");
 
                 if(BOOTCONFIG(5, 1)) error("SAFE_MODE is not supported on 2.x FIRM");
@@ -282,7 +287,7 @@ static inline u32 loadFirm(FirmwareType *firmType, FirmwareSource firmSource)
 
         decryptExeFs((u8 *)firm);
     }
-    
+
     return firmVersion;
 }
 
@@ -308,7 +313,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
     //Find Kernel11 SVC table and free space locations
     u8 *freeK11Space;
-    u32 *arm11SvcHandler, 
+    u32 *arm11SvcHandler,
         *arm11ExceptionsPage;
 
     u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
@@ -329,6 +334,17 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     //Apply firmlaunch patches
     patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
+    if(patchDebugSvcChecks(arm11Section1, section[1].size))
+    {
+      fb->top_left = topLeftFbPtr;
+      initScreens();
+      drawString("An error has occurred:", 10, 10, COLOR_RED);
+      int posY = drawString("debug svc check not found", 10, 30, COLOR_WHITE);
+      drawString("Press any button to continue", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
+
+      waitInput();
+    }
+
     //11.0 FIRM patches
     if(firmVersion >= (isN3DS ? 0x21 : 0x52))
     {
@@ -339,11 +355,9 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space);
     }
 
-    implementSvcGetCFWInfo(arm11Section1, arm11SvcTable, &freeK11Space);
-
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
-    
+
     if(DEV_OPTIONS != 2)
     {
         //Install arm11 exception handlers
@@ -375,14 +389,14 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 static inline void patchLegacyFirm(FirmwareType firmType)
 {
     u8 *arm9Section = (u8 *)firm + section[3].offset;
-    
+
     //On N3DS, decrypt ARM9Bin and patch ARM9 entrypoint to skip arm9loader
     if(isN3DS)
     {
         arm9Loader(arm9Section);
         firm->arm9Entry = (u8 *)0x801301C;
     }
-    
+
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[3].size);
 
@@ -426,7 +440,10 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
     u32 srcModuleSize,
         dstModuleSize;
 
-    for(u8 *src = (u8 *)firm + section[0].offset, *srcEnd = src + section[0].size, *dst = section[0].address;
+    u8  *src    = (u8 *)firm + section[0].offset,
+        *srcEnd = src + section[0].size,
+        *dst    = section[0].address;
+    for(;
         src < srcEnd; src += srcModuleSize, dst += dstModuleSize)
     {
         srcModuleSize = *(u32 *)(src + 0x104) * 0x200;
@@ -461,6 +478,9 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType)
             memcpy(dst, module, dstModuleSize);
         }
     }
+
+    // Inject Rosalina
+    rosalinaModuleSize = fileRead(dst, "/luma/rosalina.cxi");
 }
 
 static inline void launchFirm(FirmwareType firmType)
@@ -470,6 +490,26 @@ static inline void launchFirm(FirmwareType firmType)
     if(firmType != SAFE_FIRM)
     {
         copySection0AndInjectSystemModules(firmType);
+
+        const char *moduleLoadingErrors[4] = {
+            "moduleAmountPatch not found",
+            "modulePidPatch not found",
+            "maxModuleDstPatch not found",
+            "maxModuleSectionSizePatch not found"
+        };
+
+        u8 s = patchK11ModuleLoading(section[0].size, rosalinaModuleSize, (u8*) firm + section[1].offset, section[1].size);
+        if(s)
+        {
+          fb->top_left = topLeftFbPtr;
+          initScreens();
+
+          drawString("An error has occurred:", 10, 10, COLOR_RED);
+          int posY = drawString(moduleLoadingErrors[s - 1], 10, 30, COLOR_WHITE);
+          drawString("Press any button to continue", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
+
+          waitInput();
+        }
         sectionNum = 1;
     }
     else sectionNum = 0;
@@ -490,7 +530,7 @@ static inline void launchFirm(FirmwareType firmType)
     //Set ARM11 kernel entrypoint
     *arm11 = (u32)firm->arm11Entry;
 
-    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed 
+    flushEntireDCache(); //Ensure that all memory transfers have completed and that the data cache has been flushed
     flushEntireICache();
 
     //Final jump to ARM9 kernel

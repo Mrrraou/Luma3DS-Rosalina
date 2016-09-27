@@ -1,0 +1,34 @@
+Those lists aren't exhaustive
+
+Do research on:
+	- doing "proper" svc hooks
+	- doing an rpc server (well, how to implement it exactly)
+	- mapping kernel memory (0xFFFxxxxx) as RWX
+		=> check the memory region 0xDFFxxxxx/0xEFFxxxxx too, which is the whole AXIWRAM mapped as RW
+	- adding a custom thread in Process9 to add custom PXI commands
+	- detaching a KDebug object to make the thread/process continue properly without having to retrieve all the queued debug events
+		=> or alternatively, find a better way to pause/unpause a process
+
+Stuff to do (maybe):
+	- an ftp server
+
+Stuff to do for sure, and important:
+	- svc hooks (and therefore hooking up into IPC communications too)
+	- doing an rpc server to do stuff like installing CIAs from the network, upload and download files from SD/NAND/GW, ...
+	- setting N3DS CPU speed on-the-fly for games, and same for region etc
+	- unencrypted Nintendo 3DS folder (and maybe one on GW too?)
+	- patching processes on-the-fly (sm, pm...)
+	- move the exception handling to Rosalina
+	- patch SVCs like svcMapMemoryBlock, svcControlProcessMemory, ... for mapping as RWX etc
+
+Stuff to do for sure, but minor:
+	- proper GetLumaInfo command (and other Luma-related commands)
+	- update Luma when everything is done and working
+	- adding battery percentage on the menu
+
+Temporary stuff I am actually doing for now:
+	- taking FS:REG before loader and getting loader to ask a Rosalina is not a solution (and it doesn't even work for now! the IPC is broken for some reason)
+	- maybe the svcDebugActiveProcess patch
+
+Bugs:
+	- find a way to unpause the paused processes via the debug svcs

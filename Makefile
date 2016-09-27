@@ -44,7 +44,7 @@ all: launcher a9lh ninjhax
 launcher: $(dir_out)/$(name).dat
 
 .PHONY: a9lh
-a9lh: $(dir_out)/arm9loaderhax.bin
+a9lh: $(dir_out)/DOWN_LumaT.bin
 
 .PHONY: ninjhax
 ninjhax: $(dir_out)/3ds/$(name)
@@ -58,7 +58,7 @@ clean:
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
-	@$(MAKE) -C $(dir_arm11_exceptions) clean	
+	@$(MAKE) -C $(dir_arm11_exceptions) clean
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
@@ -69,7 +69,7 @@ $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
 	@dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
 
-$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
+$(dir_out)/DOWN_LumaT.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
 
 $(dir_out)/3ds/$(name): $(dir_out)
@@ -127,7 +127,7 @@ $(dir_build)/arm9_exceptions.h: $(dir_arm9_exceptions)/Makefile
 $(dir_build)/arm11_exceptions.h: $(dir_arm11_exceptions)/Makefile
 	@$(MAKE) -C $(dir_arm11_exceptions)
 	@bin2c -o $@ -n arm11_exceptions $(@D)/arm11_exceptions.bin
-	
+
 $(dir_build)/memory.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) (dev) configuration\""
 $(dir_build)/patches.o: CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"

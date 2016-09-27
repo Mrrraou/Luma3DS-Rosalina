@@ -20,26 +20,20 @@
 *   Notices displayed by works containing it.
 */
 
-/*
-*   Code to print to the screen by mid-kid @CakesFW
-*      https://github.com/mid-kid/CakesForeveryWan/
-*/
-
 #pragma once
 
-#include "types.h"
+#include <3ds/types.h>
 
-#define SCREEN_TOP_WIDTH  400
-#define SCREEN_TOP_HEIGHT 240
+/***
+    The following functions flush the data cache, then waits for all memory transfers to be finished.
+    The data cache and/or the instruction cache MUST be flushed before doing one of the following:
+        - rebooting
+        - powering down
+        - setting the ARM11 entrypoint to execute a function
+        - jumping to a payload
+***/
 
-#define SPACING_Y 10
-#define SPACING_X 8
-
-#define COLOR_TITLE 0xFF9900
-#define COLOR_WHITE 0xFFFFFF
-#define COLOR_RED   0x0000FF
-#define COLOR_BLACK 0x000000
-
-bool loadSplash(void);
-void drawCharacter(char character, int posX, int posY, u32 color);
-int drawString(const char *string, int posX, int posY, u32 color);
+void flushEntireDCache(void); //actually: "clean and flush"
+void flushDCacheRange(void *startAddress, u32 size);
+void flushEntireICache(void);
+void flushICacheRange(void *startAddress, u32 size);

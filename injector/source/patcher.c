@@ -2,7 +2,7 @@
 #include "memory.h"
 #include "patcher.h"
 #include "ifile.h"
-#include "CFWInfo.h"
+#include "rosalina.h"
 
 static CFWInfo info;
 
@@ -92,7 +92,7 @@ static void loadCFWInfo(void)
 
     if(!infoLoaded)
     {
-        svcGetCFWInfo(&info);
+        Rosalina_GetCFWInfo(&info);
 
         IFile file;
         if(BOOTCONFIG(5, 1) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
@@ -184,7 +184,7 @@ static int loadTitleLocaleConfig(u64 progId, u8 *regionId, u8 *languageId)
                 break;
             }
         }
-        
+
         for(u32 i = 0; i < 12; ++i)
         {
             static const char *languages[] = {"JP", "EN", "FR", "DE", "IT", "ES", "ZH", "KO", "NL", "PT", "RU", "TW"};
@@ -273,7 +273,7 @@ static void patchCfgGetLanguage(u8 *code, u32 size, u8 languageId, u8 *CFGU_GetC
                     }
                     while(i < 2 && !found && calledFunction[3] == 0xEA);
 
-                    if(found) 
+                    if(found)
                     {
                         *((u32 *)instr - 1)  = 0xE3A00000 | languageId; // mov    r0, sp                 => mov r0, =languageId
                         *(u32 *)instr        = 0xE5CD0000;              // bl     CFGU_GetConfigInfoBlk2 => strb r0, [sp]
@@ -332,10 +332,10 @@ void patchCode(u64 progId, u8 *code, u32 size)
             };
 
             //Patch SMDH region checks
-            patchMemory(code, size, 
-                regionFreePattern, 
-                sizeof(regionFreePattern), -16, 
-                regionFreePatch, 
+            patchMemory(code, size,
+                regionFreePattern,
+                sizeof(regionFreePattern), -16,
+                regionFreePatch,
                 sizeof(regionFreePatch), 1
             );
 
@@ -352,10 +352,10 @@ void patchCode(u64 progId, u8 *code, u32 size)
             };
 
             //Block silent auto-updates
-            patchMemory(code, size, 
-                blockAutoUpdatesPattern, 
-                sizeof(blockAutoUpdatesPattern), 0, 
-                blockAutoUpdatesPatch, 
+            patchMemory(code, size,
+                blockAutoUpdatesPattern,
+                sizeof(blockAutoUpdatesPattern), 0,
+                blockAutoUpdatesPatch,
                 sizeof(blockAutoUpdatesPatch), 1
             );
 
@@ -370,10 +370,10 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 };
 
                 //Skip update checks to access the EShop
-                patchMemory(code, size, 
-                    skipEshopUpdateCheckPattern, 
-                    sizeof(skipEshopUpdateCheckPattern), 0, 
-                    skipEshopUpdateCheckPatch, 
+                patchMemory(code, size,
+                    skipEshopUpdateCheckPattern,
+                    sizeof(skipEshopUpdateCheckPattern), 0,
+                    skipEshopUpdateCheckPatch,
                     sizeof(skipEshopUpdateCheckPatch), 1
                 );
             }
@@ -386,9 +386,9 @@ void patchCode(u64 progId, u8 *code, u32 size)
             static const u8 fpdVerPattern[] = {
                 0xE0, 0x1E, 0xFF, 0x2F, 0xE1, 0x01, 0x01, 0x01
             };
-            
+
             static const u8 mostRecentFpdVer = 0x06;
-            
+
             u8 *fpdVer = memsearch(code, fpdVerPattern, size, sizeof(fpdVerPattern));
 
             //Allow online access to work with old friends modules, without breaking newer firmwares
@@ -396,7 +396,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
             break;
         }
-        
+
         case 0x0004001000021000LL: // USA MSET
         case 0x0004001000020000LL: // JPN MSET
         case 0x0004001000022000LL: // EUR MSET
@@ -433,9 +433,9 @@ void patchCode(u64 progId, u8 *code, u32 size)
             };
 
             //Disable updates from foreign carts (makes carts region-free)
-            patchMemory(code, size, 
-                stopCartUpdatesPattern, 
-                sizeof(stopCartUpdatesPattern), 0, 
+            patchMemory(code, size,
+                stopCartUpdatesPattern,
+                sizeof(stopCartUpdatesPattern), 0,
                 stopCartUpdatesPatch,
                 sizeof(stopCartUpdatesPatch), 2
             );
@@ -471,10 +471,10 @@ void patchCode(u64 progId, u8 *code, u32 size)
             };
 
             //Disable SecureInfo signature check
-            patchMemory(code, size, 
-                secureinfoSigCheckPattern, 
-                sizeof(secureinfoSigCheckPattern), 0, 
-                secureinfoSigCheckPatch, 
+            patchMemory(code, size,
+                secureinfoSigCheckPattern,
+                sizeof(secureinfoSigCheckPattern), 0,
+                secureinfoSigCheckPatch,
                 sizeof(secureinfoSigCheckPatch), 1
             );
 
@@ -484,18 +484,18 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 static const u16 secureinfoFilenamePatch[] = u"C";
 
                 //Use SecureInfo_C
-                patchMemory(code, size, 
-                    secureinfoFilenamePattern, 
+                patchMemory(code, size,
+                    secureinfoFilenamePattern,
                     sizeof(secureinfoFilenamePattern) - sizeof(u16),
-                    sizeof(secureinfoFilenamePattern) - sizeof(u16), 
-                    secureinfoFilenamePatch, 
+                    sizeof(secureinfoFilenamePattern) - sizeof(u16),
+                    secureinfoFilenamePatch,
                     sizeof(secureinfoFilenamePatch) - sizeof(u16), 2
                 );
             }
 
             break;
         }
-        
+
         case 0x0004013000003702LL: // RO
         {
             static const u8 sigCheckPattern[] = {
@@ -507,68 +507,34 @@ void patchCode(u64 progId, u8 *code, u32 size)
             static const u8 sha256ChecksPattern2[] = {
                 0xF8, 0x4F, 0x2D, 0xE9, 0x01
             };
-            
+
             static const u8 stub[] = {
                 0x00, 0x00, 0xA0, 0xE3, 0x1E, 0xFF, 0x2F, 0xE1 // mov r0, #0; bx lr
             };
-            
-            //Disable CRR0 signature (RSA2048 with SHA256) check
-            patchMemory(code, size, 
-                sigCheckPattern, 
-                sizeof(sigCheckPattern), 0, 
-                stub,
-                sizeof(stub), 1
-            );
-            
-            //Disable CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
-            patchMemory(code, size, 
-                sha256ChecksPattern1, 
-                sizeof(sha256ChecksPattern1), 0, 
-                stub,
-                sizeof(stub), 1
-            );
-            
-            patchMemory(code, size, 
-                sha256ChecksPattern2, 
-                sizeof(sha256ChecksPattern2), 0, 
-                stub,
-                sizeof(stub), 1
-            );
-            
-            break;
-        }
-        
-        
-        case 0x0004003000008A02LL: // ErrDisp
-        {
-            if(MULTICONFIG(2) == 0)
-            {
-                static const u8 unitinfoCheckPattern1[] = { 
-                    0x14, 0x00, 0xD0, 0xE5, 0xDB, 0x9A, 0x9F, 0xED 
-                };
-                
-                static const u8 unitinfoCheckPattern2[] = {
-                    0x14, 0x00, 0xD0, 0xE5, 0x01, 0x00, 0x10, 0xE3
-                } ;
-                
-                static const u8 unitinfoCheckPatch[] = {
-                    0x00, 0x00, 0xA0, 0xE3
-                } ;
-                
-                patchMemory(code, size, 
-                    unitinfoCheckPattern1, 
-                    sizeof(unitinfoCheckPattern1), 0, 
-                    unitinfoCheckPatch, 
-                    sizeof(unitinfoCheckPatch), 1
-                );
 
-                patchMemory(code, size, 
-                    unitinfoCheckPattern2, 
-                    sizeof(unitinfoCheckPattern2), 0,
-                    unitinfoCheckPatch, 
-                    sizeof(unitinfoCheckPatch), 3
-                );
-            }
+            //Disable CRR0 signature (RSA2048 with SHA256) check
+            patchMemory(code, size,
+                sigCheckPattern,
+                sizeof(sigCheckPattern), 0,
+                stub,
+                sizeof(stub), 1
+            );
+
+            //Disable CRO0/CRR0 SHA256 hash checks (section hashes, and hash table)
+            patchMemory(code, size,
+                sha256ChecksPattern1,
+                sizeof(sha256ChecksPattern1), 0,
+                stub,
+                sizeof(stub), 1
+            );
+
+            patchMemory(code, size,
+                sha256ChecksPattern2,
+                sizeof(sha256ChecksPattern2), 0,
+                stub,
+                sizeof(stub), 1
+            );
+
             break;
         }
 

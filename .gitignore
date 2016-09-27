@@ -2,6 +2,7 @@ out
 build
 loader/build
 injector/build
+rosalina/build
 exceptions/arm9/build
 exceptions/arm11/build
 *.bin
@@ -10,3 +11,4 @@ exceptions/arm11/build
 *.o
 *.d
 *.elf
+*.cxi
