@@ -8,6 +8,7 @@ Do research on:
 	- adding a custom thread in Process9 to add custom PXI commands
 	- detaching a KDebug object to make the thread/process continue properly without having to retrieve all the queued debug events
 		=> or alternatively, find a better way to pause/unpause a process
+	- doing a gdb server
 
 Stuff to do (maybe):
 	- an ftp server
