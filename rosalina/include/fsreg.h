@@ -13,5 +13,3 @@ Result FSREG_Unregister(u32 pid);
 Result FSREG_Register(u32 pid, u64 prog_handle, FS_ProgramInfo *info, void *storageinfo);
 Result fsregSetupPermissions(void);
 Handle fsregGetHandle(void);
-
-u32 fsreg_pid_debug;

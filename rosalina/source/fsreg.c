@@ -44,10 +44,7 @@ Result fsregSetupPermissions(void)
   info.mediaType = MEDIATYPE_NAND;
 
   if(R_SUCCEEDED(res = svcGetProcessId(&pid, 0xFFFF8001))) // 0xFFFF8001 is an handle to the active process
-  {
-    fsreg_pid_debug = pid;
-    res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, (u8*) storage);
-  }
+    res = FSREG_Register(pid, 0xFFFF000000000000LL, &info, (u8*)storage);
 
   return res;
 }
