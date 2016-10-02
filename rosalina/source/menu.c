@@ -3,7 +3,6 @@
 #include "menu.h"
 #include "draw.h"
 #include "memory.h"
-#include "cache.h"
 #include "ifile.h"
 #include "menus.h"
 

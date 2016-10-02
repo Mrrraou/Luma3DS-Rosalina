@@ -4,8 +4,8 @@
 #include "menu.h"
 #include "draw.h"
 #include "memory.h"
-#include "cache.h"
 #include "ifile.h"
+#include "utils.h"
 
 
 Menu menu_rosalina = {
@@ -33,7 +33,7 @@ void RosalinaMenu_ShowCredits(void)
 			"  3dbrew contributors\n"
 		  "  (and motezazer for reading 3dbrew to me)\n\n"
 			"-------------------------------------------\n"
-			"Using ctrulib, devkitARM; used ctrtool\n"
+			"Using ctrulib, devkitARM + ctrtool\n"
 			"CFW based on Luma3DS (developer branch)"
 		), 10, 50, COLOR_WHITE);
 
@@ -65,19 +65,18 @@ void RosalinaMenu_ProcessList(void)
 		process_name[8] = 0;
 
 		Result res;
-		DebugEventInfo debug;
+		DebugEventInfo debugInfo;
 
 		if(process_ids[i] != rosalina_pid)
 		{
 			Handle debug_handle;
 			svcDebugActiveProcess(&debug_handle, process_ids[i]);
 
-			svcGetProcessDebugEvent(&debug, debug_handle);
+			svcGetProcessDebugEvent(&debugInfo, debug_handle);
 			res = svcContinueDebugEvent(debug_handle, 0b11);
-			memcpy(process_name, debug.process.process_name, 8);
+			memcpy(process_name, debugInfo.process.process_name, 8);
 
 			svcContinueDebugEvent(debug_handle, 0);
-
 			svcCloseHandle(debug_handle);
 		}
 		else

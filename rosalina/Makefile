@@ -23,17 +23,19 @@ LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
 INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
-ASFLAGS := -mcpu=mpcore -mfloat-abi=hard -mtp=soft
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
+ARCH := -march=armv6k -mcpu=mpcore -mfloat-abi=hard
+ASFLAGS := -g $(ARCH)
+CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -mtp=soft -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
 	  -ffunction-sections -fdata-sections $(INCLUDE) -I$(dir_include) -DARM11 -D_3DS
-LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ASFLAGS) -L$(DEVKITPRO)/libctru/lib
+LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs -g $(ARCH) -mtp=soft -L$(DEVKITPRO)/libctru/lib
 
 # Luma3DS CFW info
 revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
 commit := $(shell git rev-parse --short=8 HEAD)
 
-objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
-          $(call rwildcard, $(dir_source), *.s *.c))
+objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
+					$(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
+          $(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
 all: $(name).cxi

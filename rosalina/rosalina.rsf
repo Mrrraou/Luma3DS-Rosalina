@@ -60,7 +60,7 @@ AccessControlInfo:
     GetProcessList: 0x65
     AcceptSession: 74
     ArbitrateAddress: 34
-    Break: 60
+    Break: 0x3C
     CancelTimer: 28
     ClearEvent: 25
     ClearTimer: 29
