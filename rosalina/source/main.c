@@ -172,7 +172,7 @@ void __system_allocateHeaps(void)
 	u32 tmp=0;
 
 	// Distribute available memory, aligning to page size.
-	u32 size = (osGetMemRegionFree(MEMREGION_BASE) / 32) & 0xFFFFF000;
+	u32 size = (0x8000/*osGetMemRegionFree(MEMREGION_BASE) / 32*/) & 0xFFFFF000;
 	__ctru_heap_size = size;
 	__ctru_linear_heap_size = size;
 

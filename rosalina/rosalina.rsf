@@ -42,7 +42,6 @@ AccessControlInfo:
 
   MemoryMapping:
     - 0x1F000000 - 0x1F5FFFFF                 # VRAM
-  #  - 0xFFF00000 - 0xFFF1FFFF                 # Kernel
 
   IORegisterMapping:
     - 0x1EC46000                            # HID IO registers
