@@ -458,6 +458,12 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 }
             }
 
+            // Patch courtesy of TuxSH
+            // Makes ErrDisp to not start up
+            static const u64 errDispTid = 0x0004003000008A02ULL;
+            u32 *errDispTidLoc = (u32 *)memsearch(code, &errDispTid, size, sizeof(errDispTid));
+            *(errDispTidLoc - 6) = 0xE3A00000; // mov r0, 0
+
             break;
         }
 

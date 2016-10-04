@@ -18,13 +18,14 @@ Thread menuCreateThread(void)
 					archivePath = {PATH_EMPTY, 1, (u8*) ""};
 	Result res;
 
+	splash = malloc(SPLASH_SIZE);
 	if(R_SUCCEEDED(res = IFile_Open(&splashfile, ARCHIVE_SDMC, archivePath, filePath, FS_OPEN_READ)))
 	{
-		IFile_Read(&splashfile, &total, &splash, sizeof(splash));
+		IFile_Read(&splashfile, &total, splash, SPLASH_SIZE);
 		IFile_Close(&splashfile);
 	}
 
-	return menu_thread = threadCreate(menuThreadMain, 0, 0x4000, 0, CORE_SYSTEM, true);
+	return menu_thread = threadCreate(menuThreadMain, 0, 0x1000, 0, CORE_SYSTEM, true);
 }
 
 void menuThreadMain(void *arg)

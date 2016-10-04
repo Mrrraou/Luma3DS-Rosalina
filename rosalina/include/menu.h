@@ -20,7 +20,8 @@
 #define CORE_APPLICATION 	0
 #define CORE_SYSTEM 			1
 
-u8 splash[320*240*3];
+#define SPLASH_SIZE			(320 * 240 * 3)
+u8 *splash;
 
 typedef enum MenuItemAction {
 	METHOD,

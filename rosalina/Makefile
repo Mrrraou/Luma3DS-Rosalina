@@ -25,7 +25,7 @@ INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
 ARCH := -march=armv6k -mcpu=mpcore -mfloat-abi=hard
 ASFLAGS := -g $(ARCH)
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -mtp=soft -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
+CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -mtp=soft -fno-builtin -std=c11 -Os -flto -ffast-math -mword-relocations \
 	  -ffunction-sections -fdata-sections $(INCLUDE) -I$(dir_include) -DARM11 -D_3DS
 LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs -g $(ARCH) -mtp=soft -L$(DEVKITPRO)/libctru/lib
 

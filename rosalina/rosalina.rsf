@@ -37,7 +37,7 @@ AccessControlInfo:
   CoreVersion                   : 2
   DescVersion                   : 2
 
-  MemoryType                    : Base      # Application / System / Base
+  MemoryType                    : System      # Application / System / Base
   HandleTableSize: 150
 
   MemoryMapping:
