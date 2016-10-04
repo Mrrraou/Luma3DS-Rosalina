@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "ifile.h"
 #include "utils.h"
+#include "kernel.h"
 
 
 Menu menu_rosalina = {
@@ -42,6 +43,18 @@ void RosalinaMenu_ShowCredits(void)
 	while(!(HID_PAD & (BUTTON_A | BUTTON_B)));
 }
 
+
+void* GetPointerFromHandle(Handle handle)
+{
+	struct KProcess *currentKProcess = *(struct KProcess**)0xFFFF9004;
+	return currentKProcess->handleTable.handleTable[handle & 0x7fff].pointer;
+}
+
+void CopyProcessName(struct KProcess *process, char *out)
+{
+	memcpy(out, process->codeSet->processName, 8);
+}
+
 void RosalinaMenu_ProcessList(void)
 {
 	draw_copyToFramebuffer(splash);
@@ -64,6 +77,7 @@ void RosalinaMenu_ProcessList(void)
 		char process_name[9];
 		process_name[8] = 0;
 
+/*
 		Result res;
 		DebugEventInfo debugInfo;
 
@@ -81,6 +95,13 @@ void RosalinaMenu_ProcessList(void)
 		}
 		else
 			memcpy(process_name, "rosalina", 8);
+*/
+
+		Handle processHandle;
+		res = svcOpenProcess(&processHandle, process_ids[i]);
+		struct KProcess *process = (struct KProcess*) svc_7b(GetPointerFromHandle, processHandle);
+		svc_7b(CopyProcessName, process, process_name);
+		svcCloseHandle(processHandle);
 
 		char str[255];
 		sprintf(str, "%08lx %s res: %08lx", process_ids[i], process_name, res);
