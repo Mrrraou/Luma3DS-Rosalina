@@ -98,7 +98,7 @@ void RosalinaMenu_ProcessList(void)
 */
 
 		Handle processHandle;
-		res = svcOpenProcess(&processHandle, process_ids[i]);
+		Result res = svcOpenProcess(&processHandle, process_ids[i]);
 		struct KProcess *process = (struct KProcess*) svc_7b(GetPointerFromHandle, processHandle);
 		svc_7b(CopyProcessName, process, process_name);
 		svcCloseHandle(processHandle);
