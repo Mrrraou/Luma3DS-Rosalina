@@ -1,12 +1,8 @@
 #include <3ds.h>
-#include <stdio.h>
 #include "menus.h"
 #include "menu.h"
 #include "draw.h"
-#include "memory.h"
-#include "ifile.h"
-#include "utils.h"
-#include "kernel.h"
+#include "menus/process_list.h"
 
 
 Menu menu_rosalina = {
@@ -37,77 +33,6 @@ void RosalinaMenu_ShowCredits(void)
 			"Using ctrulib, devkitARM + ctrtool\n"
 			"CFW based on Luma3DS (developer branch)"
 		), 10, 50, COLOR_WHITE);
-
-	draw_flushFramebuffer();
-
-	while(!(HID_PAD & (BUTTON_A | BUTTON_B)));
-}
-
-
-void* GetPointerFromHandle(Handle handle)
-{
-	struct KProcess *currentKProcess = *(struct KProcess**)0xFFFF9004;
-	return currentKProcess->handleTable.handleTable[handle & 0x7fff].pointer;
-}
-
-void CopyProcessName(struct KProcess *process, char *out)
-{
-	memcpy(out, process->codeSet->processName, 8);
-}
-
-void RosalinaMenu_ProcessList(void)
-{
-	draw_copyToFramebuffer(splash);
-	draw_string("Process list", 10, 10, COLOR_TITLE);
-
-	u32 rosalina_pid;
-	svcGetProcessId(&rosalina_pid, 0xFFFF8001); // 0xFFFF8001 is an handle to the active process
-
-	s32 process_count;
-	u32 process_ids[18];
-	svcGetProcessList(&process_count, process_ids, 18);
-	process_ids[0] = 0;
-
-	s32 i;
-	for(i = 0; i < 18; i++)
-	{
-		if(i >= process_count)
-			break;
-
-		char process_name[9];
-		process_name[8] = 0;
-
-/*
-		Result res;
-		DebugEventInfo debugInfo;
-
-		if(process_ids[i] != rosalina_pid)
-		{
-			Handle debug_handle;
-			svcDebugActiveProcess(&debug_handle, process_ids[i]);
-
-			svcGetProcessDebugEvent(&debugInfo, debug_handle);
-			res = svcContinueDebugEvent(debug_handle, 0b11);
-			memcpy(process_name, debugInfo.process.process_name, 8);
-
-			svcContinueDebugEvent(debug_handle, 0);
-			svcCloseHandle(debug_handle);
-		}
-		else
-			memcpy(process_name, "rosalina", 8);
-*/
-
-		Handle processHandle;
-		Result res = svcOpenProcess(&processHandle, process_ids[i]);
-		struct KProcess *process = (struct KProcess*) svc_7b(GetPointerFromHandle, processHandle);
-		svc_7b(CopyProcessName, process, process_name);
-		svcCloseHandle(processHandle);
-
-		char str[255];
-		sprintf(str, "%08lx %s res: %08lx", process_ids[i], process_name, res);
-
-		draw_string(str, 30, 30 + i * SPACING_Y, COLOR_WHITE);
-	}
 
 	draw_flushFramebuffer();
 
