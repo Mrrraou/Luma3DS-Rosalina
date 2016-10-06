@@ -34,8 +34,7 @@ void ProcessList_FetchLoadedProcesses(void)
     u32 process_ids[0x40];
     svcGetProcessList(&process_count, process_ids, sizeof(process_ids) / sizeof(u32));
 
-    u32 i;
-    for(i = 0; i < sizeof(process_ids) / sizeof(u32); i++)
+    for(u32 i = 0; i < sizeof(process_ids) / sizeof(u32); i++)
     {
         if(i >= (u32) process_count)
             break;
@@ -47,26 +46,6 @@ void ProcessList_FetchLoadedProcesses(void)
 
         CurrentKProcess_GetProcessInfoFromHandle(&processes[i], processHandle);
         svcCloseHandle(processHandle);
-
-/*
-        Result res;
-        DebugEventInfo debugInfo;
-
-        if(process_ids[i] != rosalina_pid)
-        {
-            Handle debug_handle;
-            svcDebugActiveProcess(&debug_handle, process_ids[i]);
-
-            svcGetProcessDebugEvent(&debugInfo, debug_handle);
-            res = svcContinueDebugEvent(debug_handle, 0b11);
-            memcpy(process_name, debugInfo.process.process_name, 8);
-
-            svcContinueDebugEvent(debug_handle, 0);
-            svcCloseHandle(debug_handle);
-        }
-        else
-            memcpy(process_name, "rosalina", 8);
-*/
     }
 }
 
@@ -86,25 +65,22 @@ void RosalinaMenu_ProcessList(void)
         draw_copyToFramebuffer(splash);
         draw_string("Process list", 10, 10, COLOR_TITLE);
 
-        u32 i = 0;
-        while(i < PROCESSES_PER_MENU_PAGE)
+        for(u32 i = 0; i < PROCESSES_PER_MENU_PAGE; i++)
         {
             struct ProcessInfo *info = &processes[page * PROCESSES_PER_MENU_PAGE + i];
 
             if(!info->process)
                 break;
 
-            char processName[9] = {0};
-            strncpy(processName, info->name, 8);
-
-            char str[80];
-            sprintf(str, "%08lx %s", info->pid, processName);
+            char str[18];
+            hexItoa(info->pid, str, 8, false);
+            str[8] = ' ';
+            memcpy(str + 9, info->name, 8);
+            str[17] = 0;
 
             draw_string(str, 30, 30 + i * SPACING_Y, COLOR_WHITE);
             if(page * PROCESSES_PER_MENU_PAGE + i == selected)
                 draw_character('>', 10, 30 + i * SPACING_Y, COLOR_TITLE);
-
-            i++;
         }
         draw_flushFramebuffer();
 

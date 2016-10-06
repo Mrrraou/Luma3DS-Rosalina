@@ -1,51 +1,36 @@
 #include <3ds.h>
-#include <malloc.h>
 #include "menu.h"
 #include "draw.h"
 #include "memory.h"
 #include "ifile.h"
 #include "menus.h"
 
-static Thread menu_thread;
-static char splash_path[] = "/luma/rosalina/splash.bin";
+static MyThread menuThread;
+static u8 ALIGN(8) menuThreadStack[THREAD_STACK_SIZE];
 
-
-Thread menuCreateThread(void)
+MyThread menuCreateThread(void)
 {
-    u64 total;
-    IFile splashfile;
-    FS_Path filePath         = {PATH_ASCII, strnlen(splash_path, PATH_MAX) + 1, splash_path},
-                    archivePath = {PATH_EMPTY, 1, (u8*) ""};
-    Result res;
-
-    splash = malloc(SPLASH_SIZE);
-    if(R_SUCCEEDED(res = IFile_Open(&splashfile, ARCHIVE_SDMC, archivePath, filePath, FS_OPEN_READ)))
-    {
-        IFile_Read(&splashfile, &total, splash, SPLASH_SIZE);
-        IFile_Close(&splashfile);
-    }
-
-    return menu_thread = threadCreate(menuThreadMain, 0, 0x1000, 0, CORE_SYSTEM, true);
+    MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, 0, CORE_SYSTEM);
+    return menuThread;
 }
 
-void menuThreadMain(void *arg)
+void menuThreadMain(void)
 {
     while(true)
     {
         if((HID_PAD & (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT)) == (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT))
             menuShow();
 
-        svcSleepThread(50000000); // 5/100 a second
+        svcSleepThread(5 * 1000 * 1000); // 5ms second
     }
 }
 
 static void menuDraw(Menu *menu, u32 selected)
 {
-    draw_copyToFramebuffer(splash);
+    draw_fillFramebuffer(0);
     draw_string(menu->title, 10, 10, COLOR_TITLE);
 
-    u32 i;
-    for(i = 0; i < 15; i++)
+    for(u32 i = 0; i < 15; i++)
     {
         if(i >= menu->items)
             break;

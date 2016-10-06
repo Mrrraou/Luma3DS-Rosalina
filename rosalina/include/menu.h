@@ -1,6 +1,7 @@
 #pragma once
 
 #include <3ds/types.h>
+#include "MyThread.h"
 
 #define HID_PAD                 (*((vu32*)0x1EC46000) ^ 0xFFF)
 
@@ -44,6 +45,6 @@ typedef struct Menu {
 } Menu;
 
 
-Thread menuCreateThread(void);
-void menuThreadMain(void *arg);
+MyThread menuCreateThread(void);
+void menuThreadMain(void);
 void menuShow(void);
