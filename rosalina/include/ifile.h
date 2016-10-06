@@ -7,9 +7,9 @@
 
 typedef struct
 {
-  Handle handle;
-  u64 pos;
-  u64 size;
+    Handle handle;
+    u64 pos;
+    u64 size;
 } IFile;
 
 Result IFile_Open(IFile *file, FS_ArchiveID archiveId, FS_Path archivePath, FS_Path filePath, u32 flags);

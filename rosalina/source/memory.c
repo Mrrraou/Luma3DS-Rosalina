@@ -24,6 +24,14 @@ int memcmp(const void *buf1, const void *buf2, u32 size)
     return 0;
 }
 
+void *memset(void *dest, u32 value, u32 size)
+{
+    u8 *destc = (u8 *)dest;
+
+    for(u32 i = 0; i < size; i++) destc[i] = (u8)value;
+
+    return dest;
+}
 //Quick Search algorithm, adapted from http://igm.univ-mlv.fr/~lecroq/string/node19.html#SECTION00190
 u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
 {
@@ -50,9 +58,17 @@ u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
     return NULL;
 }
 
-size_t strnlen(const char *string, size_t maxlen)
+char *strncpy(char *dest, const char *src, u32 size)
 {
-    size_t size;
+    for(u32 i = 0; i < size && src[i] != 0; i++)
+        dest[i] = src[i];
+
+    return dest;
+}
+
+s32 strnlen(const char *string, s32 maxlen)
+{
+    s32 size;
     for(size = 0; *string && size < maxlen; string++, size++);
 
     return size;

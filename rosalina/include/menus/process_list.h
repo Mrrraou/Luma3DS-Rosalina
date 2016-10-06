@@ -6,10 +6,10 @@
 #define PROCESSES_PER_MENU_PAGE 18
 
 struct ProcessInfo {
-	struct KProcess *process;
-	u32 pid;
-	char name[8];
-	u64 tid;
+    struct KProcess *process;
+    u32 pid;
+    char name[8];
+    u64 tid;
 };
 
 

@@ -6,27 +6,26 @@
 #define CONFIG_VERSIONMINOR 0
 
 
-typedef struct __attribute__((packed))
+typedef struct PACKED
 {
-  char magic[4];
+    char magic[4];
 
-  u8 versionMajor;
-  u8 versionMinor;
-  u8 versionBuild;
-  u8 flags; /* bit 0: dev branch; bit 1: is release */
+    u8 versionMajor;
+    u8 versionMinor;
+    u8 versionBuild;
+    u8 flags; /* bit 0: dev branch; bit 1: is release */
 
-  u32 commitHash;
+    u32 commitHash;
 
-  u32 config;
-} CFWInfo;
+    u32 config;
+} PACKED CFWInfo;
 
-typedef struct __attribute__((packed))
+typedef struct
 {
-  char magic[4];
-  u16 formatVersionMajor, formatVersionMinor;
-
-  u32 config;
-} ConfigData;
+    char magic[4];
+    u16 formatVersionMajor, formatVersionMinor;
+    u32 config;
+} PACKED ConfigData;
 
 
 CFWInfo Luma_GetCFWInfo(void);
