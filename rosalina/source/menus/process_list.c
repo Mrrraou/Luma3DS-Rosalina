@@ -14,10 +14,11 @@ static struct ProcessInfo processes[0x40];
 void K_CurrentKProcess_GetProcessInfoFromHandle(struct ProcessInfo *info, Handle handle)
 {
     KProcess *process = KProcess_ConvertHandle(*(KProcess**)0xFFFF9004, handle);
+    KCodeSet *codeSet = KPROCESS_GET_RVALUE(process, codeSet);
     info->process = process;
-    info->pid = process->processId;
-    memcpy(info->name, process->codeSet->processName, 8);
-    info->tid = process->codeSet->titleId;
+    info->pid = KPROCESS_GET_RVALUE(process, processId);
+    memcpy(info->name, codeSet->processName, 8);
+    info->tid = codeSet->titleId;
 }
 
 void CurrentKProcess_GetProcessInfoFromHandle(struct ProcessInfo *info, Handle handle)

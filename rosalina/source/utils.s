@@ -33,7 +33,7 @@ convertVAToPA:
     bic r0, r1
     mcr p15, 0, r0, c7, c8, 0    @ VA to PA translation with privileged read permission check
     mrc p15, 0, r0, c7, c4, 0    @ read PA register
-    tst r0, #1              @ failure bit
+    tst r0, #1                   @ failure bit
     bic r0, r1
     addeq r0, r2
     movne r0, #0

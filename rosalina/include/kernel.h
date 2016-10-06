@@ -58,7 +58,7 @@ typedef struct KThread
     u8 unknown_2;
     u8 unknown_3;
     u8 affinityMask;
-    struct ALIGN(2) KProcess *ownerProcess;
+    union ALIGN(2) KProcess *ownerProcess;
     u32 threadId;
     void *svcRegisterStorage;
     void *endOfThreadContext;
@@ -113,54 +113,83 @@ typedef struct KProcessHandleTable
     HandleDescriptor internalTable[40];
 } KProcessHandleTable;
 
-typedef struct KProcess
-{
-    KSynchronizationObject syncObject;
-    u32 unknown_1;
-    u32 unknown_2;
-    KThread *runningThread;
-    u16 errorTracker;
-    u8 ALIGN(4) tlbEntriesCore0;
-    u8 ALIGN(4) tlbEntriesCore1;
-    u8 ALIGN(4) tlbEntriesCore2;
-    u8 ALIGN(4) tlbEntriesCore3;
-    KLinkedList ownedKMemoryBlocks;
-    u32 unknown_3;
-    u32 unknown_4;
-    void *translationTableBase;
-    u8 contextId;
-    u8 memAllocRelated;
-    bool currentlyLoadedApp;
-    u32 unknown_5;
+#define KPROCESS_DEF_PART_1(nbCores)\
+    KSynchronizationObject syncObject;\
+    u32 unknown_1;\
+    u32 unknown_2;\
+    KThread *runningThread;\
+    u16 errorTracker;\
+    u8 ALIGN(4) tlbEntriesToInvalidateByCore[nbCores];\
+    KLinkedList ownedKMemoryBlocks;\
+    u32 unknown_3;\
+    u32 unknown_4;\
+    void *translationTableBase;\
+    u8 contextId;\
+    u8 memAllocRelated;\
+    bool currentlyLoadedApp;\
+    u32 unknown_5;\
     void *endOfUserlandVmem;
-    void *linearVAUserlandBase;
-    u32 unknown_6;
-    u32 mmuTableSize;
-    void *mmuTableVA;
-    u32 totalThreadContextSize;
-    struct KLinkedList threadLocalPages;
-    u32 unknown_7;
-    u32 idealProcessor;
-    void *debug;
-    void *resourceLimits;
-    u8 status;
-    u8 affinityMask;
-    u16 ALIGN(4) threadCount;
-    u16 maxThreadCount;
-    u8 svcAccessControlMask[16];
-    u32 interruptFlags[4];
-    u32 kernelFlags;
-    u16 handleTableSize;
-    u16 kernelReleaseVersion;
-    KCodeSet *codeSet;
-    u32 processId;
-    u64 creationTime;
-    KThread *mainThread;
-    u32 interruptEnabledFlags[4];
-    KProcessHandleTable handleTable;
-    u8 gap234[52];
+
+#define KPROCESS_DEF_PART_2()\
+    u32 unknown_6;\
+    u32 mmuTableSize;\
+    void *mmuTableVA;\
+    u32 totalThreadContextSize;\
+    struct KLinkedList threadLocalPages;\
+    u32 unknown_7;\
+    u32 idealProcessor;\
+    void *debug;\
+    void *resourceLimits;\
+    u8 status;\
+    u8 affinityMask;\
+    u16 ALIGN(4) threadCount;\
+    u16 maxThreadCount;\
+    u8 svcAccessControlMask[16];\
+    u32 interruptFlags[4];\
+    u32 kernelFlags;\
+    u16 handleTableSize;\
+    u16 kernelReleaseVersion;\
+    KCodeSet *codeSet;\
+    u32 processId;\
+    u64 creationTime;\
+    KThread *mainThread;\
+    u32 interruptEnabledFlags[4];\
+    KProcessHandleTable handleTable;\
+    u8 gap234[52];\
     u64 unused;
+
+typedef struct KProcessO3DSPre8x
+{
+    KPROCESS_DEF_PART_1(2);
+    KPROCESS_DEF_PART_2();
+} KProcessO3DSPre8x;
+
+typedef struct KProcessO3DS8x
+{
+    KPROCESS_DEF_PART_1(2);
+    void *linearVAUserlandBase;
+    KPROCESS_DEF_PART_2();
+} KProcessO3DS8x;
+
+typedef struct KProcessN3DS
+{
+    KPROCESS_DEF_PART_1(4);
+    void *linearVAUserlandBase;
+    KPROCESS_DEF_PART_2();
+} KProcessN3DS;
+
+#undef KPROCESS_DEF_PART_1
+#undef KPROCESS_DEF_PART_2
+
+typedef union KProcess
+{
+    KProcessO3DSPre8x O3DSPre8x;
+    KProcessO3DS8x O3DS8x;
+    KProcessN3DS N3DS;
 } KProcess;
+
+extern bool isN3DS;
+#define KPROCESS_GET_RVALUE(obj, field)  (isN3DS ? (obj)->N3DS.field : ((*(u32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? (obj)->O3DS8x.field : (obj)->O3DSPre8x.field))
 
 static inline void *KProcess_ConvertHandle(KProcess *process, Handle handle)
 {
@@ -169,6 +198,6 @@ static inline void *KProcess_ConvertHandle(KProcess *process, Handle handle)
         case 0xFFFF8000: return (void *)*(KThread**)0xFFFF9000;
         case 0xFFFF8001: return (void *)*(KProcess**)0xFFFF9004;
         default:
-            return process->handleTable.handleTable[handle & 0x7fff].pointer;
+            return KPROCESS_GET_RVALUE(process, handleTable.handleTable[handle & 0x7fff].pointer);
     }
 }

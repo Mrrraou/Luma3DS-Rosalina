@@ -5,6 +5,7 @@
 #include "luma.h"
 #include "port.h"
 #include "menu.h"
+#include "utils.h"
 
 #define USED_HANDLES 2
 #define MAX_SESSIONS 8
@@ -14,8 +15,13 @@ static Handle handles[MAX_HANDLES];
 static Handle client_handle;
 static int active_handles;
 
+bool isN3DS;
+static initIsN3DS(void)
+{
+    isN3DS = convertVAToPA((void*)0xE8000000) != 0; // check if there's the extra FCRAM
+}
 
-int main()
+int main(void)
 {
   Result ret = 0;
   Handle *notificationHandle = &handles[0];
@@ -23,6 +29,7 @@ int main()
   s32 index = 1;
   bool terminationRequest = false;
 
+  svc_7b(initIsN3DS);
   menuCreateThread();
 
   if(R_FAILED(svcCreatePort(serverHandle, &client_handle, "Rosalina", MAX_SESSIONS)))
