@@ -119,19 +119,18 @@ typedef struct KProcessHandleTable
     u32 unknown_2;\
     KThread *runningThread;\
     u16 errorTracker;\
-    u8 ALIGN(4) tlbEntriesToInvalidateByCore[nbCores];\
+    u8 tlbEntriesToInvalidateByCore[4][nbCores];\
     KLinkedList ownedKMemoryBlocks;\
     u32 unknown_3;\
     u32 unknown_4;\
+
+#define KPROCESS_DEF_PART_2()\
     void *translationTableBase;\
     u8 contextId;\
     u8 memAllocRelated;\
     bool currentlyLoadedApp;\
     u32 unknown_5;\
-    void *endOfUserlandVmem;
-
-#define KPROCESS_DEF_PART_2()\
-    u32 unknown_6;\
+    void *endOfUserlandVmem;\
     u32 mmuTableSize;\
     void *mmuTableVA;\
     u32 totalThreadContextSize;\
@@ -155,8 +154,7 @@ typedef struct KProcessHandleTable
     KThread *mainThread;\
     u32 interruptEnabledFlags[4];\
     KProcessHandleTable handleTable;\
-    u8 gap234[52];\
-    u64 unused;
+    u8 _filler[0x3C];
 
 typedef struct KProcessO3DSPre8x
 {
@@ -168,6 +166,7 @@ typedef struct KProcessO3DS8x
 {
     KPROCESS_DEF_PART_1(2);
     void *linearVAUserlandBase;
+    u32 unknown_6;
     KPROCESS_DEF_PART_2();
 } KProcessO3DS8x;
 
@@ -175,6 +174,7 @@ typedef struct KProcessN3DS
 {
     KPROCESS_DEF_PART_1(4);
     void *linearVAUserlandBase;
+    u32 unknown_6;
     KPROCESS_DEF_PART_2();
 } KProcessN3DS;
 
@@ -189,7 +189,7 @@ typedef union KProcess
 } KProcess;
 
 extern bool isN3DS;
-#define KPROCESS_GET_RVALUE(obj, field)  (isN3DS ? (obj)->N3DS.field : ((*(u32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? (obj)->O3DS8x.field : (obj)->O3DSPre8x.field))
+#define KPROCESS_GET_RVALUE(obj, field)  (isN3DS ? (obj)->N3DS.field : ((*(vu32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? (obj)->O3DS8x.field : (obj)->O3DSPre8x.field))
 
 static inline void *KProcess_ConvertHandle(KProcess *process, Handle handle)
 {
