@@ -5,6 +5,33 @@
 #include "ifile.h"
 #include "menus.h"
 
+u32 waitInput(void)
+{
+    bool pressedKey = false;
+    u32 key;
+
+    //Wait for no keys to be pressed
+    while(HID_PAD);
+
+    do
+    {
+        //Wait for a key to be pressed
+        while(!HID_PAD);
+
+        key = HID_PAD;
+
+        //Make sure it's pressed
+        for(u32 i = 0x26000; i > 0; i --)
+        {
+            if(key != HID_PAD) break;
+            if(i == 1) pressedKey = true;
+        }
+    }
+    while(!pressedKey);
+
+    return key;
+}
+
 static MyThread menuThread;
 static u8 ALIGN(8) menuThreadStack[THREAD_STACK_SIZE];
 
@@ -27,7 +54,6 @@ void menuThreadMain(void)
 
 static void menuDraw(Menu *menu, u32 selected)
 {
-    draw_fillFramebuffer(0);
     draw_string(menu->title, 10, 10, COLOR_TITLE);
 
     for(u32 i = 0; i < 15; i++)
@@ -35,8 +61,7 @@ static void menuDraw(Menu *menu, u32 selected)
         if(i >= menu->items)
             break;
         draw_string(menu->item[i].title, 30, 30 + i * SPACING_Y, COLOR_WHITE);
-        if(i == selected)
-            draw_character('>', 10, 30 + i * SPACING_Y, COLOR_TITLE);
+        draw_character(i == selected ? '>' : ' ', 10, 30 + i * SPACING_Y, COLOR_TITLE);
     }
 
     draw_string("Development build", 10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE);
@@ -57,15 +82,18 @@ void menuShow(void)
 
     while(HID_PAD);
 
+    draw_fillFramebuffer(0);
+    menuDraw(current_menu, selected_item);
+
     while(true)
     {
-        menuDraw(current_menu, selected_item);
-        for(sleep_i = 0; sleep_i < 0x1800000; sleep_i++);
+        u32 pressed = waitInput();
 
-        while(!HID_PAD);
-
-        if(HID_PAD & BUTTON_A)
+        if(pressed & BUTTON_A)
         {
+            draw_fillFramebuffer(0);
+            draw_flushFramebuffer();
+
             switch(current_menu->item[selected_item].action_type)
             {
                 case METHOD:
@@ -80,29 +108,38 @@ void menuShow(void)
                     selected_item = 0;
                     break;
             }
+
+            draw_fillFramebuffer(0);
+            draw_flushFramebuffer();
         }
-        else if(HID_PAD & BUTTON_B)
+        else if(pressed & BUTTON_B)
         {
+            draw_fillFramebuffer(0);
+            draw_flushFramebuffer();
+
             if(previous_menus > 0)
                 current_menu = previous_menu[--previous_menus];
             else
                 break;
         }
-        else if(HID_PAD & BUTTON_DOWN)
+        else if(pressed & BUTTON_DOWN)
         {
             if(++selected_item >= current_menu->items)
                 selected_item = 0;
         }
-        else if(HID_PAD & BUTTON_UP)
+        else if(pressed & BUTTON_UP)
         {
             if(selected_item-- <= 0)
                 selected_item = current_menu->items - 1;
         }
+        else
+            continue;
+
+        menuDraw(current_menu, selected_item);
     }
 
     draw_flushFramebuffer();
     draw_restoreFramebuffer();
-    
-    // ghetto sleep
-    for(sleep_i = 0; sleep_i < 0x5000000; sleep_i++);
+
+    svcSleepThread(50 * 1000 * 1000);
 }

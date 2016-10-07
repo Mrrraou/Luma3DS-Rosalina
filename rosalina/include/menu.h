@@ -44,6 +44,7 @@ typedef struct Menu {
     MenuItem item[0x40];
 } Menu;
 
+u32 waitInput(void);
 
 MyThread menuCreateThread(void);
 void menuThreadMain(void);
