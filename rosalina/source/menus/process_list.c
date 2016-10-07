@@ -54,7 +54,7 @@ void RosalinaMenu_ProcessList(void)
 {
     vu32 sleep_i;
     while(HID_PAD);
-    for(sleep_i = 0; sleep_i < 0x5000000; sleep_i++);
+    for(sleep_i = 0; sleep_i < 0x1800000; sleep_i++);
 
     svcGetProcessId(&rosalina_pid, 0xFFFF8001);
     ProcessList_FetchLoadedProcesses();
@@ -62,7 +62,7 @@ void RosalinaMenu_ProcessList(void)
     u32 selected = 0, page = 0;
     while(true)
     {
-        draw_copyToFramebuffer(splash);
+        draw_clearFramebuffer();
         draw_string("Process list", 10, 10, COLOR_TITLE);
 
         for(u32 i = 0; i < PROCESSES_PER_MENU_PAGE; i++)
@@ -84,7 +84,7 @@ void RosalinaMenu_ProcessList(void)
         }
         draw_flushFramebuffer();
 
-        for(sleep_i = 0; sleep_i < 0x5000000; sleep_i++);
+        for(sleep_i = 0; sleep_i < 0x1800000; sleep_i++);
         while(!HID_PAD);
 
         if(HID_PAD & BUTTON_B)

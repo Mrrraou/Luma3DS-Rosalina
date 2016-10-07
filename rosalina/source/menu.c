@@ -27,7 +27,7 @@ void menuThreadMain(void)
 
 static void menuDraw(Menu *menu, u32 selected)
 {
-    draw_fillFramebuffer(0);
+    draw_clearFramebuffer();
     draw_string(menu->title, 10, 10, COLOR_TITLE);
 
     for(u32 i = 0; i < 15; i++)
@@ -102,7 +102,7 @@ void menuShow(void)
 
     draw_flushFramebuffer();
     draw_restoreFramebuffer();
-    
+
     // ghetto sleep
     for(sleep_i = 0; sleep_i < 0x5000000; sleep_i++);
 }

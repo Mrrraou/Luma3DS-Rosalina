@@ -19,7 +19,7 @@ Menu menu_rosalina = {
 
 void RosalinaMenu_ShowCredits(void)
 {
-    draw_fillFramebuffer(0);
+    draw_clearFramebuffer();
     draw_string("Rosalina - Development build", 10, 10, COLOR_TITLE);
 
     draw_string("Developed with memes by Mrrraou", 10, 30, COLOR_WHITE);
