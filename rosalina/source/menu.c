@@ -60,7 +60,7 @@ void menuShow(void)
     while(true)
     {
         menuDraw(current_menu, selected_item);
-        for(sleep_i = 0; sleep_i < 0x5000000; sleep_i++)
+        for(sleep_i = 0; sleep_i < 0x1800000; sleep_i++);
 
         while(!HID_PAD);
 
@@ -69,7 +69,7 @@ void menuShow(void)
             switch(current_menu->item[selected_item].action_type)
             {
                 case METHOD:
-                    for(sleep_i = 0; sleep_i < 0x5000000; sleep_i++);
+                    for(sleep_i = 0; sleep_i < 0x1800000; sleep_i++);
 
                     if(current_menu->item[selected_item].method != NULL)
                         current_menu->item[selected_item].method();
@@ -101,9 +101,8 @@ void menuShow(void)
     }
 
     draw_flushFramebuffer();
-
-    // ghetto sleep
-    for(sleep_i = 0; sleep_i < 0xB000000; sleep_i++);
-
     draw_restoreFramebuffer();
+    
+    // ghetto sleep
+    for(sleep_i = 0; sleep_i < 0x5000000; sleep_i++);
 }
