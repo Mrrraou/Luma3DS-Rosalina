@@ -43,6 +43,12 @@ void draw_character(char character, u32 posX, u32 posY, u32 color)
                 fb[screenPos + 1] = color >> 8;
                 fb[screenPos + 2] = color;
             }
+            else
+            {
+                fb[screenPos + 0] = COLOR_BLACK >> 16;
+                fb[screenPos + 1] = COLOR_BLACK >> 8;
+                fb[screenPos + 2] = COLOR_BLACK;
+            }
         }
     }
 }
