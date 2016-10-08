@@ -6,7 +6,7 @@
 #include "utils.h"
 
 static u8 framebuffer_cache[FB_BOTTOM_SIZE];
-static u32 gpu_cache_fb, gpu_cache_sel;
+static u32 gpu_cache_fb, gpu_cache_sel, gpu_cache_fmt, gpu_cache_stride;
 
 
 void draw_copyFramebuffer(void *dst)
@@ -84,12 +84,16 @@ void draw_setupFramebuffer(void)
     memcpy(framebuffer_cache, FB_BOTTOM_VRAM, FB_BOTTOM_SIZE);
     gpu_cache_fb = GPU_FB_BOTTOM_1;
     gpu_cache_sel = GPU_FB_BOTTOM_1_SEL;
+    gpu_cache_fmt = GPU_FB_BOTTOM_1_FMT;
+    gpu_cache_stride = GPU_FB_BOTTOM_1_STRIDE;
 
     u32 i;
     for(i = 0; i < 20; i++)
     {
         GPU_FB_BOTTOM_1_SEL &= ~1;
         GPU_FB_BOTTOM_1 = FB_BOTTOM_VRAM_PA;
+        GPU_FB_BOTTOM_1_FMT = 0x80301;
+        GPU_FB_BOTTOM_1_STRIDE = 240 * 3;
     }
 
     draw_flushFramebuffer();
@@ -103,6 +107,8 @@ void draw_restoreFramebuffer(void)
     for(i = 0; i < 20; i++)
     {
         GPU_FB_BOTTOM_1 = gpu_cache_fb;
+        GPU_FB_BOTTOM_1_FMT = gpu_cache_fmt;
+        GPU_FB_BOTTOM_1_STRIDE = gpu_cache_stride;
         GPU_FB_BOTTOM_1_SEL = gpu_cache_sel;
     }
 

@@ -36,5 +36,5 @@ void RosalinaMenu_ShowCredits(void)
 
     draw_flushFramebuffer();
 
-    waitInput();
+    while(!(waitInput() & BUTTON_B));
 }

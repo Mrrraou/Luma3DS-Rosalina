@@ -3,7 +3,9 @@
 #include <3ds/types.h>
 
 #define GPU_FB_BOTTOM_1             (*((vu32*)0x1EF00568))
+#define GPU_FB_BOTTOM_1_FMT         (*((vu32*)0x1EF00570))
 #define GPU_FB_BOTTOM_1_SEL         (*((vu32*)0x1EF00578))
+#define GPU_FB_BOTTOM_1_STRIDE      (*((vu32*)0x1EF00590))
 
 #define FB_BOTTOM_VRAM              ((void*)0x1F48F000)
 #define FB_BOTTOM_VRAM_PA           0x1848F000
