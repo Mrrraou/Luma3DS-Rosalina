@@ -16,10 +16,20 @@ static Handle client_handle;
 static int active_handles;
 
 bool isN3DS;
-static void K_Init(void)
+static void K_CheckN3DS(void)
 {
-    *((u8*)0xFFF2E00A) = true; // enables DebugActiveProcess and other debug SVCs
     isN3DS = convertVAToPA((void*)0xE8000000) != 0; // check if there's the extra FCRAM
+}
+
+static void K_PatchDebugMode(void)
+{
+    /*
+    vu8 *debugEnabled = (vu8*)0xFFF2E00A;
+    *debugEnabled = true; // enables DebugActiveProcess and other debug SVCs
+    */
+    // Actually, nevermind... The mapping for 0xFFF2E000 differs between kernel versions,
+    // and probably differs between consoles too. Causes a data abort if not mapped,
+    // of course...
 }
 
 // this is called before main
@@ -64,7 +74,8 @@ int main(void)
   s32 index = 1;
   bool terminationRequest = false;
 
-  svc_7b(K_Init);
+  svc_7b(K_CheckN3DS);
+  svc_7b(K_PatchDebugMode);
   menuCreateThread();
 
   if(R_FAILED(svcCreatePort(serverHandle, &client_handle, "Rosalina", MAX_SESSIONS)))
