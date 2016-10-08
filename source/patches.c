@@ -154,23 +154,6 @@ u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 siz
   return 0;
 }
 
-u8 patchDebugSvcChecks(u8 *startPos, u32 size)
-{
-  const u8 debugSvcCheckPattern[] = {0x00, 0x00, 0x50, 0xE3,  // cmp r0, 0
-                                     0x0C, 0x02, 0x9F, 0x05,  // ldreq r0, [pc, 0x20c]
-                                     0x12, 0x00, 0x00, 0x0A}; // beq 0x50
-  const u8 debugSvcCheckPatch[]   = {0x00, 0xF0, 0x20, 0xE3,  // nop
-                                     0x00, 0xF0, 0x20, 0xE3,  // nop
-                                     0x00, 0xF0, 0x20, 0xE3}; // nop
-
-  u8 *off;
-  if(!(off = memsearch(startPos, debugSvcCheckPattern, size, 12)))
-    return 1;
-  memcpy(off, debugSvcCheckPatch, 12);
-
-  return 0;
-}
-
 void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
 {
     //Official implementation of svcBackdoor

@@ -334,17 +334,6 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     //Apply firmlaunch patches
     patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
-    if(patchDebugSvcChecks(arm11Section1, section[1].size))
-    {
-      fb->top_left = topLeftFbPtr;
-      initScreens();
-      drawString("An error has occurred:", 10, 10, COLOR_RED);
-      int posY = drawString("debug svc check not found", 10, 30, COLOR_WHITE);
-      drawString("Press any button to continue", 10, posY + 2 * SPACING_Y, COLOR_WHITE);
-
-      waitInput();
-    }
-
     //11.0 FIRM patches
     if(firmVersion >= (isN3DS ? 0x21 : 0x52))
     {
