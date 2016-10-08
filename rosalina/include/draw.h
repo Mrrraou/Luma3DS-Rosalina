@@ -22,6 +22,9 @@
 #define COLOR_RED   0x0000FF
 #define COLOR_BLACK 0x000000
 
+
+#define draw_clearFramebuffer() draw_fillFramebuffer(0)
+
 void draw_copyFramebuffer(void *dst);
 void draw_copyToFramebuffer(void *src);
 void draw_fillFramebuffer(u32 value);

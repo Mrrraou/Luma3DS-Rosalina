@@ -78,7 +78,7 @@ void menuShow(void)
 
     draw_setupFramebuffer();
 
-    draw_fillFramebuffer(0);
+    draw_clearFramebuffer();
     menuDraw(current_menu, selected_item);
 
     while(true)
@@ -87,7 +87,7 @@ void menuShow(void)
 
         if(pressed & BUTTON_A)
         {
-            draw_fillFramebuffer(0);
+            draw_clearFramebuffer();
             draw_flushFramebuffer();
 
             switch(current_menu->item[selected_item].action_type)
@@ -104,12 +104,12 @@ void menuShow(void)
                     break;
             }
 
-            draw_fillFramebuffer(0);
+            draw_clearFramebuffer();
             draw_flushFramebuffer();
         }
         else if(pressed & BUTTON_B)
         {
-            draw_fillFramebuffer(0);
+            draw_clearFramebuffer();
             draw_flushFramebuffer();
 
             if(previous_menus > 0)

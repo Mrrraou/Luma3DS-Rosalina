@@ -59,7 +59,7 @@ void RosalinaMenu_ProcessList(void)
 
     while(true)
     {
-        if(page != pagePrev) draw_fillFramebuffer(0);
+        if(page != pagePrev) draw_clearFramebuffer();
         draw_string("Process list", 10, 10, COLOR_TITLE);
 
         for(u32 i = 0; i < PROCESSES_PER_MENU_PAGE; i++)
