@@ -48,24 +48,30 @@ AccessControlInfo:
     - 0x1EF00000                            # GSP IO registers
 
   SystemCallAccess:
-    Backdoor: 0x7B
-    FlushProcessDataCache: 0x54
+    ControlMemory: 0x1
+    QueryMemory: 0x2
+    ExitProcess: 0x3
+    GetProcessIdealProcessor: 0x6
+    CreateThread: 0x8
+    ExitThread: 0x9
     OpenProcess: 0x33
+    Break: 0x3C
+    FlushProcessDataCache: 0x54
     DebugActiveProcess: 0x60
     BreakDebugProcess: 0x61
     TerminateDebugProcess: 0x62
     GetProcessDebugEvent: 0x63
     ContinueDebugEvent: 0x64
     GetProcessList: 0x65
+    Backdoor: 0x7B
+    KernelSetState: 0x7C
     AcceptSession: 74
     ArbitrateAddress: 34
-    Break: 0x3C
     CancelTimer: 28
     ClearEvent: 25
     ClearTimer: 29
     CloseHandle: 35
     ConnectToPort: 45
-    ControlMemory: 1
     CreateAddressArbiter: 33
     CreateCodeSet: 115
     CreateEvent: 23
@@ -75,15 +81,11 @@ AccessControlInfo:
     CreateProcess: 117
     CreateSemaphore: 21
     CreateSessionToPort: 72
-    CreateThread: 8
     CreateTimer: 26
     DuplicateHandle: 39
-    ExitProcess: 3
-    ExitThread: 9
     GetCurrentProcessorNumber: 17
     GetHandleInfo: 41
     GetProcessId: 53
-    GetProcessIdealProcessor: 6
     GetProcessIdOfThread: 54
     GetProcessInfo: 43
     GetResourceLimit: 56
@@ -98,7 +100,6 @@ AccessControlInfo:
     GetThreadPriority: 11
     MapMemoryBlock: 31
     OutputDebugString: 61
-    QueryMemory: 2
     RandomStub: 116
     ReleaseMutex: 20
     ReleaseSemaphore: 22

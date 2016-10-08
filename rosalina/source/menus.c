@@ -3,6 +3,7 @@
 #include "menu.h"
 #include "draw.h"
 #include "menus/process_list.h"
+#include "menus/n3ds.h"
 
 
 Menu menu_rosalina = {
@@ -12,7 +13,7 @@ Menu menu_rosalina = {
         {"Process list", METHOD, .method = &RosalinaMenu_ProcessList},
         {"b", METHOD, .method = NULL},
         {"c", METHOD, .method = NULL},
-        {"d", METHOD, .method = NULL},
+        {"New 3DS menu...", MENU, .menu = &menu_n3ds},
         {"Credits", METHOD, .method = &RosalinaMenu_ShowCredits}
     }
 };

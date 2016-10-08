@@ -95,7 +95,6 @@ void menuShow(void)
                 case METHOD:
                     if(current_menu->item[selected_item].method != NULL)
                         current_menu->item[selected_item].method();
-                    else waitInput();
                     break;
                 case MENU:
                     previous_menu[previous_menus++] = current_menu;
