@@ -9,6 +9,7 @@
 
 
 u32 rosalina_pid;
+
 static struct ProcessInfo processes[0x40];
 
 void K_CurrentKProcess_GetProcessInfoFromHandle(struct ProcessInfo *info, Handle handle)
@@ -28,9 +29,8 @@ void CurrentKProcess_GetProcessInfoFromHandle(struct ProcessInfo *info, Handle h
 
 void ProcessList_FetchLoadedProcesses(void)
 {
-    memset(processes, 0, sizeof(processes));
+    memset_(processes, 0, sizeof(processes));
 
-    s32 process_count;
     u32 process_ids[0x40];
     svcGetProcessList(&process_count, process_ids, sizeof(process_ids) / sizeof(u32));
 
@@ -56,7 +56,6 @@ void RosalinaMenu_ProcessList(void)
     ProcessList_FetchLoadedProcesses();
 
     u32 selected = 0, page = 0, pagePrev = 0;
-    draw_fillFramebuffer(0);
 
     while(true)
     {

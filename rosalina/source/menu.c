@@ -71,16 +71,12 @@ static void menuDraw(Menu *menu, u32 selected)
 
 void menuShow(void)
 {
-    vu32 sleep_i = 0;
-
     u32 selected_item = 0;
     Menu *current_menu = &menu_rosalina;
     u32 previous_menus = 0;
     Menu *previous_menu[0x80];
 
     draw_setupFramebuffer();
-
-    while(HID_PAD);
 
     draw_fillFramebuffer(0);
     menuDraw(current_menu, selected_item);
@@ -97,10 +93,9 @@ void menuShow(void)
             switch(current_menu->item[selected_item].action_type)
             {
                 case METHOD:
-                    for(sleep_i = 0; sleep_i < 0x1800000; sleep_i++);
-
                     if(current_menu->item[selected_item].method != NULL)
                         current_menu->item[selected_item].method();
+                    else waitInput();
                     break;
                 case MENU:
                     previous_menu[previous_menus++] = current_menu;

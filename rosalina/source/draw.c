@@ -3,6 +3,7 @@
 #include "font.h"
 #include "memory.h"
 #include "menu.h"
+#include "utils.h"
 
 static u8 framebuffer_cache[FB_BOTTOM_SIZE];
 static u32 gpu_cache_fb, gpu_cache_sel;
@@ -18,9 +19,9 @@ void draw_copyToFramebuffer(void *src)
     memcpy(FB_BOTTOM_VRAM, src, FB_BOTTOM_SIZE);
 }
 
-void draw_fillFramebuffer(u8 value)
+void draw_fillFramebuffer(u32 value)
 {
-    memset(FB_BOTTOM_VRAM, value, FB_BOTTOM_SIZE);
+    memset32(FB_BOTTOM_VRAM, value, FB_BOTTOM_SIZE);
 }
 
 void draw_character(char character, u32 posX, u32 posY, u32 color)
