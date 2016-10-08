@@ -28,7 +28,7 @@ void CurrentKProcess_GetProcessInfoFromHandle(struct ProcessInfo *info, Handle h
 
 void ProcessList_FetchLoadedProcesses(void)
 {
-    memset(processes, 0, sizeof(processes));
+    memset_(processes, 0, sizeof(processes));
 
     s32 process_count;
     u32 process_ids[0x40];
@@ -52,17 +52,14 @@ void ProcessList_FetchLoadedProcesses(void)
 
 void RosalinaMenu_ProcessList(void)
 {
-    vu32 sleep_i;
-    while(HID_PAD);
-    for(sleep_i = 0; sleep_i < 0x1800000; sleep_i++);
-
     svcGetProcessId(&rosalina_pid, 0xFFFF8001);
     ProcessList_FetchLoadedProcesses();
 
-    u32 selected = 0, page = 0;
+    u32 selected = 0, page = 0, pagePrev = 0;
+
     while(true)
     {
-        draw_clearFramebuffer();
+        if(page != pagePrev) draw_clearFramebuffer();
         draw_string("Process list", 10, 10, COLOR_TITLE);
 
         for(u32 i = 0; i < PROCESSES_PER_MENU_PAGE; i++)
@@ -79,22 +76,20 @@ void RosalinaMenu_ProcessList(void)
             str[17] = 0;
 
             draw_string(str, 30, 30 + i * SPACING_Y, COLOR_WHITE);
-            if(page * PROCESSES_PER_MENU_PAGE + i == selected)
-                draw_character('>', 10, 30 + i * SPACING_Y, COLOR_TITLE);
+            draw_character(page * PROCESSES_PER_MENU_PAGE + i == selected ? '>' : ' ', 10, 30 + i * SPACING_Y, COLOR_TITLE);
         }
         draw_flushFramebuffer();
 
-        for(sleep_i = 0; sleep_i < 0x1800000; sleep_i++);
-        while(!HID_PAD);
+        u32 pressed = waitInput();
 
-        if(HID_PAD & BUTTON_B)
+        if(pressed & BUTTON_B)
             break;
-        else if(HID_PAD & BUTTON_DOWN)
+        else if(pressed & BUTTON_DOWN)
         {
             if(!processes[++selected].process)
                 selected = 0;
         }
-        else if(HID_PAD & BUTTON_UP)
+        else if(pressed & BUTTON_UP)
         {
             if(selected-- <= 0)
             {
@@ -104,6 +99,7 @@ void RosalinaMenu_ProcessList(void)
             }
         }
 
+        pagePrev = page;
         page = selected / PROCESSES_PER_MENU_PAGE;
     }
 }
