@@ -18,9 +18,7 @@ Stuff to do for sure, and important:
 	- reimplementing ErrDisp (err:f port)
 	- svc hooks (and therefore hooking up into IPC communications too)
 	- doing an rpc server to do stuff like installing CIAs from the network, upload and download files from SD/NAND/GW, ...
-	- setting N3DS CPU speed on-the-fly for games, and same for region etc
 	- unencrypted Nintendo 3DS folder (and maybe one on GW too?)
-	- patching processes on-the-fly (sm, pm...)
 	- move the exception handling to Rosalina
 	- patch SVCs like svcMapMemoryBlock, svcControlProcessMemory, ... for mapping as RWX etc
 
@@ -29,7 +27,6 @@ Stuff to do for sure, but minor:
 	- adding battery percentage on the menu
 
 Temporary stuff I am actually doing for now:
-	- taking FS:REG before loader and getting loader to ask a Rosalina is not a solution (and it doesn't even work for now! the IPC is broken for some reason)
 	- maybe the svcDebugActiveProcess patch
 
 Bugs:
