@@ -16,9 +16,22 @@ static Handle client_handle;
 static int active_handles;
 
 bool isN3DS;
-static void K_CheckN3DS(void)
+u8 *vramKMapping, *fcramKMapping;
+static void K_InitMappingInfo(void)
 {
-    isN3DS = convertVAToPA((void*)0xE8000000) != 0; // check if there's the extra FCRAM
+    isN3DS = convertVAToPA((void*)0xE9000000) != 0; // check if there's the extra FCRAM
+    if(convertVAToPA((void *)0xF0000000) != 0)
+    {
+        // Older mappings
+        fcramKMapping = (u8*)0xF0000000;
+        vramKMapping = (u8*)0xE8000000;
+    }
+    else
+    {
+        // Newer mappings
+        fcramKMapping = (u8*)0xE0000000;
+        vramKMapping = (u8*)0xD8000000;
+    }
 }
 
 static void K_PatchDebugMode(void)
@@ -74,7 +87,7 @@ int main(void)
   s32 index = 1;
   bool terminationRequest = false;
 
-  svc_7b(K_CheckN3DS);
+  svc_7b(K_InitMappingInfo);
   svc_7b(K_PatchDebugMode);
   menuCreateThread();
 

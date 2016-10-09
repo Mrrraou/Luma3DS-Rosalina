@@ -5,5 +5,6 @@
 
 extern Menu menu_rosalina;
 
+void RosalinaMenu_TakeScreenShot(void);
 void RosalinaMenu_ShowCredits(void);
 void RosalinaMenu_ProcessList(void);
