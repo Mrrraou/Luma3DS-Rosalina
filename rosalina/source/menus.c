@@ -3,6 +3,7 @@
 #include "menu.h"
 #include "draw.h"
 #include "menus/process_list.h"
+#include "menus/process_patches.h"
 #include "menus/n3ds.h"
 #include "ifile.h"
 #include "utils.h"
@@ -14,7 +15,7 @@ Menu menu_rosalina = {
     .items = 5,
     {
         {"Process list", METHOD, .method = &RosalinaMenu_ProcessList},
-        {"b", METHOD, .method = NULL},
+        {"Process patches menu...", MENU, .menu = &menu_process_patches},
         {"Take screenshot (takes a while)", METHOD, .method = &RosalinaMenu_TakeScreenShot},
         {"New 3DS menu...", MENU, .menu = &menu_n3ds},
         {"Credits", METHOD, .method = &RosalinaMenu_ShowCredits}

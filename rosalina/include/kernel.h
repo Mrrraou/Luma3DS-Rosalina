@@ -201,3 +201,15 @@ static inline void *KProcess_ConvertHandle(KProcess *process, Handle handle)
             return KPROCESS_GET_RVALUE(process, handleTable.handleTable[handle & 0x7fff].pointer);
     }
 }
+
+typedef struct ProcessInfo {
+    KProcess *process;
+    u32 pid;
+    char name[8];
+    u64 tid;
+} ProcessInfo;
+
+void Kernel_FetchLoadedProcesses(void);
+void Kernel_CurrentKProcess_GetProcessInfoFromHandle(ProcessInfo *info, Handle handle);
+
+extern ProcessInfo processes_info[0x40];

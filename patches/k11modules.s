@@ -61,7 +61,7 @@
     ldr r8, =0xE1A00005   ; mov r0, r5
     ldr r9, =0xE3500000   ; cmp r0, #0
     ldr r10, =0xE2850004  ; add r0, r5, #4
-    
+
     loop:
         cmp r11, r5
         blo out         ; Check if we didn't go past the bounds of the memory region
@@ -111,7 +111,7 @@
     ldr r10, =0x4770    ; bx lr
     strh r9, [r8]
     strh r10, [r8, #2]
-    
+
     out:
     pop {r0-r12}               ; Restore the registers we used
 
