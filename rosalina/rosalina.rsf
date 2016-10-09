@@ -63,6 +63,9 @@ AccessControlInfo:
     GetProcessDebugEvent: 0x63
     ContinueDebugEvent: 0x64
     GetProcessList: 0x65
+    ControlProcessMemory: 0x70
+    MapProcessMemory: 0x71
+    UnmapProcessMemory: 0x72
     Backdoor: 0x7B
     KernelSetState: 0x7C
     AcceptSession: 74
