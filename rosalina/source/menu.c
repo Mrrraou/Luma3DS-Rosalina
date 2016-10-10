@@ -32,8 +32,30 @@ u32 waitInput(void)
     return key;
 }
 
+static Result _MCUHWC_GetBatteryLevel(u8 *out)
+{
+    #define TRY(expr) if(R_FAILED(res = (expr))) { svcCloseHandle(mcuhwcHandle); return res; }
+    Result res;
+    Handle mcuhwcHandle;
+
+    TRY(srvGetServiceHandle(&mcuhwcHandle, "mcu::HWC"));
+
+    u32 *cmdbuf = getThreadCommandBuffer();
+    cmdbuf[0] = 0x50000;
+
+    TRY(svcSendSyncRequest(mcuhwcHandle));
+
+    *out = (u8) cmdbuf[2];
+
+    svcCloseHandle(mcuhwcHandle);
+    return cmdbuf[1];
+
+    #undef TRY
+}
+
 static MyThread menuThread;
 static u8 ALIGN(8) menuThreadStack[THREAD_STACK_SIZE];
+static u8 batteryLevel = 255;
 
 MyThread menuCreateThread(void)
 {
@@ -46,8 +68,11 @@ void menuThreadMain(void)
     while(true)
     {
         if((HID_PAD & (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT)) == (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT))
+        {
+            if(R_FAILED(_MCUHWC_GetBatteryLevel(&batteryLevel)))
+                batteryLevel = 255;
             menuShow();
-
+        }
         svcSleepThread(5 * 1000 * 1000); // 5ms second
     }
 }
@@ -64,6 +89,21 @@ static void menuDraw(Menu *menu, u32 selected)
         draw_character(i == selected ? '>' : ' ', 10, 30 + i * SPACING_Y, COLOR_TITLE);
     }
 
+    if(batteryLevel != 255)
+    {
+        char msg[] = "Battery: 000%";
+
+        msg[9] = '0' + (char)(batteryLevel / 100);
+        msg[10] = '0' + (char)((batteryLevel / 10) % 10);
+        msg[11] = '0' + (char)(batteryLevel % 10);
+
+        for(char *c = msg + 9; *c == '0'; c++) *c = ' ';
+
+        draw_string(msg, 10, SCREEN_BOT_HEIGHT - 20 - 2*SPACING_Y, COLOR_WHITE);
+    }
+    else
+        draw_string("            ", 10, SCREEN_BOT_HEIGHT - 20 - 2*SPACING_Y, COLOR_WHITE);
+
     draw_string("Development build", 10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE);
 
     draw_flushFramebuffer();
@@ -79,6 +119,7 @@ void menuShow(void)
     draw_setupFramebuffer();
 
     draw_clearFramebuffer();
+
     menuDraw(current_menu, selected_item);
 
     while(true)
