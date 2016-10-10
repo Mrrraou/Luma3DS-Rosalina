@@ -2,6 +2,11 @@
 
 #include <3ds/types.h>
 
+#define GPU_FB_TOP_1             (*((vu32*)0x1EF00468))
+#define GPU_FB_TOP_1_FMT         (*((vu32*)0x1EF00470))
+#define GPU_FB_TOP_1_SEL         (*((vu32*)0x1EF00478))
+#define GPU_FB_TOP_1_STRIDE      (*((vu32*)0x1EF00490))
+
 #define GPU_FB_BOTTOM_1             (*((vu32*)0x1EF00568))
 #define GPU_FB_BOTTOM_1_FMT         (*((vu32*)0x1EF00570))
 #define GPU_FB_BOTTOM_1_SEL         (*((vu32*)0x1EF00578))
@@ -9,6 +14,7 @@
 
 #define FB_BOTTOM_VRAM              ((void*)0x1F48F000)
 #define FB_BOTTOM_VRAM_PA           0x1848F000
+#define FB_BOTTOM_SIZE              (400 * 240 * 3)
 #define FB_BOTTOM_SIZE              (320 * 240 * 3)
 
 #define SCREEN_BOT_WIDTH  320
@@ -34,3 +40,6 @@ u32 draw_string(char *string, u32 posX, u32 posY, u32 color);
 void draw_setupFramebuffer(void);
 void draw_restoreFramebuffer(void);
 void draw_flushFramebuffer(void);
+
+void createBitmapHeader(u8 *dst, u32 width, u32 heigth);
+u8 *convertFrameBuffer(bool top);

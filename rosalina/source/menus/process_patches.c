@@ -81,7 +81,7 @@ void ProcessPatches_PatchSM(void)
 
 	draw_flushFramebuffer();
 
-	waitInput();
+    while(!(waitInput() & BUTTON_B));
 }
 
 void ProcessPatches_PatchFS(void)
@@ -130,5 +130,5 @@ END:
 
 	draw_flushFramebuffer();
 
-	waitInput();
+    while(!(waitInput() & BUTTON_B));
 }

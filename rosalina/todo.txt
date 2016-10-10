@@ -28,7 +28,7 @@ Stuff to do for sure, but minor:
 	- adding battery percentage on the menu
 
 Temporary stuff I am actually doing for now:
-	- taking FS:REG before loader and getting loader to ask a Rosalina is not a solution (and it doesn't even work for now! the IPC is broken for some reason)
+	- taking FS:REG before loader and getting loader to get the session handle from Rosalina is not a solution (and it doesn't even work for now! the IPC is broken for some reason)
 
 Bugs:
 	- find a way to unpause the paused processes via the debug svcs
