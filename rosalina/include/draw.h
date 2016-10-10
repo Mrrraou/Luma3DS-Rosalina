@@ -14,7 +14,7 @@
 
 #define FB_BOTTOM_VRAM              ((void*)0x1F48F000)
 #define FB_BOTTOM_VRAM_PA           0x1848F000
-#define FB_BOTTOM_SIZE              (400 * 240 * 3)
+#define FB_TOP_SIZE                 (400 * 240 * 3)
 #define FB_BOTTOM_SIZE              (320 * 240 * 3)
 
 #define SCREEN_BOT_WIDTH  320
