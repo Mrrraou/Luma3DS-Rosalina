@@ -14,7 +14,11 @@ void RosalinaMenu_ProcessList(void)
     svcGetProcessId(&rosalina_pid, 0xFFFF8001);
     Kernel_FetchLoadedProcesses();
 
-    u32 selected = 0, page = 0, pagePrev = 0;
+    s32 selected = 0, page = 0, pagePrev = 0;
+
+    s32 processAmount = 0x40;
+    while(!processes_info[--processAmount].process && processAmount > 0);
+    processAmount++;
 
     while(true)
     {
@@ -22,7 +26,7 @@ void RosalinaMenu_ProcessList(void)
             draw_clearFramebuffer();
         draw_string("Process list", 10, 10, COLOR_TITLE);
 
-        for(u32 i = 0; i < PROCESSES_PER_MENU_PAGE; i++)
+        for(s32 i = 0; i < PROCESSES_PER_MENU_PAGE; i++)
         {
             ProcessInfo *info = &processes_info[page * PROCESSES_PER_MENU_PAGE + i];
 
@@ -45,19 +49,29 @@ void RosalinaMenu_ProcessList(void)
         if(pressed & BUTTON_B)
             break;
         else if(pressed & BUTTON_DOWN)
-        {
-            if(!processes_info[++selected].process)
-                selected = 0;
-        }
+            selected++;
         else if(pressed & BUTTON_UP)
+            selected--;
+        else if(pressed & BUTTON_LEFT)
+            selected -= PROCESSES_PER_MENU_PAGE;
+        else if(pressed & BUTTON_RIGHT)
         {
-            if(selected-- <= 0)
-            {
-                u32 i = 0x40;
-                while(!processes_info[--i].process);
-                selected = i;
-            }
+            if(selected + PROCESSES_PER_MENU_PAGE < processAmount)
+                selected += PROCESSES_PER_MENU_PAGE;
+            else if((processAmount - 1) / PROCESSES_PER_MENU_PAGE == page)
+                selected %= PROCESSES_PER_MENU_PAGE;
+            else
+                selected = processAmount - 1;
         }
+
+        if(selected < 0)
+        {
+            s32 i = 0x40;
+            while(!processes_info[--i].process && i > 0);
+            selected = i;
+        }
+        else if(selected >= processAmount)
+            selected = 0;
 
         pagePrev = page;
         page = selected / PROCESSES_PER_MENU_PAGE;

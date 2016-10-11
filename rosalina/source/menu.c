@@ -91,18 +91,19 @@ static void menuDraw(Menu *menu, u32 selected)
 
     if(batteryLevel != 255)
     {
-        char msg[] = "Battery: 000%";
+        char msg[] = "000%";
 
-        msg[9] = '0' + (char)(batteryLevel / 100);
-        msg[10] = '0' + (char)((batteryLevel / 10) % 10);
-        msg[11] = '0' + (char)(batteryLevel % 10);
+        msg[0] = '0' + (char)(batteryLevel / 100);
+        msg[1] = '0' + (char)((batteryLevel / 10) % 10);
+        msg[2] = '0' + (char)(batteryLevel % 10);
 
-        for(char *c = msg + 9; *c == '0'; c++) *c = ' ';
+        for(char *c = msg; *c == '0'; c++)
+            *c = ' ';
 
-        draw_string(msg, 10, SCREEN_BOT_HEIGHT - 20 - 2*SPACING_Y, COLOR_WHITE);
+        draw_string(msg, SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE);
     }
     else
-        draw_string("            ", 10, SCREEN_BOT_HEIGHT - 20 - 2*SPACING_Y, COLOR_WHITE);
+        draw_string("    ", SCREEN_BOT_WIDTH - 10 - 4 * SPACING_X, SCREEN_BOT_HEIGHT - 20, COLOR_WHITE);
 
     draw_string("Development build", 10, SCREEN_BOT_HEIGHT - 20, COLOR_TITLE);
 
