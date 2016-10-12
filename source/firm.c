@@ -344,6 +344,8 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space);
     }
 
+    if(isN3DS) patchN3DSK11ProcessorAffinityChecks(arm11Section1, section[1].size);
+
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
 

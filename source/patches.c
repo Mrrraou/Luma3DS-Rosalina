@@ -374,6 +374,17 @@ void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
     *off = offset | (1 << 24) | (0x5 << 25) | (0xE << 28);
 }
 
+void patchN3DSK11ProcessorAffinityChecks(u8 *pos, u32 size)
+{
+    const u8 pattern[] =   {0x0F, 0x2C, 0x01, 0xE2, 0x03, 0x0C, 0x52, 0xE3, 0x03, 0x00, 0x00, 0x0A, 0x02};
+
+    u8 *off = memsearch(pos, pattern, size, 13);
+    off[11] = 0xEA; //BEQ -> B
+
+    u8 *off = memsearch(pos + 16, pattern, size, 13);
+    off[11] = 0xEA; //BEQ -> B
+}
+
 void patchP9AccessChecks(u8 *pos, u32 size)
 {
     const u8 pattern[] = {0xE0, 0x00, 0x40, 0x39, 0x08, 0x58};

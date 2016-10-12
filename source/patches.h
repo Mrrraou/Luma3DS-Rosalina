@@ -70,5 +70,6 @@ void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType);
 void patchKernel11Panic(u8 *pos, u32 size);
 void patchArm11SvcAccessChecks(u32 *arm11SvcHandler);
 void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space);
+void patchN3DSK11ProcessorAffinityChecks(u8 *pos, u32 size);
 void patchP9AccessChecks(u8 *pos, u32 size);
 void patchUnitInfoValueSet(u8 *pos, u32 size);
