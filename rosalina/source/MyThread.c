@@ -8,10 +8,10 @@ static void _thread_begin(void* arg)
     MyThread_Exit();
 }
 
-Result MyThread_Create(MyThread *t, void (*entrypoint)(void), void *stack, int prio, int affinity)
+Result MyThread_Create(MyThread *t, void (*entrypoint)(void), void *stack, u32 stackSize, int prio, int affinity)
 {
     t->ep       = entrypoint;
-    t->stacktop = (u8 *)stack + THREAD_STACK_SIZE;
+    t->stacktop = (u8 *)stack + stackSize;
 
     return svcCreateThread(&t->handle, _thread_begin, (u32)t, (u32*)t->stacktop, prio, affinity);
 }
