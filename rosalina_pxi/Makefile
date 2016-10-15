@@ -17,7 +17,7 @@ dir_source := source
 dir_include := include
 dir_build := build
 
-ASFLAGS := -mcpu=arm946e-s -mthumb-interwork
+ASFLAGS := -mcpu=arm946e-s -mthumb-interwork -march=armv5te
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -Os -flto -ffast-math -I$(dir_include)
 LDFLAGS := -nostartfiles
 
