@@ -318,6 +318,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
     u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
 
+
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
 
@@ -333,6 +334,9 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
     //Apply firmlaunch patches
     patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
+
+    // Inject Process9 custom thread
+    injectP9Thread(process9Offset, process9Size);
 
     //11.0 FIRM patches
     if(firmVersion >= (isN3DS ? 0x21 : 0x52))

@@ -23,10 +23,12 @@
 #include "patches.h"
 #include "memory.h"
 #include "config.h"
+#include "fs.h"
 #include "../build/rebootpatch.h"
 #include "../build/svcGetCFWInfopatch.h"
 #include "../build/k11modulespatch.h"
 #include "../build/twl_k11modulespatch.h"
+#include "../build/createCustomThread.h"
 #include "utils.h"
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
@@ -152,6 +154,31 @@ u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 siz
   memcpy(off, (u8*)&maxModuleSectionSizePatch, 4);
 
   return 0;
+}
+
+void injectP9Thread(u8 *pos, u32 size)
+{
+    const u8 threadCreatePattern[]  = {0xE9, 0xFF, 0xFF, 0x3A}; // blo 0x8085218
+    const u8 threadCreatePatch[]    = {0x0F, 0x00, 0xA0, 0xE1}; // mov r0, pc
+
+    // 0x01FF9FF4 = r0 expected value
+    // 0x01FF9FF8 = r1 expected value
+
+    fileRead((void*)0x08001000, "/luma/rosalina_pxi.bin");
+    memcpy((u8*)0x01FF9800, createCustomThread, sizeof(createCustomThread));
+
+    u32 *off = (u32*)memsearch(pos, threadCreatePattern, size, sizeof(threadCreatePattern));
+    off++;
+
+    u32 ldrLiteralOffset = (*off & 0xFFF);
+    u32 *ldrLiteral = (u32*)((u8*)(off + 2) + ldrLiteralOffset);
+
+    *(u32*)0x01FF9FF4 = *ldrLiteral;
+    *ldrLiteral = 0x01FF9800;
+    *(u32*)0x01FF9FF8 = *(u32*)((u8*)(off + 3) + (*(off + 1) & 0xFFF));
+
+    memcpy(off, threadCreatePatch, sizeof(threadCreatePatch));
+    *(off + 1) = 0xE59FF000 | (ldrLiteralOffset - 4); // transform to a ldr pc, [pc, #offset]
 }
 
 void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
@@ -381,7 +408,7 @@ void patchN3DSK11ProcessorAffinityChecks(u8 *pos, u32 size)
     u8 *off = memsearch(pos, pattern, size, 13);
     off[11] = 0xEA; //BEQ -> B
 
-    u8 *off = memsearch(pos + 16, pattern, size, 13);
+    off = memsearch(pos + 16, pattern, size, 13);
     off[11] = 0xEA; //BEQ -> B
 }
 
