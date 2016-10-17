@@ -28,12 +28,11 @@
 #include "i2c.h"
 #include "utils.h"
 #include "../build/arm9_exceptions.h"
-#include "../build/arm11_exceptions.h"
 
 void installArm9Handlers(void)
 {
     const u32 offsets[] = {0x08, 0x18, 0x20, 0x28};
-    
+
     memcpy((void *)0x01FF8000, arm9_exceptions + 32, arm9_exceptions_size - 32);
 
     //IRQHandler is at 0x08000000, but we won't handle it for some reasons
@@ -43,39 +42,6 @@ void installArm9Handlers(void)
     {
         *(vu32 *)(0x08000000 + offsets[i]) = 0xE51FF004;
         *(vu32 *)(0x08000000 + offsets[i] + 4) = *((const u32 *)arm9_exceptions + 1 + i);
-    }
-}
-
-void installArm11Handlers(u32 *exceptionsPage, u32 stackAddr, u32 codeSetOffset)
-{
-    u32 *initFPU;
-    for(initFPU = exceptionsPage; initFPU < (exceptionsPage + 0x400) && (initFPU[0] != 0xE59F0008 || initFPU[1] != 0xE5900000); initFPU++);
-    
-    u32 *mcuReboot;
-    for(mcuReboot = exceptionsPage; mcuReboot < (exceptionsPage + 0x400) && (mcuReboot[0] != 0xE59F4104 || mcuReboot[1] != 0xE3A0A0C2); mcuReboot++);
-    mcuReboot--;
-
-    u32 *freeSpace;
-    for(freeSpace = initFPU; freeSpace < (exceptionsPage + 0x400) && (freeSpace[0] != 0xFFFFFFFF || freeSpace[1] != 0xFFFFFFFF); freeSpace++);
-
-    memcpy(freeSpace, arm11_exceptions + 32, arm11_exceptions_size - 32);
-    
-    exceptionsPage[1] = MAKE_BRANCH(exceptionsPage + 1, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 8)  - 32);    //Undefined Instruction
-    exceptionsPage[3] = MAKE_BRANCH(exceptionsPage + 3, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 12) - 32);    //Prefetch Abort
-    exceptionsPage[4] = MAKE_BRANCH(exceptionsPage + 4, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 16) - 32);    //Data Abort
-    exceptionsPage[7] = MAKE_BRANCH(exceptionsPage + 7, (u8 *)freeSpace + *(u32 *)(arm11_exceptions + 4)  - 32);    //FIQ
-    
-    for(u32 *pos = freeSpace; pos < (u32 *)((u8 *)freeSpace + arm11_exceptions_size - 32); pos++)
-    {
-        switch(*pos) //Perform relocations
-        {
-            case 0xFFFF3000: *pos = stackAddr; break;
-            case 0xEBFFFFFE: *pos = MAKE_BRANCH_LINK(pos, initFPU); break;
-            case 0xEAFFFFFE: *pos = MAKE_BRANCH(pos, mcuReboot); break;
-            case 0xE12FFF1C: pos[1] = 0xFFFF0000 + 4 * (u32)(freeSpace - exceptionsPage) + pos[1] - 32; break; //bx r12 (mainHandler)
-            case 0xBEEFBEEF: *pos = codeSetOffset; break;
-            default: break;
-        }
     }
 }
 
@@ -109,7 +75,7 @@ void detectAndProcessExceptionDumps(void)
         {
             pathFolder = "/luma/dumps/arm9";
             fileNameSpot = 16;
-        }      
+        }
         else
         {
             pathFolder = "/luma/dumps/arm11";
@@ -132,15 +98,15 @@ void detectAndProcessExceptionDumps(void)
         vu32 *regs = (vu32 *)((vu8 *)dumpHeader + sizeof(ExceptionDumpHeader));
         vu8 *additionalData = (vu8 *)dumpHeader + dumpHeader->totalSize - dumpHeader->additionalDataSize;
 
-        const char *handledExceptionNames[] = { 
+        const char *handledExceptionNames[] = {
             "FIQ", "undefined instruction", "prefetch abort", "data abort"
         };
-    
+
         const char *registerNames[] = {
             "R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
             "SP", "LR", "PC", "CPSR", "FPEXC"
         };
-    
+
         char hexstring[] = "00000000";
 
         char arm11Str[] = "Processor:       ARM11 (core X)";
@@ -150,10 +116,10 @@ void detectAndProcessExceptionDumps(void)
 
         drawString("An exception occurred", 10, 10, COLOR_RED);
         int posY = drawString(dumpHeader->processor == 11 ? arm11Str : "Processor:       ARM9", 10, 30, COLOR_WHITE) + SPACING_Y;
-        
+
         posY = drawString("Exception type:  ", 10, posY, COLOR_WHITE);
         posY = drawString(handledExceptionNames[dumpHeader->type], 10 + 17 * SPACING_X, posY, COLOR_WHITE);
-        
+
         if(dumpHeader->type == 2)
         {
             if((regs[16] & 0x20) == 0 && dumpHeader->codeDumpSize >= 4)
@@ -179,7 +145,7 @@ void detectAndProcessExceptionDumps(void)
             memcpy(processNameStr + 17, (char *)additionalData, 8);
             posY = drawString(processNameStr, 10, posY, COLOR_WHITE);
         }
-        
+
         posY += 3 * SPACING_Y;
 
         for(u32 i = 0; i < 17; i += 2)
@@ -199,21 +165,21 @@ void detectAndProcessExceptionDumps(void)
         }
 
         posY += 2 * SPACING_Y;
-        
+
         u32 mode = regs[16] & 0xF;
         if(dumpHeader->type == 3 && (mode == 7 || mode == 11))
         {
             posY = drawString("Incorrect dump: failed to dump code and/or stack", 10, posY, 0x00FFFF) + 2 * SPACING_Y; //In yellow
             if(dumpHeader->processor != 9) posY -= SPACING_Y;
         }
-            
+
         posY = drawString("You can find a dump in the following file:", 10, posY, COLOR_WHITE) + SPACING_Y;
         posY = drawString(path, 10, posY, COLOR_WHITE) + 2 * SPACING_Y;
         drawString("Press any button to shutdown", 10, posY, COLOR_WHITE);
 
         waitInput();
 
-        memset32((void *)dumpHeader, 0, size); 
+        memset32((void *)dumpHeader, 0, size);
 
         mcuPowerOff();
     }

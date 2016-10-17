@@ -16,6 +16,7 @@ name := $(shell basename $(CURDIR))
 dir_source := source
 dir_include := include
 dir_build := build
+dir_kernel_extension := kernel_extension
 
 LIBS := -lctru
 LIBDIRS	:= $(CTRULIB)
@@ -42,6 +43,7 @@ all: $(name).cxi
 
 .PHONY: clean
 clean:
+	@$(MAKE) -C $(dir_kernel_extension) clean
 	@rm -rf $(dir_build)
 
 $(name).cxi: $(dir_build)/$(name).elf
@@ -50,14 +52,18 @@ $(name).cxi: $(dir_build)/$(name).elf
 $(dir_build)/$(name).elf: $(objects)
 	$(LINK.o) $(OUTPUT_OPTION) $^ $(LIBPATHS) $(LIBS)
 
+$(dir_build)/kernel_extension.bin: $(dir_kernel_extension)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
 $(dir_build)/memory.o : CFLAGS += -O3
 $(dir_build)/luma.o : CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
 
-$(dir_build)/%.o: $(dir_source)/%.c
+$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/kernel_extension.bin
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
-$(dir_build)/%.o: $(dir_source)/%.s
+$(dir_build)/%.o: $(dir_source)/%.s $(dir_build)/kernel_extension.bin
 	@mkdir -p "$(@D)"
 	$(COMPILE.s) $(OUTPUT_OPTION) $<
 include $(call rwildcard, $(dir_build), *.d)

@@ -22,16 +22,29 @@
 
 #pragma once
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdbool.h>
+#include "types.h"
 
-//Common data types
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef volatile u8 vu8;
-typedef volatile u16 vu16;
-typedef volatile u32 vu32;
-typedef volatile u64 vu64;
+void cleanInvalidateDCacheAndDMB(void);
+bool cannotAccessVA(const void *address);
+
+void FIQHandler(void);
+void undefinedInstructionHandler(void);
+void prefetchAbortHandler(void);
+void dataAbortHandler(void);
+
+extern u32 fatalExceptionVeneers[4*3];
+
+typedef struct __attribute__((packed))
+{
+    u32 magic[2];
+    u16 versionMinor, versionMajor;
+
+    u16 processor, core;
+    u32 type;
+
+    u32 totalSize;
+    u32 registerDumpSize;
+    u32 codeDumpSize;
+    u32 stackDumpSize;
+    u32 additionalDataSize;
+} ExceptionDumpHeader;

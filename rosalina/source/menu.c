@@ -4,6 +4,8 @@
 #include "memory.h"
 #include "ifile.h"
 #include "menus.h"
+#include "mmu.h"
+#include "utils.h"
 
 u32 waitInput(void)
 {
@@ -59,6 +61,8 @@ static u8 batteryLevel = 255;
 
 MyThread menuCreateThread(void)
 {
+    runOnAllCores(mapRosalinaKernelExtension, menuThreadStack, ((THREAD_STACK_SIZE / 3) + 7) & 7, 0);
+    svc_7b((void*)0x80000000); // install exception handlers -- works
     MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, THREAD_STACK_SIZE, 0, CORE_SYSTEM);
     return menuThread;
 }

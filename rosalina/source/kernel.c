@@ -28,7 +28,6 @@ void Kernel_FetchLoadedProcesses(void)
     s32 process_count;
     u32 process_ids[0x40];
     svcGetProcessList(&process_count, process_ids, sizeof(process_ids) / sizeof(u32));
-
     for(u32 i = 0; i < sizeof(process_ids) / sizeof(u32); i++)
     {
         if(i >= (u32) process_count)

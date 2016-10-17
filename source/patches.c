@@ -247,21 +247,6 @@ void patchTwlBg(u8 *pos)
     src2[1] = 0xE800 | ((((u32)dst - (u32)src2 - 4) & 0xFFF) >> 1);
 }
 
-void getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset)
-{
-    //This function has to succeed. Crash if it doesn't (we'll get an exception dump of it anyways)
-
-    const u8 callExceptionDispatcherPattern[] = {0x0F, 0x00, 0xBD, 0xE8, 0x13, 0x00, 0x02, 0xF1};
-    const u8 getTitleIDFromCodeSetPattern[] = {0xDC, 0x05, 0xC0, 0xE1, 0x20, 0x04, 0xA0, 0xE1};
-
-    *stackAddr = *((u32 *)memsearch(pos, callExceptionDispatcherPattern, size, 8) + 3);
-
-    u32 *loadCodeSet = (u32 *)memsearch(pos, getTitleIDFromCodeSetPattern, size, 8);
-    while((*loadCodeSet >> 20) != 0xE59 || ((*loadCodeSet >> 12) & 0xF) != 0) //ldr r0, [rX, #offset]
-        loadCodeSet--;
-    *codeSetOffset = *loadCodeSet & 0xFFF;
-}
-
 void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 {
     const u8 pattern[] = {
@@ -381,7 +366,7 @@ void patchN3DSK11ProcessorAffinityChecks(u8 *pos, u32 size)
     u8 *off = memsearch(pos, pattern, size, 13);
     off[11] = 0xEA; //BEQ -> B
 
-    u8 *off = memsearch(pos + 16, pattern, size, 13);
+    off = memsearch(pos + 16, pattern, size, 13);
     off[11] = 0xEA; //BEQ -> B
 }
 

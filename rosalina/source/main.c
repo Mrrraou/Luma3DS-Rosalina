@@ -16,7 +16,7 @@ static Handle client_handle;
 static int active_handles;
 
 bool isN3DS;
-u8 *vramKMapping, *fcramKMapping;
+u8 *vramKMapping, *dspAndAxiWramMapping, *fcramKMapping;
 static void K_InitMappingInfo(void)
 {
     isN3DS = convertVAToPA((void*)0xE9000000) != 0; // check if there's the extra FCRAM
@@ -25,12 +25,14 @@ static void K_InitMappingInfo(void)
         // Older mappings
         fcramKMapping = (u8*)0xF0000000;
         vramKMapping = (u8*)0xE8000000;
+        dspAndAxiWramMapping = (u8*)0xEFF00000;
     }
     else
     {
         // Newer mappings
         fcramKMapping = (u8*)0xE0000000;
         vramKMapping = (u8*)0xD8000000;
+        dspAndAxiWramMapping = (u8*)0xDFF00000;
     }
 }
 
