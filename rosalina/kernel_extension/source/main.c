@@ -34,11 +34,11 @@ enum VECTORS { RESET = 0, UNDEFINED_INSTRUCTION, SVC, PREFETCH_ABORT, DATA_ABORT
 
 static inline u32 swapLdrLiteralInHandler(enum VECTORS vector, u32 value)
 {
-    s32 branch_dst_offset = ((u32*)0xFFFF0000)[vector] & 0xFFFFFF;
+    s32 branch_dst_offset = exceptionsPage[vector] & 0xFFFFFF;
     if(branch_dst_offset & 0x800000)
         branch_dst_offset |= ~0xFFFFFF;
     branch_dst_offset += 2; // pc is always 2 instructions ahead
-    u32 *branch_dst = (u32*)(0xFFFF0000 + (sizeof(u32) * vector) + (branch_dst_offset * sizeof(u32)));
+    u32 *branch_dst = exceptionsPage + vector + branch_dst_offset;
     branch_dst = (u32*)(dspAndAxiWramMapping + ((u32)convertVAToPA(branch_dst) - 0x1FF00000));
     u32 ret = branch_dst[2];
     branch_dst[2] = value;
@@ -66,27 +66,16 @@ static void setupFatalExceptionHandlers(void)
     mcuReboot = (void (*)(void))mcuReboot_;
 
     /*void (*flushDataCache)(const void *, u32) = (void*)0xFFF1D56C;
-    void (*flushInstructionCache)(const void *, u32) = (void*)0xFFF1FCCC;
-    flushDataCache(exceptionRWMapping, 0x1000);
-    flushDataCache(exceptionsPage, 0x1000);*/
+    void (*flushInstructionCache)(const void *, u32) = (void*)0xFFF1FCCC;*/
 
     flushCachesRange(exceptionRWMapping, 0x1000); // I'm being extra cautious here
     flushCachesRange(exceptionsPage, 0x1000);
-
-    /*memcpy(freeSpace, fatalExceptionVeneers, 48);
-
-    u32 *excRW = (u32 *)exceptionRWMapping;
-    const u32 indices[] = {7, 1, 3, 4};
-    for(u32 i = 0; i < 4; i++)
-        excRW[indices[i]] = MAKE_BRANCH(excRW + indices[i], freeSpace + 3*i);*/
 
     swapLdrLiteralInHandler(FIQ, (u32)FIQHandler);
     swapLdrLiteralInHandler(UNDEFINED_INSTRUCTION, (u32)undefinedInstructionHandler);
     //swapLdrLiteralInHandler(PREFETCH_ABORT, (u32)prefetchAbortHandler);
     swapLdrLiteralInHandler(DATA_ABORT, (u32)dataAbortHandler);
 
-    /*flushDataCache(exceptionRWMapping, 0x1000);
-    flushInstructionCache(exceptionsPage, 0x1000);*/
     flushCachesRange(exceptionRWMapping, 0x1000); // I'm being extra cautious here
     flushCachesRange(exceptionsPage, 0x1000);
 }
