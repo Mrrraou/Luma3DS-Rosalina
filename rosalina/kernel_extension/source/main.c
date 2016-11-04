@@ -1,10 +1,12 @@
 #include "utils.h"
 #include "fatalExceptionHandlers.h"
+#include "svc/hooks.h"
 #include "memory.h"
 
 bool isN3DS;
 u8 *vramKMapping, *dspAndAxiWramMapping, *fcramKMapping, *exceptionRWMapping;
 static u32 *exceptionsPage = (u32*)0xFFFF0000;
+u32 *arm11SvcTable;
 
 void (*initFPU)(void);
 void (*mcuReboot)(void);
@@ -32,6 +34,17 @@ static void initMappingInfo(void)
 
 enum VECTORS { RESET = 0, UNDEFINED_INSTRUCTION, SVC, PREFETCH_ABORT, DATA_ABORT, RESERVED, IRQ, FIQ };
 
+static inline void* getRWMappedHandlerDestination(enum VECTORS vector)
+{
+    s32 branch_dst_offset = exceptionsPage[vector] & 0xFFFFFF;
+    if(branch_dst_offset & 0x800000)
+        branch_dst_offset |= ~0xFFFFFF;
+    branch_dst_offset += 2; // pc is always 2 instructions ahead
+    u32 *branch_dst = exceptionsPage + vector + branch_dst_offset;
+    branch_dst = (u32*)(dspAndAxiWramMapping + ((u32)convertVAToPA(branch_dst) - 0x1FF00000));
+    return (void*)branch_dst[2];
+}
+
 static inline u32 swapLdrLiteralInHandler(enum VECTORS vector, u32 value)
 {
     s32 branch_dst_offset = exceptionsPage[vector] & 0xFFFFFF;
@@ -44,6 +57,16 @@ static inline u32 swapLdrLiteralInHandler(enum VECTORS vector, u32 value)
     branch_dst[2] = value;
     flushCachesRange(branch_dst, 0x3); // lol
     return ret;
+}
+
+static void setupSvcHooks(void)
+{
+    u32 *svcTableRW = (u32*)(dspAndAxiWramMapping + ((u32)convertVAToPA(arm11SvcTable) - 0x1FF00000));
+    #define INSTALL_HOOK(orig, hook, syscall) \
+        (orig) = (void*)svcTableRW[(syscall)]; \
+        svcTableRW[(syscall)] = (u32)(hook);
+        
+    INSTALL_HOOK(svcSleepThread, svcSleepThreadHook, 0xA);
 }
 
 static void setupFatalExceptionHandlers(void)
@@ -72,9 +95,13 @@ static void setupFatalExceptionHandlers(void)
     flushCachesRange(exceptionsPage, 0x1000);
 
     swapLdrLiteralInHandler(FIQ, (u32)FIQHandler);
-    swapLdrLiteralInHandler(UNDEFINED_INSTRUCTION, (u32)undefinedInstructionHandler);
-    //swapLdrLiteralInHandler(PREFETCH_ABORT, (u32)prefetchAbortHandler);
+    //swapLdrLiteralInHandler(UNDEFINED_INSTRUCTION, (u32)undefinedInstructionHandler);
+    swapLdrLiteralInHandler(PREFETCH_ABORT, (u32)prefetchAbortHandler);
     swapLdrLiteralInHandler(DATA_ABORT, (u32)dataAbortHandler);
+    void *svcHandler = getRWMappedHandlerDestination(SVC);
+    arm11SvcTable = (u32*)svcHandler;
+    while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
+    setupSvcHooks();
 
     flushCachesRange(exceptionRWMapping, 0x1000); // I'm being extra cautious here
     flushCachesRange(exceptionsPage, 0x1000);
