@@ -58,12 +58,14 @@ finishMMUReconfiguration:
     mcr p15, 0, r0, c7, c10, 4  @ Data synchronization barrier
     bx lr
 
-.section .rodata
+.section .data
 
 .p2align 12
 .global kernel_extension
 kernel_extension: .incbin "build/kernel_extension.bin"
 kernel_extension_end:
+
+.section .rodata
 
 .balign 4
 .global kernel_extension_size

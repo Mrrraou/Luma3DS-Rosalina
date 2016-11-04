@@ -122,7 +122,7 @@ void loadPayload(u32 pressed)
         memcpy(&path[15], info.altname, 13);
 
         loaderAddress[1] = fileRead((void *)0x24F00000, path);
-        
+
         if(pattern[0] == 'n') f_unlink(path);
 
         flushDCacheRange(loaderAddress, loader_size);
