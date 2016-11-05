@@ -34,7 +34,7 @@ static void initMappingInfo(void)
 
 enum VECTORS { RESET = 0, UNDEFINED_INSTRUCTION, SVC, PREFETCH_ABORT, DATA_ABORT, RESERVED, IRQ, FIQ };
 
-static inline void* getRWMappedHandlerDestination(enum VECTORS vector)
+static inline void* getHandlerDestination(enum VECTORS vector)
 {
     s32 branch_dst_offset = exceptionsPage[vector] & 0xFFFFFF;
     if(branch_dst_offset & 0x800000)
@@ -65,7 +65,7 @@ static void setupSvcHooks(void)
     #define INSTALL_HOOK(orig, hook, syscall) \
         (orig) = (void*)svcTableRW[(syscall)]; \
         svcTableRW[(syscall)] = (u32)(hook);
-        
+
     INSTALL_HOOK(svcSleepThread, svcSleepThreadHook, 0xA);
 }
 
@@ -98,7 +98,7 @@ static void setupFatalExceptionHandlers(void)
     //swapLdrLiteralInHandler(UNDEFINED_INSTRUCTION, (u32)undefinedInstructionHandler);
     swapLdrLiteralInHandler(PREFETCH_ABORT, (u32)prefetchAbortHandler);
     swapLdrLiteralInHandler(DATA_ABORT, (u32)dataAbortHandler);
-    void *svcHandler = getRWMappedHandlerDestination(SVC);
+    void *svcHandler = getHandlerDestination(SVC);
     arm11SvcTable = (u32*)svcHandler;
     while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
     setupSvcHooks();
