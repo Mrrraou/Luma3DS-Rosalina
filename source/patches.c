@@ -27,7 +27,10 @@
 #include "../build/svcGetCFWInfopatch.h"
 #include "../build/k11modulespatch.h"
 #include "../build/twl_k11modulespatch.h"
+#include "../build/mmuHookpatch.h"
 #include "utils.h"
+
+#define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
@@ -55,6 +58,18 @@ u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler
     *freeK11Space = memsearch(pos, pattern2, size, 5) + 1;
 
     return arm11SvcTable;
+}
+
+void installMMUHook(u8 *pos, u32 size, u32 *exceptionsPage)
+{
+    const u8 pattern[] = {0x0E, 0x32, 0xA0, 0xE3, 0x02, 0xC2, 0xA0, 0xE3};
+
+    u32 *off = (u32 *)memsearch(pos, pattern, size, 8);
+    u32 *freeSpace;
+    for(freeSpace = exceptionsPage; *freeSpace != 0xFFFFFFFF && freeSpace < exceptionsPage + 0x400; freeSpace++);
+
+    memcpy(freeSpace, mmuHook, mmuHook_size);
+    *off = MAKE_BRANCH_LINK(off, freeSpace);
 }
 
 void patchSignatureChecks(u8 *pos, u32 size)

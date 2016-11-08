@@ -17,23 +17,18 @@ static void constructL2TranslationTable(u32 *table, u32 offset, const void *src,
         table[(offset >> 12) + i] = (pa + (i << 12)) | attributes;
 }
 
-u32 ALIGN(0x400) L2MMUTableFor0xA0000000[256] = { 0 }; // page faults by default
+u32 ALIGN(0x400) L2MMUTableFor0x40000000[256] = { 0 }; // page faults by default
 
 extern u8 *dspAndAxiWramMapping;
 void K_mapRosalinaKernelExtension(void)
 {
+    if(*(u32*)((u32)convertVAToPA(L2MMUTableFor0x40000000) | (1 << 31)) != L2MMUTableFor0x40000000[0]) __asm__ volatile("bkpt 1");
     u32 *ttb1VA = (u32 *)((u32)getTTB1Address() - 0x1FF00000 + (u32)dspAndAxiWramMapping);
-    constructL2TranslationTable(L2MMUTableFor0xA0000000, 0, kernel_extension, kernel_extension_size, 0x516);
+    constructL2TranslationTable(L2MMUTableFor0x40000000, 0, kernel_extension, kernel_extension_size, 0x516);
     // ^ 4KB extended small page: [SYS:RW USR:-- X  TYP:NORMAL SHARED OUTER NOCACHE, INNER CACHED WB WA]
 
-    // 0xA0000000 = VA to which part of Rosalina will be remapped (TTBCR >= 1 so anything >= 0xA0000000 is fine)
-    mapL2TranslationTable(ttb1VA, 0xA0000000, L2MMUTableFor0xA0000000);
-
-    //void (*flushDataCache)(const void *, u32) = (void*)0xFFF1D56C;
-    //void (*flushInstructionCache)(const void *, u32) = (void*)0xFFF1FCCC;
-    //flushDataCache(ttb1VA + (0xA0000000 >> 20), 4);
-    //flushDataCache(L2MMUTableFor0xA0000000, 1024);
-    //flushDataCache(kernel_extension, kernel_extension_size);
+    // 0xA0000000 = VA to which part of Rosalina will be remapped (TTBCR >= 2 so anything >= 0x40000000 is fine)
+    mapL2TranslationTable(ttb1VA, 0x40000000, L2MMUTableFor0x40000000);
 
     finishMMUReconfiguration();
 }

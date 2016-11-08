@@ -48,13 +48,25 @@ getTTB1Address:
     lsl r0, #14
     bx lr
 
+
 .global finishMMUReconfiguration
 .type   finishMMUReconfiguration, %function
 finishMMUReconfiguration:
     mov r0, #0
     mcr p15, 0, r0, c7, c14, 0  @ Clean and invalidate Entire Data Cache
-    mcr p15, 0, r0, c8, c7, 0   @ Invalidate unified TLB
+    @mcr p15, 0, r0, c8, c7, 0   @ Invalidate unified TLB
     mcr p15, 0, r0, c7, c10, 5  @ Data memory barrier
+
+    @ Not sure whether this is needed
+    ldr r1, =kernel_extension_size
+    mov r2, #0
+    invalLoop:
+        add r3, r2, #0x40000000
+        mcr p15, 0, r3, c8, c7, 3
+        add r2, #0x1000
+        cmp r2, r1
+        blo invalLoop
+
     mcr p15, 0, r0, c7, c10, 4  @ Data synchronization barrier
     bx lr
 

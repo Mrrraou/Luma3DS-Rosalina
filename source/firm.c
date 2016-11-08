@@ -318,6 +318,8 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
     u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
 
+    installMMUHook(arm11Section1, section[1].size, arm11ExceptionsPage);
+
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
 
