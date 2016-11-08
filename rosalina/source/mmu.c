@@ -22,7 +22,6 @@ u32 ALIGN(0x400) L2MMUTableFor0x40000000[256] = { 0 }; // page faults by default
 extern u8 *dspAndAxiWramMapping;
 void K_mapRosalinaKernelExtension(void)
 {
-    if(*(u32*)((u32)convertVAToPA(L2MMUTableFor0x40000000) | (1 << 31)) != L2MMUTableFor0x40000000[0]) __asm__ volatile("bkpt 1");
     u32 *ttb1VA = (u32 *)((u32)getTTB1Address() - 0x1FF00000 + (u32)dspAndAxiWramMapping);
     constructL2TranslationTable(L2MMUTableFor0x40000000, 0, kernel_extension, kernel_extension_size, 0x516);
     // ^ 4KB extended small page: [SYS:RW USR:-- X  TYP:NORMAL SHARED OUTER NOCACHE, INNER CACHED WB WA]
