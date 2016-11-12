@@ -1,5 +1,6 @@
 #pragma once
 
-#include <3ds/types.h>
+#include <3ds/svc.h>
 
-void mapRosalinaKernelExtension(void);
+void constructL2TranslationTableForRosalina(void);
+void mapAndInstallRosalinaKernelExtension(void);

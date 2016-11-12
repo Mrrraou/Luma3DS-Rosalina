@@ -25,7 +25,6 @@
 #include "config.h"
 #include "../build/rebootpatch.h"
 #include "../build/svcGetCFWInfopatch.h"
-#include "../build/k11modulespatch.h"
 #include "../build/twl_k11modulespatch.h"
 #include "../build/mmuHookpatch.h"
 #include "utils.h"
@@ -43,7 +42,7 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
     return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
 }
 
-u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
+u32 *getKernel11Info(u8 *pos, u32 size, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
 {
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
 
@@ -53,23 +52,19 @@ u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler
     *arm11SvcHandler = arm11SvcTable;
     while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
 
-    const u8 pattern2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-    *freeK11Space = memsearch(pos, pattern2, size, 5) + 1;
-
     return arm11SvcTable;
 }
 
-void installMMUHook(u8 *pos, u32 size, u32 *exceptionsPage)
+void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space)
 {
     const u8 pattern[] = {0x0E, 0x32, 0xA0, 0xE3, 0x02, 0xC2, 0xA0, 0xE3};
 
     u32 *off = (u32 *)memsearch(pos, pattern, size, 8);
-    u32 *freeSpace;
-    for(freeSpace = exceptionsPage; *freeSpace != 0xFFFFFFFF && freeSpace < exceptionsPage + 0x400; freeSpace++);
 
-    memcpy(freeSpace, mmuHook, mmuHook_size);
-    *off = MAKE_BRANCH_LINK(off, freeSpace);
+    memcpy(*freeK11Space, mmuHook, mmuHook_size);
+    *off = MAKE_BRANCH_LINK(off, *freeK11Space);
+
+    (*freeK11Space) += mmuHook_size;
 }
 
 void patchSignatureChecks(u8 *pos, u32 size)
@@ -169,7 +164,7 @@ u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 siz
   return 0;
 }
 
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
+void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space, u8 *arm11ExceptionsPage)
 {
     //Official implementation of svcBackdoor
     const u8 svcBackdoor[40] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
@@ -187,7 +182,7 @@ void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
     {
         memcpy(*freeK11Space, svcBackdoor, 40);
 
-        arm11SvcTable[0x7B] = 0xFFF00000 + *freeK11Space - pos;
+        arm11SvcTable[0x7B] = 0xFFFF0000 + *freeK11Space - arm11ExceptionsPage;
         (*freeK11Space) += 40;
     }
 }
@@ -309,13 +304,6 @@ void patchSvcBreak9(u8 *pos, u32 size, u32 k9Address)
     *addr = 0xE12FFF7F;
 }
 
-void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable)
-{
-    //Same as above, for NFIRM arm11
-    u32 *addr = (u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000);
-    *addr = 0xE12FFF7F;
-}
-
 void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType)
 {
     if(firmType == TWL_FIRM || firmType == AGB_FIRM)
@@ -346,32 +334,6 @@ void patchArm11SvcAccessChecks(u32 *arm11SvcHandler)
 {
     while(*arm11SvcHandler != 0xE11A0E1B) arm11SvcHandler++; //TST R10, R11,LSL LR
     *arm11SvcHandler = 0xE3B0A001; //MOVS R10, #1
-}
-
-//It's mainly Subv's code here:
-void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
-{
-    //We have to detour a function in the ARM11 kernel because builtin modules
-    //are compressed in memory and are only decompressed at runtime.
-
-    //Inject our code into the free space
-    memcpy(*freeK11Space, k11modules, k11modules_size);
-    (*freeK11Space) += k11modules_size;
-
-    //Find the code that decompresses the .code section of the builtin modules and detour it with a jump to our code
-    const u8 pattern[] = { 0x00, 0x00, 0x94, 0xE5, 0x18, 0x10, 0x90, 0xE5, 0x28, 0x20,
-                          0x90, 0xE5, 0x48, 0x00, 0x9D, 0xE5 };
-
-    u32 *off = (u32 *)memsearch(pos, pattern, size, 16);
-
-    //We couldn't find the code that decompresses the module
-    if(off == NULL) return;
-
-    //Inject a jump instruction to our code at the offset we found
-    //Construct a jump (BL) instruction to our code
-    u32 offset = ((((u32)*freeK11Space) - ((u32)off + 8)) >> 2) & 0xFFFFFF;
-
-    *off = offset | (1 << 24) | (0x5 << 25) | (0xE << 28);
 }
 
 void patchN3DSK11ProcessorAffinityChecks(u8 *pos, u32 size)

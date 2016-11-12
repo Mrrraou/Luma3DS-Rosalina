@@ -18,61 +18,120 @@
 @   reasonable legal notices or author attributions in that material or in the Appropriate Legal
 @   Notices displayed by works containing it.
 
-.macro GEN_HANDLER name
-    .global \name\()Handler
-    .type   \name\()Handler, %function
-    \name\()Handler:
-        ldr sp, =(fatalExceptionStack + 0x100)
-        stmfd sp!, {r0-r7}
-        mov r1, #\@         @ macro expansion counter
-        b _commonHandler
+.macro TEST_IF_MODE_AND_ARM_INST_OR_JUMP lbl, mode
+    cpsid aif
+    mrs sp, spsr
+    tst sp, #0x20
+    bne \lbl
+    and sp, #0x1f                @ get previous processor mode
+    cmp sp, #\mode
+    bne \lbl
 
-    .size   \name\()Handler, . - \name\()Handler
+    sub sp, lr, #4
+    mcr p15, 0, sp, c7, c8, 0    @ VA to PA translation with privileged read permission check
+    mrc p15, 0, sp, c7, c4, 0    @ read PA register
+    tst sp, #1                   @ failure bit
+    bne \lbl
 .endm
 
-.macro GEN_VENEER name
-    \name\()Veneer:
-        clrex
-        ldr pc, =\name\()Handler
-    .pool
+.macro GEN_USUAL_HANDLER name, index
+    \name\()Handler:
+        cpsid aif
+
+        ldr sp, =_fatalExceptionOccured
+        ldr sp, [sp]
+        cmp sp, #0
+        wfine
+        bne .
+
+        ldr sp, =_regs
+        stmia sp, {r0-r7}
+
+        ldr sp, =(_fatalExceptionStack + 0x400)
+        mov r1, #\index
+        b _commonHandler
 .endm
 
 .text
 .arm
 .balign 4
 
-.global _commonHandler
-.type   _commonHandler, %function
 _commonHandler:
-    cpsid aif
+    ldr r0, =_fatalExceptionOccured
+    mov r4, #1
+
+    _try_lock:
+        ldrex r2, [r0]
+        strex r3, r4, [r0]
+        cmp r3, #0
+        bne _try_lock
+
+    mcr p15, 0, r3, c7, c10, 5   @ Drain Memory Barrier
+
     mrs r2, spsr
-    mov r6, sp
     mrs r3, cpsr
+    ldr r6, =_regs
+    add r6, #0x20
 
-    tst r2, #0x20
-    bne noFPUInitNorSvcBreak
-    sub r0, lr, #4
-    stmfd sp!, {r0-r3, lr}
-    bl convertVAToPA
-    cmp r0, #0
-    ldmfd sp!, {r0-r3, lr}
-    beq noFPUInitNorSvcBreak
-    ldr r4, [lr, #-4]
-    cmp r1, #1
-    bne noFPUInit
+    ands r4, r2, #0xf       @ get the mode that triggered the exception
+    moveq r4, #0xf          @ usr => sys
+    bic r5, r3, #0xf
+    orr r5, r4
+    msr cpsr_c, r5          @ change processor mode
+    stmia r6!, {r8-lr}
+    msr cpsr_c, r3          @ restore processor mode
 
-    lsl r4, #4
-    sub r4, #0xc0000000
-    cmp r4, #0x30000000
-    bcs noFPUInitNorSvcBreak
-    fmrx r0, fpexc
-    tst r0, #0x40000000
-    bne noFPUInitNorSvcBreak
+    str lr, [r6], #4
+    str r2, [r6], #4
 
+    mov r0, r6
+
+    mrc p15, 0, r4, c5, c0, 0    @ dfsr
+    mrc p15, 0, r5, c5, c0, 1    @ ifsr
+    mrc p15, 0, r6, c6, c0, 0    @ far
+    fmrx r7, fpexc
+    fmrx r8, fpinst
+    fmrx r9, fpinst2
+
+    stmia r0!, {r4-r9}
+
+    bic r3, #(1<<31)
+    fmxr fpexc, r3          @ clear the VFP11 exception flag (if it's set)
+
+    ldr r0, =_regs
+    mrc p15, 0, r2, c0, c0, 5    @ CPU ID register
+
+    blx fatalExceptionHandlersMain
+
+    mov r0, #0
+    mcr p15, 0, r0, c7, c14, 0   @ Clean and Invalidate Entire Data Cache
+    mcr p15, 0, r0, c7, c10, 4   @ Drain Synchronization Barrier
+    ldr r12, =mcuReboot
+    ldr r12, [r12]
+    bx r12
+
+.global FIQHandler
+.type   FIQHandler, %function
+GEN_USUAL_HANDLER FIQ, 0
+
+.global undefinedInstructionHandler
+.type   undefinedInstructionHandler, %function
+undefinedInstructionHandler:
+    TEST_IF_MODE_AND_ARM_INST_OR_JUMP _undefinedInstructionNormalHandler, 0x10
+
+    ldr sp, [lr, #-4]   @ test if it's an VFP instruction that was aborted
+    lsl sp, #4
+    sub sp, #0xc0000000
+    cmp sp, #0x30000000
+    bcs _undefinedInstructionNormalHandler
+    fmrx sp, fpexc
+    tst sp, #0x40000000
+    bne _undefinedInstructionNormalHandler
+
+    @ FPU init
     sub lr, #4
     srsfd sp!, #0x13
-    ldmfd sp!, {r0-r7}          @ restore context
-    cps #0x13                   @ FPU init
+    cps #0x13
     stmfd sp, {r0-r3, r11-lr}^
     sub sp, #0x20
     ldr r12, =initFPU
@@ -80,71 +139,47 @@ _commonHandler:
     blx r12
     ldmfd sp, {r0-r3, r11-lr}^
     add sp, #0x20
-    rfefd sp!
+    rfefd sp!  @ retry aborted instruction
 
-    noFPUInit:
-    cmp r1, #2
-    bne noFPUInitNorSvcBreak
-    ldr r5, =#0xe12fff7f
-    cmp r4, r5
-    bne noFPUInitNorSvcBreak
-    cps #0x13                   @ switch to supervisor mode
-    cmp r10, #0
-    addne sp, #0x28
-    ldr r2, [sp, #0x1c]         @ implementation details of the official svc handler
-    ldr r4, [sp, #0x18]
-    msr cpsr_c, r3              @ restore processor mode
-    tst r2, #0x20
-    addne lr, r4, #2            @ adjust address for later
-    moveq lr, r4
+    GEN_USUAL_HANDLER _undefinedInstructionNormal, 1
 
-    noFPUInitNorSvcBreak:
-    ands r4, r2, #0xf       @ get the mode that triggered the exception
-    moveq r4, #0xf          @ usr => sys
-    bic r5, r3, #0xf
-    orr r5, r4
-    msr cpsr_c, r5          @ change processor mode
-    stmfd r6!, {r8-lr}
-    msr cpsr_c, r3          @ restore processor mode
-    mov sp, r6
+.global prefetchAbortHandler
+.type   prefetchAbortHandler, %function
+prefetchAbortHandler:
+    TEST_IF_MODE_AND_ARM_INST_OR_JUMP _prefetchAbortNormalHandler, 0x13
 
-    stmfd sp!, {r2,lr}
+    mov sp, r0
+    ldr r0, [lr, #-4]
 
-    mrc p15,0,r4,c5,c0,0    @ dfsr
-    mrc p15,0,r5,c5,c0,1    @ ifsr
-    mrc p15,0,r6,c6,c0,0    @ far
-    fmrx r7, fpexc
-    fmrx r8, fpinst
-    fmrx r9, fpinst2
-
-    stmfd sp!, {r4-r9}      @ it's a bit of a mess, but we will fix that later
-                            @ order of saved regs now: dfsr, ifsr, far, fpexc, fpinst, fpinst2, cpsr, pc + (2/4/8), r8-r14, r0-r7
-
-    bic r3, #(1<<31)
-    fmxr fpexc, r3          @ clear the VFP11 exception flag (if it's set)
-
+    cps #0x11                           @ switch to FIQ mode because it has more banked registers
+    ldr r8, =0xe12fff7f
+    cmp r0, r8
+    cps #0x17                           @ switch back to abort mode
     mov r0, sp
-    mrc p15,0,r2,c0,c0,5    @ CPU ID register
+    bne _prefetchAbortNormalHandler
 
-    blx fatalExceptionHandlersMain
+    cps #0x13                           @ switch to supervisor mode
+    cmp r10, #0                         @ implementation details of the official svc handler
+    addne r8, sp, #0x28
+    moveq r8, sp
+    cps #0x17                           @ switch back to abort mode
 
-    mov r0, #0
-    mcr p15,0,r0,c7,c14,0   @ Clean and Invalidate Entire Data Cache
-    mcr p15,0,r0,c7,c10,4   @ Drain Memory Barrier
-    ldr r12, =mcuReboot
-    ldr r12, [r12]
-    bx r12
+    ldr r9, [r8, #0x1c]
+    ldr lr, [r8, #0x18]
+    tst r9, #0x20
+    addne lr, #2                        @ adjust address for later
+    msr spsr, r9
+    mov sp, r8                          @ not sure whether you can put the base in the reglist when transferring regs from user-mode
+    ldmfd sp, {r8-r11}^
 
-GEN_HANDLER FIQ
-GEN_HANDLER undefinedInstruction
-GEN_HANDLER prefetchAbort
-GEN_HANDLER dataAbort
+    GEN_USUAL_HANDLER _prefetchAbortNormal, 2
 
-.pool
+.global dataAbortHandler
+.type   dataAbortHandler, %function
+GEN_USUAL_HANDLER dataAbort, 3
 
-.global fatalExceptionVeneers
-fatalExceptionVeneers:
-    GEN_VENEER FIQ
-    GEN_VENEER undefinedInstruction
-    GEN_VENEER prefetchAbort
-    GEN_VENEER dataAbort
+.bss
+.balign 4
+_regs: .skip (4 * 23)
+_fatalExceptionOccured: .word 0
+_fatalExceptionStack: .skip 0x400

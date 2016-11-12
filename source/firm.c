@@ -316,9 +316,13 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     u32 *arm11SvcHandler,
         *arm11ExceptionsPage;
 
-    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &arm11SvcHandler, &arm11ExceptionsPage);
 
-    installMMUHook(arm11Section1, section[1].size, arm11ExceptionsPage);
+    u32 *freeSpace;
+    for(freeSpace = arm11ExceptionsPage; freeSpace < arm11ExceptionsPage + 0x400 && *freeSpace != 0xFFFFFFFF; freeSpace++);
+    freeK11Space = (u8 *)freeSpace;
+
+    installMMUHook(arm11Section1, section[1].size, &freeK11Space);
 
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
@@ -343,7 +347,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
 
         //Restore svcBackdoor
-        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space);
+        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
     }
 
     if(isN3DS) patchN3DSK11ProcessorAffinityChecks(arm11Section1, section[1].size);
@@ -358,9 +362,6 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         patchSvcBreak9(arm9Section, section[2].size, (u32)section[2].address);
         patchKernel9Panic(arm9Section, section[2].size, NATIVE_FIRM);
 
-        //Stub svcBreak11 with "bkpt 65535"
-        patchSvcBreak11(arm11Section1, arm11SvcTable);
-
         //Stub kernel11panic with "bkpt 65534"
         patchKernel11Panic(arm11Section1, section[1].size);
     }
@@ -368,7 +369,6 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     if(CONFIG(9))
     {
         patchArm11SvcAccessChecks(arm11SvcHandler);
-        patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
         patchP9AccessChecks(process9Offset, process9Size);
     }
 }

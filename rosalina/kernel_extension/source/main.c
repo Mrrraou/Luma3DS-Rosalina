@@ -1,114 +1,70 @@
 #include "utils.h"
 #include "fatalExceptionHandlers.h"
-#include "svc/hooks.h"
+#include "svc.h"
 #include "memory.h"
 
 bool isN3DS;
-u8 *vramKMapping, *dspAndAxiWramMapping, *fcramKMapping, *exceptionRWMapping;
-static u32 *exceptionsPage = (u32*)0xFFFF0000;
-u32 *arm11SvcTable;
+static const u32 *const exceptionsPage = (const u32 *)0xFFFF0000;
 
 void (*initFPU)(void);
 void (*mcuReboot)(void);
 
-static void initMappingInfo(void)
-{
-    isN3DS = convertVAToPA((void*)0xE9000000) != 0; // check if there's the extra FCRAM
-    if(convertVAToPA((void *)0xF0000000) != 0)
-    {
-        // Older mappings
-        fcramKMapping = (u8*)0xF0000000;
-        vramKMapping = (u8*)0xE8000000;
-        dspAndAxiWramMapping = (u8*)0xEFF00000;
-    }
-    else
-    {
-        // Newer mappings
-        fcramKMapping = (u8*)0xE0000000;
-        vramKMapping = (u8*)0xD8000000;
-        dspAndAxiWramMapping = (u8*)0xDFF00000;
-    }
-
-    exceptionRWMapping = dspAndAxiWramMapping + ((u32)convertVAToPA((void*)0xFFFF0000) - 0x1FF00000);
-}
+void *originalHandlers[7] = {NULL};
+void *officialSVCs[0x7E] = {NULL};
 
 enum VECTORS { RESET = 0, UNDEFINED_INSTRUCTION, SVC, PREFETCH_ABORT, DATA_ABORT, RESERVED, IRQ, FIQ };
 
-static inline void* getHandlerDestination(enum VECTORS vector)
+static inline void **getHandlerDestination(enum VECTORS vector)
 {
-    s32 branch_dst_offset = exceptionsPage[vector] & 0xFFFFFF;
-    if(branch_dst_offset & 0x800000)
-        branch_dst_offset |= ~0xFFFFFF;
-    branch_dst_offset += 2; // pc is always 2 instructions ahead
-    u32 *branch_dst = exceptionsPage + vector + branch_dst_offset;
-    branch_dst = (u32*)(dspAndAxiWramMapping + ((u32)convertVAToPA(branch_dst) - 0x1FF00000));
-    return (void*)branch_dst[2];
+    u32 *branch_dst = (u32 *)decodeARMBranch((u32 *)exceptionsPage + (u32)vector);
+    return (void **)(branch_dst + 2);
 }
 
-static inline u32 swapLdrLiteralInHandler(enum VECTORS vector, u32 value)
+static inline void swapHandlerInVeneer(enum VECTORS vector, void *handler)
 {
-    s32 branch_dst_offset = exceptionsPage[vector] & 0xFFFFFF;
-    if(branch_dst_offset & 0x800000)
-        branch_dst_offset |= ~0xFFFFFF;
-    branch_dst_offset += 2; // pc is always 2 instructions ahead
-    u32 *branch_dst = exceptionsPage + vector + branch_dst_offset;
-    branch_dst = (u32*)(dspAndAxiWramMapping + ((u32)convertVAToPA(branch_dst) - 0x1FF00000));
-    u32 ret = branch_dst[2];
-    branch_dst[2] = value;
-    flushCachesRange(branch_dst, 0x3); // lol
-    return ret;
+    void **dst = getHandlerDestination(vector);
+    originalHandlers[(u32)vector] = *dst;
+    if(handler != NULL)
+        *(void**)PA_FROM_VA_PTR(dst) = handler;
 }
 
-static void setupSvcHooks(void)
+static void overrideSVCList(void **arm11SvcTable)
 {
-    u32 *svcTableRW = (u32*)(dspAndAxiWramMapping + ((u32)convertVAToPA(arm11SvcTable) - 0x1FF00000));
-    #define INSTALL_HOOK(orig, hook, syscall) \
-        (orig) = (void*)svcTableRW[(syscall)]; \
-        svcTableRW[(syscall)] = (u32)(hook);
+    memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
 
-    INSTALL_HOOK(svcSleepThread, svcSleepThreadHook, 0xA);
+    for(u32 i = 0; i < overrideListSize; i++)
+        *(void**)PA_FROM_VA_PTR(arm11SvcTable + overrideList[i].index) = overrideList[i].func;
 }
 
 static void setupFatalExceptionHandlers(void)
 {
-    u32 *endPos = exceptionsPage + 0x400;
+    const u32 *endPos = exceptionsPage + 0x400;
 
-    u32 *initFPU_;
+    const u32 *initFPU_;
     for(initFPU_ = exceptionsPage; *initFPU_ != 0xE1A0D002 && initFPU_ < endPos; initFPU_++);
     initFPU_ += 3;
 
-    u32 *freeSpace;
-    for(freeSpace = initFPU_; *freeSpace != 0xFFFFFFFF && freeSpace < endPos; freeSpace++);
-    freeSpace = (u32*)(dspAndAxiWramMapping + ((u32)convertVAToPA(freeSpace) - 0x1FF00000));
-
-    u32 *mcuReboot_;
+    const u32 *mcuReboot_;
     for(mcuReboot_ = exceptionsPage; *mcuReboot_ != 0xE3A0A0C2 && mcuReboot_ < endPos; mcuReboot_++);
     mcuReboot_ -= 2;
 
     initFPU = (void (*)(void))initFPU_;
     mcuReboot = (void (*)(void))mcuReboot_;
 
-    /*void (*flushDataCache)(const void *, u32) = (void*)0xFFF1D56C;
-    void (*flushInstructionCache)(const void *, u32) = (void*)0xFFF1FCCC;*/
+    swapHandlerInVeneer(FIQ, FIQHandler);
+    swapHandlerInVeneer(UNDEFINED_INSTRUCTION, undefinedInstructionHandler);
+    swapHandlerInVeneer(PREFETCH_ABORT, prefetchAbortHandler);
+    swapHandlerInVeneer(DATA_ABORT, dataAbortHandler);
 
-    flushCachesRange(exceptionRWMapping, 0x1000); // I'm being extra cautious here
-    flushCachesRange(exceptionsPage, 0x1000);
+    swapHandlerInVeneer(SVC, NULL); //NULL so it's not replaced
 
-    swapLdrLiteralInHandler(FIQ, (u32)FIQHandler);
-    //swapLdrLiteralInHandler(UNDEFINED_INSTRUCTION, (u32)undefinedInstructionHandler);
-    swapLdrLiteralInHandler(PREFETCH_ABORT, (u32)prefetchAbortHandler);
-    swapLdrLiteralInHandler(DATA_ABORT, (u32)dataAbortHandler);
-    void *svcHandler = getHandlerDestination(SVC);
-    arm11SvcTable = (u32*)svcHandler;
-    while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
-    setupSvcHooks();
-
-    flushCachesRange(exceptionRWMapping, 0x1000); // I'm being extra cautious here
-    flushCachesRange(exceptionsPage, 0x1000);
+    void **arm11SvcTable = (void**)originalHandlers[(u32)SVC];
+    while(*arm11SvcTable != NULL) arm11SvcTable++; //Look for SVC0 (NULL)
+    overrideSVCList(arm11SvcTable);
 }
 
 void main(void)
 {
-    initMappingInfo();
+    isN3DS = getNumberOfCores() == 4;
     setupFatalExceptionHandlers();
 }

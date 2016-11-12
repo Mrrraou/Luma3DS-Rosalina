@@ -189,6 +189,8 @@ typedef union KProcess
 } KProcess;
 
 extern bool isN3DS;
+extern void *officialSVCs[0x7E]; //defined in main.c, will be used everywhere
+
 #define KPROCESS_GET_RVALUE(obj, field)  (isN3DS ? (obj)->N3DS.field : ((*(vu32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? (obj)->O3DS8x.field : (obj)->O3DSPre8x.field))
 
 static inline void *KProcess_ConvertHandle(KProcess *process, Handle handle)

@@ -6,6 +6,8 @@
 #include "port.h"
 #include "menu.h"
 #include "utils.h"
+#include "MyThread.h"
+#include "mmu.h"
 
 #define USED_HANDLES 2
 #define MAX_SESSIONS 8
@@ -47,6 +49,13 @@ static void K_PatchDebugMode(void)
     // of course...
 }
 
+static u8 ALIGN(8) tmpStack[2400];
+static void reconfigureMMUAndInstallHandlers(void)
+{
+    constructL2TranslationTableForRosalina();
+    assertSuccess(runOnAllCores(mapAndInstallRosalinaKernelExtension, tmpStack, 800, 0));
+}
+
 // this is called before main
 void __appInit()
 {
@@ -76,6 +85,10 @@ void __ctru_exit()
 
 void initSystem()
 {
+  svc_7b(K_InitMappingInfo);
+  svc_7b(K_PatchDebugMode);
+  reconfigureMMUAndInstallHandlers();
+
   __sync_init();
   __appInit();
 }
@@ -89,8 +102,6 @@ int main(void)
   s32 index = 1;
   bool terminationRequest = false;
 
-  svc_7b(K_InitMappingInfo);
-  svc_7b(K_PatchDebugMode);
   menuCreateThread();
 
   if(R_FAILED(svcCreatePort(serverHandle, &client_handle, "Rosalina", MAX_SESSIONS)))

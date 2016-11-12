@@ -24,15 +24,10 @@
 
 #include "types.h"
 
-void cleanInvalidateDCacheAndDMB(void);
-bool cannotAccessVA(const void *address);
-
 void FIQHandler(void);
 void undefinedInstructionHandler(void);
 void prefetchAbortHandler(void);
 void dataAbortHandler(void);
-
-extern u32 fatalExceptionVeneers[4*3];
 
 typedef struct __attribute__((packed))
 {

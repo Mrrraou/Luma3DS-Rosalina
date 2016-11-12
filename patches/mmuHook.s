@@ -2,15 +2,15 @@
 
 .create "build/mmuHook.bin", 0
 .arm
-    ; r2 = L1 page table
-    ; Thanks @Dazzozo for that idea
+    ; r2 = L1 table
+    ; Thanks @Dazzozo for giving me that idea
     ; Maps physmem so that, if addr is in physmem(0, 0x30000000), it can be accessed uncached&rwx as addr|(1<<31)
     ; Save the value of all registers
-    
+
     push {r0-r1, r3-r7}
     mov r0, #0
     mov r1, #0x30000000 ; end address
-    ldr r3, =#0x40402  ; supersection (priv: rwx, usr: no access) of strongly ordered memory
+    ldr r3, =#0x40402   ; supersection (priv: rwx, usr: no access) of strongly ordered memory, shared
     loop:
         orr r4, r0, #0x80000000
         orr r5, r0, r3
@@ -28,7 +28,7 @@
         blo loop
     pop {r0-r1, r3-r7}
 
-    mov r3, #0xE0000000 ; instruction that has been patched
+    mov r3, #0xe0000000 ; instruction that has been patched
     bx lr
 
 
