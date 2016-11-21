@@ -4,18 +4,16 @@
 _start:
     push {lr}
 
-    bl flushEntireCaches        @ in case there's dirty data corresponding to the RW dsp&axiwram mapping
-    bl coreBarrier
-
-    mrc p15, 0, r0, c0, c0, 5   @ CPUID register
-    and r0, #3
-    cmp r0, #1
+    mrc p15, 0, r1, c0, c0, 5   @ CPUID register
+    and r1, #3
+    cmp r1, #1
+    wfene
     bne end
 
+    ldr r1, =interruptManager
+    str r0, [r1]
     blx main
+    sev
 
     end:
-    bl coreBarrier
-    bl flushEntireCaches        @ make sure our changes are seen 
-
     pop {pc}

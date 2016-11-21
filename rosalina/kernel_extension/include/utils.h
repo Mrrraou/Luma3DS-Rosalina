@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "kernel.h"
 
 // For accessing physmem uncached (and directly)
 #define PA_PTR(addr)            (void *)((u32)(addr) | 1 << 31)
@@ -24,6 +25,10 @@ static inline void *decodeARMBranch(const void *src)
 }
 
 void *convertVAToPA(const void *addr);
-void flushEntireCaches(void);
-
 u32 getNumberOfCores(void);
+
+extern InterruptEvent *customInterruptEvent;
+typedef void (*SGI0Callback_t)(void);
+
+// http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0360f/CCHDIFIJ.html
+void executeFunctionOnCores(SGI0Callback_t func, u32 targetList, u32 targetListFilter);

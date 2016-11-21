@@ -8,19 +8,19 @@
 #define PA_PTR(addr)            (void *)((u32)(addr) | 1 << 31)
 #define PA_FROM_VA_PTR(addr)    PA_PTR(convertVAToPA(addr))
 
-static inline void assertSuccess(Result res)
+static inline void *decodeARMBranch(const void *src)
 {
-    if(R_FAILED(res)) svcBreak(USERBREAK_PANIC);
+    u32 instr = *(const u32 *)src;
+    s32 off = (instr & 0xFFFFFF) << 2;
+    off = (off << 6) >> 6; // sign extend
+
+    return (void *)((const u8 *)src + 8 + off);
 }
 
-typedef u32(*backdoor_fn)(u32 arg0, u32 arg1);
-u32 svc_7b(void* entry_fn, ...); // can pass up to two arguments to entry_fn(...)
+void svc_7b(void* entry_fn, ...); // can pass up any number of args
+void svc_7b_interrupts_enabled(void* entry_fn, ...); // up to 3 args can be passed
 
 void *convertVAToPA(const void *VA);
+void flushEntireCaches(void);
 
-u32 *getTTB1Address(void);
-
-void dsb(void);
-
-extern const u8 kernel_extension[];
-extern const u32 kernel_extension_size;
+u32 getNumberOfCores(void);

@@ -315,14 +315,12 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     u8 *freeK11Space;
     u32 *arm11SvcHandler,
         *arm11ExceptionsPage;
+    u32 baseK11VA;
 
-    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &arm11SvcHandler, &arm11ExceptionsPage);
-
-    u32 *freeSpace;
-    for(freeSpace = arm11ExceptionsPage; freeSpace < arm11ExceptionsPage + 0x400 && *freeSpace != 0xFFFFFFFF; freeSpace++);
-    freeK11Space = (u8 *)freeSpace;
+    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
 
     installMMUHook(arm11Section1, section[1].size, &freeK11Space);
+    installK11MainHook(arm11Section1, section[1].size, baseK11VA, arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
 
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
@@ -349,8 +347,6 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
         //Restore svcBackdoor
         reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
     }
-
-    if(isN3DS) patchN3DSK11ProcessorAffinityChecks(arm11Section1, section[1].size);
 
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);

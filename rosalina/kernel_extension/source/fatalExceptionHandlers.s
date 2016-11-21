@@ -41,8 +41,7 @@
         ldr sp, =_fatalExceptionOccured
         ldr sp, [sp]
         cmp sp, #0
-        wfine
-        bne .
+        bne _die_loop
 
         ldr sp, =_regs
         stmia sp, {r0-r7}
@@ -56,6 +55,12 @@
 .arm
 .balign 4
 
+_die:
+    cpsid aif
+_die_loop:
+    wfi
+    b _die_loop
+
 _commonHandler:
     ldr r0, =_fatalExceptionOccured
     mov r4, #1
@@ -66,7 +71,12 @@ _commonHandler:
         cmp r3, #0
         bne _try_lock
 
-    mcr p15, 0, r3, c7, c10, 5   @ Drain Memory Barrier
+    push {r1, lr}
+    adr r0, _die
+    mov r1, #0xF
+    mov r2, #0
+    bl executeFunctionOnCores
+    pop {r1, lr}
 
     mrs r2, spsr
     mrs r3, cpsr

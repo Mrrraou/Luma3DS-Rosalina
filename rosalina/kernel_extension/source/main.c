@@ -3,6 +3,7 @@
 #include "svc.h"
 #include "memory.h"
 
+InterruptManager *interruptManager;
 bool isN3DS;
 static const u32 *const exceptionsPage = (const u32 *)0xFFFF0000;
 
@@ -13,6 +14,12 @@ void *originalHandlers[7] = {NULL};
 void *officialSVCs[0x7E] = {NULL};
 
 enum VECTORS { RESET = 0, UNDEFINED_INSTRUCTION, SVC, PREFETCH_ABORT, DATA_ABORT, RESERVED, IRQ, FIQ };
+
+static void setupSGI0Handler(void)
+{
+    for(u32 i = 0; i < getNumberOfCores(); i++)
+        interruptManager->N3DS.privateInterrupts[i][0].interruptEvent = customInterruptEvent;
+}
 
 static inline void **getHandlerDestination(enum VECTORS vector)
 {
@@ -31,7 +38,6 @@ static inline void swapHandlerInVeneer(enum VECTORS vector, void *handler)
 static void overrideSVCList(void **arm11SvcTable)
 {
     memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
-
     for(u32 i = 0; i < overrideListSize; i++)
         *(void**)PA_FROM_VA_PTR(arm11SvcTable + overrideList[i].index) = overrideList[i].func;
 }
@@ -66,5 +72,6 @@ static void setupFatalExceptionHandlers(void)
 void main(void)
 {
     isN3DS = getNumberOfCores() == 4;
+    setupSGI0Handler();
     setupFatalExceptionHandlers();
 }

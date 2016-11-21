@@ -188,6 +188,58 @@ typedef union KProcess
     KProcessN3DS N3DS;
 } KProcess;
 
+struct InterruptEvent;
+typedef struct InterruptEvent InterruptEvent;
+struct KInterruptEvent;
+typedef struct KInterruptEvent KInterruptEvent;
+
+// See https://www.3dbrew.org/wiki/ARM11_Interrupts#InterruptEvent
+struct InterruptEvent
+{
+    struct
+    {
+        KInterruptEvent* (*handleInterruptAndGetKInterruptEvent)(InterruptEvent *this, u32 interruptID); // actual interrupt handler
+    } *vtable;
+};
+
+struct KInterruptEvent
+{
+    InterruptEvent interruptEvent;
+    u32 unknown;
+};
+
+typedef struct InterruptData
+{
+    InterruptEvent *interruptEvent;
+    bool willBeMasked, isMasked;
+    u8 priority;
+    u8 padding;
+} InterruptData;
+
+typedef struct InterruptManagerO3DS
+{
+    InterruptData privateInterrupts[2][32];
+    InterruptData publicEvents[0x60];
+    KThread *actingThread;
+    s16 errorTracker;
+    s16 padding;
+} InterruptManagerO3DS;
+
+typedef struct InterruptManagerN3DS
+{
+    InterruptData privateInterrupts[4][32];
+    InterruptData publicEvents[0x60];
+    KThread *actingThread;
+    s16 errorTracker;
+    s16 padding;
+} InterruptManagerN3DS;
+
+typedef union InterruptManager
+{
+    InterruptManagerO3DS O3DS;
+    InterruptManagerN3DS N3DS;
+} InterruptManager;
+
 extern bool isN3DS;
 #define KPROCESS_GET_RVALUE(obj, field)  (isN3DS ? (obj)->N3DS.field : ((*(vu32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? (obj)->O3DS8x.field : (obj)->O3DSPre8x.field))
 

@@ -27,6 +27,7 @@
 #include "../build/svcGetCFWInfopatch.h"
 #include "../build/twl_k11modulespatch.h"
 #include "../build/mmuHookpatch.h"
+#include "../build/k11MainHookpatch.h"
 #include "utils.h"
 
 #define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
@@ -42,18 +43,28 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
     return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
 }
 
-u32 *getKernel11Info(u8 *pos, u32 size, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
+u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
 {
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
 
-    *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, 4) - 0xB;
+    *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    u32 *arm11SvcTable;
+
+    *arm11ExceptionsPage -= 0xB;
     u32 svcOffset = (-(((*arm11ExceptionsPage)[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
-    u32 *arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
-    *arm11SvcHandler = arm11SvcTable;
+    u32 pointedInstructionVA = 0xFFFF0008 - svcOffset;
+    *baseK11VA = pointedInstructionVA & 0xFFFF0000; //This assumes that the pointed instruction has an offset < 0x10000, iirc that's always the case
+    arm11SvcTable = *arm11SvcHandler = (u32 *)(pos + *(u32 *)(pos + pointedInstructionVA - *baseK11VA + 8) - *baseK11VA); //SVC handler address
     while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
+
+    u32 *freeSpace;
+    for(freeSpace = *arm11ExceptionsPage; freeSpace < *arm11ExceptionsPage + 0x400 && *freeSpace != 0xFFFFFFFF; freeSpace++);
+    *freeK11Space = (u8 *) freeSpace;
 
     return arm11SvcTable;
 }
+
 
 void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space)
 {
@@ -67,6 +78,41 @@ void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space)
     (*freeK11Space) += mmuHook_size;
 }
 
+void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)
+{
+    const u8 pattern[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA};
+
+    u32 *off = (u32 *)memsearch(pos, pattern, size, 12);
+    // look for cpsie i and place our function call in the nop 2 instructions before
+    while(*off != 0xF1080080) off--;
+    off -= 2;
+
+    memcpy(*freeK11Space, k11MainHook, k11MainHook_size);
+
+    u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
+    *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase);
+
+    off = (u32 *)(pos +  (arm11SvcTable[0x50] - baseK11VA)); //svcBindInterrupt
+    while(off[0] != 0xE1A05000 || off[1] != 0xE2100102 || off[2] != 0x5A00000B) off++;
+    off--;
+
+    signed int offset = (*off & 0xFFFFFF) << 2;
+    offset = offset << 6 >> 6; // sign extend
+    offset += 8;
+
+    u32 InterruptManager_mapInterrupt = baseK11VA + ((u8 *)off - pos) + offset;
+    u32 interruptManager = *(u32 *)(off - 4 + (*(off - 6) & 0xFFF) / 4);
+
+    off = (u32 *)memsearch(*freeK11Space, "mngr", k11MainHook_size, 4);
+    off[0] = interruptManager;
+    off[1] = InterruptManager_mapInterrupt;
+
+    // Relocate stuff
+    off[2] += relocBase;
+    off[3] += relocBase;
+
+    (*freeK11Space) += k11MainHook_size;
+}
 void patchSignatureChecks(u8 *pos, u32 size)
 {
     const u16 sigPatch[2] = {0x2000, 0x4770};
@@ -164,7 +210,7 @@ u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 siz
   return 0;
 }
 
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space, u8 *arm11ExceptionsPage)
+void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage)
 {
     //Official implementation of svcBackdoor
     const u8 svcBackdoor[40] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
@@ -182,7 +228,7 @@ void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space, u8 *
     {
         memcpy(*freeK11Space, svcBackdoor, 40);
 
-        arm11SvcTable[0x7B] = 0xFFFF0000 + *freeK11Space - arm11ExceptionsPage;
+        arm11SvcTable[0x7B] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
         (*freeK11Space) += 40;
     }
 }

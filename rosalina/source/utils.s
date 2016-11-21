@@ -1,28 +1,50 @@
 .text
 .arm
-.align 4
-
-@ Those subs are courtesy of TuxSH
+.balign 4
 
 .global svc_7b
 .type   svc_7b, %function
+@ The callback can take up to 3 args. Itsreturn value is discarded
 svc_7b:
-    push {r0, r1, r2}
-    mov r3, sp
-    add r0, pc, #12
+    push {r0-r3}
+    adr r0, _svc_7b_kernel_entry
     svc 0x7b
-    add sp, sp, #8
-    ldr r0, [sp], #4
+    add sp, #16
     bx lr
-    cpsid aif
-    ldr r2, [r3], #4
-    ldmfd r3!, {r0, r1}
-    push {r3, lr}
-    blx r2
-    pop {r3, lr}
-    str r0, [r3, #-4]!
-    mov r0, #0
+
+    _svc_7b_kernel_entry:
+        cpsid aif                   @ Disable interrupts
+
+        add sp, #8
+        ldr r12, [sp], #4
+        ldmfd sp, {r0-r2}
+        sub sp, #12
+
+        push {lr}
+        blx r12
+        pop {pc}
+
+
+.global svc_7b_interrupts_enabled
+.type   svc_7b_interrupts_enabled, %function
+svc_7b_interrupts_enabled:
+    push {r0-r3}
+    adr r0, _svc_7b_interrupts_enabled_kernel_entry
+    svc 0x7b
+    add sp, #16
     bx lr
+
+    _svc_7b_interrupts_enabled_kernel_entry:
+        cpsid aif
+        ldmfd sp!, {r3,lr}
+        ldr r12, [sp], #4
+        ldmfd sp!, {r0-r2}
+        mov sp, r3
+
+        push {lr}
+        cpsie aif
+        blx r12
+        pop {pc}                @ This will skip the tail of svcBackdoor, but it doesn't matter since we're doing its work
 
 .global convertVAToPA
 .type   convertVAToPA, %function
@@ -40,30 +62,43 @@ convertVAToPA:
     movne r0, #0
     bx lr
 
-.global getTTB1Address
-.type   getTTB1Address, %function
-getTTB1Address:
-    mrc p15, 0, r0, c2, c0, 1   @ Read Translation Table Base Register 1 (the one that isn't changed on context switches)
-    lsr r0, #14
-    lsl r0, #14
+
+.global getNumberOfCores
+.type   getNumberOfCores, %function
+getNumberOfCores:
+    ldr r0, =(0x17e00004 | 1 << 31)
+    ldr r0, [r0]
+    and r0, #3
+    add r0, #1
     bx lr
 
-.global dsb
-.type   dsb, %function
-dsb:
+.global flushEntireCaches
+.type   flushEntireCaches, %function
+flushEntireCaches:
+    push {lr}
+
+    bl getNumberOfCores
+    cmp r0, #4                          @ are we on N3DS?
+    bne internalCachesFlush
+    ldr r0, =(0x17e10100 | 1 << 31)
+    ldr r0, [r0]
+    tst r0, #1                          @ is the L2C enabled?
+    beq internalCachesFlush
+
+    ldr r0, =0xffff
+    ldr r1, =(0x17e10730 | 1 << 31)
+    str r0, [r1, #0xcc]                @ clean and invalidate by way
+
+    _L2C_sync:
+        ldr r0, [r1]                   @ L2C cache sync register
+        tst r0, #1
+        bne _L2C_sync
+
+    internalCachesFlush:
     mov r0, #0
-    mcr p15, 0, r3, c7, c10, 4
-    bx lr
+    mcr p15, 0, r0, c7, c14, 0      @ clean and invalidate the entire DCache
+    mcr p15, 0, r0, c7, c10, 5      @ data memory barrier
+    mcr p15, 0, r0, c7, c5,  0      @ invalidate the entire ICache & branch target cache
+    mcr p15, 0, r0, c7, c10, 4      @ data synchronization barrier
 
-.section .data
-
-.p2align 12
-.global kernel_extension
-kernel_extension: .incbin "build/kernel_extension.bin"
-kernel_extension_end:
-
-.section .rodata
-
-.balign 4
-.global kernel_extension_size
-kernel_extension_size: .word kernel_extension_end - kernel_extension
+    pop {pc}

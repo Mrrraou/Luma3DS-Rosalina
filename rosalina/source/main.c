@@ -49,11 +49,26 @@ static void K_PatchDebugMode(void)
     // of course...
 }
 
-static u8 ALIGN(8) tmpStack[2400];
+static void K_ConfigureAndSendSGI0ToAllCores(void)
+{
+    // see /patches/k11MainHook.s
+    u32 *off;
+    // 68 64 6C 72 = "hdlr"
+
+    for(off = (u32 *)0xFFFF0000; off < (u32 *)0xFFFF1000 && *off != 0x726C6468; off++);
+
+    // Caches? What are caches?
+    *(volatile void **)PA_FROM_VA_PTR(off) = PA_FROM_VA_PTR(mapKernelExtensionAndSetupExceptionHandlers);
+    *(volatile void **)PA_FROM_VA_PTR(off + 1) = PA_FROM_VA_PTR(L2MMUTableFor0x40000000);
+    *(volatile void **)PA_FROM_VA_PTR(off + 2) = PA_FROM_VA_PTR(flushEntireCaches);
+
+    *(vu32 *)PA_PTR(0x17E00000 + 0x1000 + 0xF00) = 0xF0000; // http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0360f/CACGDJJC.html
+}
+
 static void reconfigureMMUAndInstallHandlers(void)
 {
-    constructL2TranslationTableForRosalina();
-    assertSuccess(runOnAllCores(mapAndInstallRosalinaKernelExtension, tmpStack, 800, 0));
+    svc_7b(constructL2TranslationTableForRosalina);
+    svc_7b_interrupts_enabled(K_ConfigureAndSendSGI0ToAllCores);
 }
 
 // this is called before main
