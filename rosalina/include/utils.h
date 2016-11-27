@@ -17,10 +17,13 @@ static inline void *decodeARMBranch(const void *src)
     return (void *)((const u8 *)src + 8 + off);
 }
 
-void svc_7b(void* entry_fn, ...); // can pass up any number of args
-void svc_7b_interrupts_enabled(void* entry_fn, ...); // up to 3 args can be passed
+Result svc_7b(void* entry_fn, ...);
 
 void *convertVAToPA(const void *VA);
-void flushEntireCaches(void);
 
 u32 getNumberOfCores(void);
+
+void flushEntireICache(void);
+
+extern u8 kernel_extension[];
+extern u32 kernel_extension_size;

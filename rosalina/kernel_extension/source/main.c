@@ -1,15 +1,11 @@
 #include "utils.h"
+#include "synchronization.h"
 #include "fatalExceptionHandlers.h"
 #include "svc.h"
 #include "memory.h"
 
-InterruptManager *interruptManager;
 bool isN3DS;
 static const u32 *const exceptionsPage = (const u32 *)0xFFFF0000;
-
-void (*initFPU)(void);
-void (*mcuReboot)(void);
-
 void *originalHandlers[7] = {NULL};
 void *officialSVCs[0x7E] = {NULL};
 
@@ -44,19 +40,6 @@ static void overrideSVCList(void **arm11SvcTable)
 
 static void setupFatalExceptionHandlers(void)
 {
-    const u32 *endPos = exceptionsPage + 0x400;
-
-    const u32 *initFPU_;
-    for(initFPU_ = exceptionsPage; *initFPU_ != 0xE1A0D002 && initFPU_ < endPos; initFPU_++);
-    initFPU_ += 3;
-
-    const u32 *mcuReboot_;
-    for(mcuReboot_ = exceptionsPage; *mcuReboot_ != 0xE3A0A0C2 && mcuReboot_ < endPos; mcuReboot_++);
-    mcuReboot_ -= 2;
-
-    initFPU = (void (*)(void))initFPU_;
-    mcuReboot = (void (*)(void))mcuReboot_;
-
     swapHandlerInVeneer(FIQ, FIQHandler);
     swapHandlerInVeneer(UNDEFINED_INSTRUCTION, undefinedInstructionHandler);
     swapHandlerInVeneer(PREFETCH_ABORT, prefetchAbortHandler);
@@ -69,9 +52,32 @@ static void setupFatalExceptionHandlers(void)
     overrideSVCList(arm11SvcTable);
 }
 
-void main(void)
+
+struct Parameters
+{
+    void (*SGI0HandlerCallback)(struct Parameters *, u32 *);
+    InterruptManager *interruptManager;
+    u32 *L2MMUTable; // bit31 mapping
+
+    void (*flushEntireICache)(void);
+
+    void (*flushEntireDCacheAndL2C)(void);
+    void (*initFPU)(void);
+    void (*mcuReboot)(void);
+    void (*coreBarrier)(void);
+};
+
+void main(volatile struct Parameters *p)
 {
     isN3DS = getNumberOfCores() == 4;
+    interruptManager = p->interruptManager;
+
+    flushEntireICache = p->flushEntireICache;
+    flushEntireDCacheAndL2C = p->flushEntireDCacheAndL2C;
+    initFPU = p->initFPU;
+    mcuReboot = p->mcuReboot;
+    coreBarrier = p->coreBarrier;
+
     setupSGI0Handler();
     setupFatalExceptionHandlers();
 }

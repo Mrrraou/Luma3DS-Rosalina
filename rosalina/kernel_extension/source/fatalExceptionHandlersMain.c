@@ -33,7 +33,7 @@ void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
     ExceptionDumpHeader dumpHeader;
 
     u8 codeDump[CODE_DUMP_SIZE];
-    u8 *finalBuffer = convertVAToPA((void *)0xE5000000) == NULL ? (u8 *)0xF5000000 : (u8 *)0xE5000000; //VA for 0x25000000
+    u8 *finalBuffer = (u8 *)PA_PTR(0x25000000);
     u8 *final = finalBuffer;
 
     dumpHeader.magic[0] = 0xDEADC0DE;

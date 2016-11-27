@@ -25,10 +25,16 @@ static inline void *decodeARMBranch(const void *src)
 }
 
 void *convertVAToPA(const void *addr);
-u32 getNumberOfCores(void);
+u32 getCurrentCoreID(void);
+bool enableIRQ(void);
 
+extern InterruptManager *interruptManager;
 extern InterruptEvent *customInterruptEvent;
-typedef void (*SGI0Callback_t)(void);
 
-// http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0360f/CCHDIFIJ.html
-void executeFunctionOnCores(SGI0Callback_t func, u32 targetList, u32 targetListFilter);
+extern void (*flushEntireICache)(void);
+extern void (*flushEntireDCacheAndL2C)(void); // reentrant, but unsafe in fatal exception contexts in case the kernel is f*cked up
+extern void (*initFPU)(void);
+extern void (*mcuReboot)(void);
+extern void (*coreBarrier)(void);
+
+bool isN3DS;

@@ -28,6 +28,7 @@
 #include "../build/twl_k11modulespatch.h"
 #include "../build/mmuHookpatch.h"
 #include "../build/k11MainHookpatch.h"
+#include "../build/svcBackdoorspatch.h"
 #include "utils.h"
 
 #define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
@@ -103,13 +104,15 @@ void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u3
     u32 InterruptManager_mapInterrupt = baseK11VA + ((u8 *)off - pos) + offset;
     u32 interruptManager = *(u32 *)(off - 4 + (*(off - 6) & 0xFFF) / 4);
 
-    off = (u32 *)memsearch(*freeK11Space, "mngr", k11MainHook_size, 4);
-    off[0] = interruptManager;
-    off[1] = InterruptManager_mapInterrupt;
+    off = (u32 *)memsearch(*freeK11Space, "bind", k11MainHook_size, 4);
+
+    *off++ = InterruptManager_mapInterrupt;
 
     // Relocate stuff
-    off[2] += relocBase;
-    off[3] += relocBase;
+    *off++ += relocBase;
+    *off++ += relocBase;
+    off++;
+    *off++ = interruptManager;
 
     (*freeK11Space) += k11MainHook_size;
 }
@@ -210,27 +213,19 @@ u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 siz
   return 0;
 }
 
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage)
+void reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage)
 {
-    //Official implementation of svcBackdoor
-    const u8 svcBackdoor[40] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
-                                0x0F, 0x1C, 0x81, 0xE3,  //orr   r1, r1, #0xf00
-                                0x28, 0x10, 0x81, 0xE2,  //add   r1, r1, #0x28
-                                0x00, 0x20, 0x91, 0xE5,  //ldr   r2, [r1]
-                                0x00, 0x60, 0x22, 0xE9,  //stmdb r2!, {sp, lr}
-                                0x02, 0xD0, 0xA0, 0xE1,  //mov   sp, r2
-                                0x30, 0xFF, 0x2F, 0xE1,  //blx   r0
-                                0x03, 0x00, 0xBD, 0xE8,  //pop   {r0, r1}
-                                0x00, 0xD0, 0xA0, 0xE1,  //mov   sp, r0
-                                0x11, 0xFF, 0x2F, 0xE1}; //bx    r1
-
     if(!arm11SvcTable[0x7B])
     {
-        memcpy(*freeK11Space, svcBackdoor, 40);
+        memcpy(*freeK11Space, svcBackdoors, 40);
 
         arm11SvcTable[0x7B] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
         (*freeK11Space) += 40;
     }
+
+    memcpy(*freeK11Space, svcBackdoors + 40, svcBackdoors_size - 40);
+    arm11SvcTable[0x2F] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
+    (*freeK11Space) += (svcBackdoors_size - 40);
 }
 
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)

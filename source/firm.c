@@ -343,10 +343,9 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     {
         //Apply anti-anti-DG patches
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
-
-        //Restore svcBackdoor
-        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
     }
+
+    reimplementSvcBackdoorAndImplementCustomBackdoor(arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
 
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);

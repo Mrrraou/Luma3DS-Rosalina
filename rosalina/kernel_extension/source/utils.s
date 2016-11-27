@@ -17,60 +17,48 @@ convertVAToPA:
     movne r0, #0
     bx lr
 
-.global getNumberOfCores
-.type   getNumberOfCores, %function
-getNumberOfCores:
-    ldr r0, =((0x17e00000 + 4) | 1 << 31)
-    ldr r0, [r0]
+.global getCurrentCoreID
+.type   getCurrentCoreID, %function
+getCurrentCoreID:
+    mrc p15, 0, R0, c0, c0, 5
     and r0, #3
-    add r0, #1
     bx lr
 
-.global SGI0Handler
-.type   SGI0Handler, %function
-SGI0Handler:
-    push {lr}
+.global enableIRQ
+.type   enableIRQ, %function
+enableIRQ:
+    mrs r0, cpsr
+    lsr r0, #7
+    and r0, #1
 
-    ldr r0, =((0x17e00000 + 0x1c0) | 1<<31)   @ Interrupt Acknoledge register
-    ldr r0, [r0]
-    lsr r0, #10
-    and r0, #3                                @ Get interrupt source
+    cpsie i
+    bx lr
 
-    ldr r1, =_SGI0HandlersPerCore
-    ldr r12, [r1, r0, lsl #2]
-
-    blx r12
-
-    mov r0, #0
-
-    pop {pc}
-
-.global executeFunctionOnCores
-.type   executeFunctionOnCores, %function
-executeFunctionOnCores:
-    push {r4, lr}
-
-    mrc p15, 0, r3, c0, c0, 5   @ CPUID register
-    and r3, #3
-    ldr r4, =_SGI0HandlersPerCore
-    str r0, [r4, r3, lsl #2]
-
-    and r1, #0xF
-    and r2, #3
-    mov r0, #0
-    orr r0, r1, lsl #16
-    orr r0, r2, lsl #24
-    ldr r1, =((0x17e00000 + 0x1000 + 0x400) | 1<<31)
-    str r0, [r1]                @ Send SGI0 to all cores except the current one
-
-    pop {r4, pc}
 .bss
+.balign 4
 
-_SGI0HandlersPerCore: .word 0, 0, 0, 0
+.global interruptManager
+interruptManager: .word 0
+.global flushEntireICache
+flushEntireICache: .word 0
+.global flushEntireDCacheAndL2C
+flushEntireDCacheAndL2C: .word 0
+.global initFPU
+initFPU: .word 0
+.global mcuReboot
+mcuReboot: .word 0
+.global coreBarrier
+coreBarrier: .word 0
+
+.global isN3DS
+isN3DS: .byte 0
+
+.balign 4
 
 .section .data
+.balign 4
 
-_customInterruptEventVtable: .word SGI0Handler
+_customInterruptEventVtable: .word SGI0Handler  @ see synchronization.c
 _customInterruptEventObj: .word _customInterruptEventVtable
 .global customInterruptEvent
 customInterruptEvent: .word _customInterruptEventObj

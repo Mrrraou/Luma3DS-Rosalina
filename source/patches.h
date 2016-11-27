@@ -58,7 +58,7 @@ void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
 void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 void patchFirmWrites(u8 *pos, u32 size);
 void patchOldFirmWrites(u8 *pos, u32 size);
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage);
+void reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage);
 u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size); // Rosalina
 void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space, u8 *arm11ExceptionsPage); // <- **to be reintroduced in Luma3DS itself**
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);

@@ -47,6 +47,7 @@ typedef s32 Result;                 ///< Function result.
 /// Packs a struct (and other types?) so it won't include padding bytes.
 #define PACKED     __attribute__((packed))
 
+#define UNUSED	   __attribute__((unused))
 /// Packs a system version from its components.
 #define SYSTEM_VERSION(major, minor, revision) \
-	(((major)<<24)|((minor)<<16)|((revision)<<8))
+    (((major)<<24)|((minor)<<16)|((revision)<<8))

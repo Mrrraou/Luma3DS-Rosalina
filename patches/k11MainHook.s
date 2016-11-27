@@ -26,14 +26,18 @@ bindSGI0:
     pop {r0-r4, pc}
 
 executeCustomHandler:
-    push {lr}
+    push {r4, lr}
+    mrs r4, cpsr
     adr r0, customHandler
     bl convertVAToPA
     orr r0, #(1 << 31)
     ldr r12, [r0]
+
     blx r12
+
     mov r0, #0
-    pop {pc}
+    msr cpsr_cx, r4
+    pop {r4, pc}
 
 convertVAToPA:
     mov r1, #0x1000
@@ -51,12 +55,15 @@ convertVAToPA:
 .pool
 
 ; Result InterruptManager::mapInterrupt(InterruptManager *this, InterruptEvent *iEvent, u32 interruptID, u32 coreID, s32 priority, bool willBeMasked, bool isLevelHighActive);
-interruptManager: .ascii "mngr"
 InterruptManager_mapInterrupt: .ascii "bind"
 
 _vtable: .word executeCustomHandler
 interruptEvent: .word _vtable
 
-customHandler: .ascii "hdlr", "rsvd", "rsvd" ; will be replaced
+parameters:
+customHandler: .ascii "hdlr"
+interruptManager: .word 0
+L2MMUTable: .word 0
+funcs: .word 0,0,0,0,0
 
 .close

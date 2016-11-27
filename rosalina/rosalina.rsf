@@ -66,7 +66,6 @@ AccessControlInfo:
     ControlProcessMemory: 0x70
     MapProcessMemory: 0x71
     UnmapProcessMemory: 0x72
-    Backdoor: 0x7B
     KernelSetState: 0x7C
     AcceptSession: 74
     ArbitrateAddress: 34
@@ -111,8 +110,8 @@ AccessControlInfo:
     ReplyAndReceive3: 77
     ReplyAndReceive4: 78
     ReplyAndReceive: 79
-    SendSyncRequest1: 46
-    SendSyncRequest2: 47
+    SendSyncRequest1: 46    # GetCFWInfo
+    SendSyncRequest2: 47    # CustomBackdoor
     SendSyncRequest3: 48
     SendSyncRequest4: 49
     SendSyncRequest: 50

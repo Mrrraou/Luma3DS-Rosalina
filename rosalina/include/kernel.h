@@ -1,6 +1,7 @@
 #pragma once
 
 #include <3ds/types.h>
+#include <3ds/os.h>
 
 typedef struct KLinkedListNode
 {

@@ -71,10 +71,11 @@ _commonHandler:
         cmp r3, #0
         bne _try_lock
 
-    push {r1, lr}
+    push {r1, lr}           @ attempt to hang the other cores
     adr r0, _die
     mov r1, #0xF
-    mov r2, #0
+    mov r2, #1
+    mov r3, #0
     bl executeFunctionOnCores
     pop {r1, lr}
 
@@ -102,20 +103,40 @@ _commonHandler:
     fmrx r7, fpexc
     fmrx r8, fpinst
     fmrx r9, fpinst2
-
-    stmia r0!, {r4-r9}
-
     bic r3, #(1<<31)
     fmxr fpexc, r3          @ clear the VFP11 exception flag (if it's set)
 
-    ldr r0, =_regs
-    mrc p15, 0, r2, c0, c0, 5    @ CPU ID register
-
-    blx fatalExceptionHandlersMain
+    stmia r0!, {r4-r9}
 
     mov r0, #0
     mcr p15, 0, r0, c7, c14, 0   @ Clean and Invalidate Entire Data Cache
     mcr p15, 0, r0, c7, c10, 4   @ Drain Synchronization Barrier
+
+    ldr r0, =isN3DS
+    ldr r0, [r0]
+    cmp r0, #0
+    beq _no_L2C
+    ldr r0, =(0x17e10100 | 1 << 31)
+    ldr r0, [r0]
+    tst r0, #1                          @ is the L2C enabled?
+    beq _no_L2C
+
+    ldr r0, =0xffff
+    ldr r2, =(0x17e10730 | 1 << 31)
+    str r0, [r2, #0x4c]                @ invalidate by way
+
+    _L2C_sync:
+        ldr r0, [r2]                   @ L2C cache sync register
+        tst r0, #1
+        bne _L2C_sync
+
+    _no_L2C:
+    mov r0, #0
+    mcr p15, 0, r0, c7, c10, 5   @ Drain Memory Barrier
+    ldr r0, =_regs
+    mrc p15, 0, r2, c0, c0, 5    @ CPU ID register
+    blx fatalExceptionHandlersMain
+
     ldr r12, =mcuReboot
     ldr r12, [r12]
     bx r12
