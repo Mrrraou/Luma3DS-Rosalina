@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "ifile.h"
 #include "menus.h"
+#include "utils.h"
 
 u32 waitInput(void)
 {

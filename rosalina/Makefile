@@ -16,6 +16,7 @@ name := $(shell basename $(CURDIR))
 dir_source := source
 dir_include := include
 dir_build := build
+dir_kernel_extension := kernel_extension
 
 LIBS := -lctru
 LIBDIRS	:= $(CTRULIB)
@@ -27,7 +28,7 @@ ARCH := -march=armv6k -mcpu=mpcore -mfloat-abi=hard
 ASFLAGS := -g $(ARCH)
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -mtp=soft -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
 	  -ffunction-sections -fdata-sections $(INCLUDE) -I$(dir_include) -DARM11 -D_3DS
-LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs -g $(ARCH) -mtp=soft -L$(DEVKITPRO)/libctru/lib
+LDFLAGS := -specs=3dsx.specs -g $(ARCH) -mtp=soft -L$(DEVKITPRO)/libctru/lib -Wl,--section-start,.text=0x14000000
 
 # Luma3DS CFW info
 revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
@@ -42,6 +43,7 @@ all: $(name).cxi
 
 .PHONY: clean
 clean:
+	@$(MAKE) -C $(dir_kernel_extension) clean
 	@rm -rf $(dir_build)
 
 $(name).cxi: $(dir_build)/$(name).elf
@@ -50,14 +52,18 @@ $(name).cxi: $(dir_build)/$(name).elf
 $(dir_build)/$(name).elf: $(objects)
 	$(LINK.o) $(OUTPUT_OPTION) $^ $(LIBPATHS) $(LIBS)
 
+$(dir_build)/kernel_extension.bin: $(dir_kernel_extension)
+	@mkdir -p "$(@D)"
+	@$(MAKE) -C $<
+
 $(dir_build)/memory.o : CFLAGS += -O3
 $(dir_build)/luma.o : CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
 
-$(dir_build)/%.o: $(dir_source)/%.c
+$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/kernel_extension.bin
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
-$(dir_build)/%.o: $(dir_source)/%.s
+$(dir_build)/%.o: $(dir_source)/%.s $(dir_build)/kernel_extension.bin
 	@mkdir -p "$(@D)"
 	$(COMPILE.s) $(OUTPUT_OPTION) $<
 include $(call rwildcard, $(dir_build), *.d)

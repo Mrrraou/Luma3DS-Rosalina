@@ -18,8 +18,7 @@ commit := $(shell git rev-parse --short=8 HEAD)
 dir_source := source
 dir_patches := patches
 dir_loader := loader
-dir_arm9_exceptions := exceptions/arm9
-dir_arm11_exceptions := exceptions/arm11
+dir_arm9_exceptions := arm9_exceptions
 dir_injector := injector
 dir_mset := CakeHax
 dir_ninjhax := CakeBrah
@@ -35,8 +34,9 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/k11modulespatch.h $(dir_build)/svcGetCFWInfopatch.h $(dir_build)/twl_k11modulespatch.h \
-		  $(dir_build)/arm9_exceptions.h $(dir_build)/arm11_exceptions.h $(dir_build)/injector.h $(dir_build)/loader.h
+bundled = $(dir_build)/rebootpatch.h $(dir_build)/emunandpatch.h $(dir_build)/mmuHookpatch.h $(dir_build)/k11MainHookpatch.h $(dir_build)/svcGetCFWInfopatch.h \
+		  $(dir_build)/svcBackdoorspatch.h $(dir_build)/twl_k11modulespatch.h \
+		  $(dir_build)/arm9_exceptions.h $(dir_build)/injector.h $(dir_build)/loader.h
 .PHONY: all
 all: launcher a9lh ninjhax
 
@@ -58,7 +58,6 @@ clean:
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_arm9_exceptions) clean
-	@$(MAKE) -C $(dir_arm11_exceptions) clean
 	@$(MAKE) -C $(dir_injector) clean
 	@rm -rf $(dir_out) $(dir_build)
 
@@ -96,15 +95,25 @@ $(dir_build)/rebootpatch.h: $(dir_patches)/reboot.s
 	@armips $<
 	@bin2c -o $@ -n reboot $(@D)/reboot.bin
 
-$(dir_build)/k11modulespatch.h: $(dir_patches)/k11modules.s
-	@mkdir -p "$(@D)"
-	@armips $<
-	@bin2c -o $@ -n k11modules $(@D)/k11modules.bin
-
 $(dir_build)/svcGetCFWInfopatch.h: $(dir_patches)/svcGetCFWInfo.s
 	@mkdir -p "$(@D)"
 	@armips $<
 	@bin2c -o $@ -n svcGetCFWInfo $(@D)/svcGetCFWInfo.bin
+
+$(dir_build)/svcBackdoorspatch.h: $(dir_patches)/svcBackdoors.s
+	@mkdir -p "$(@D)"
+	@armips $<
+	@bin2c -o $@ -n svcBackdoors $(@D)/svcBackdoors.bin
+
+$(dir_build)/mmuHookpatch.h: $(dir_patches)/mmuHook.s
+	@mkdir -p "$(@D)"
+	@armips $<
+	@bin2c -o $@ -n mmuHook $(@D)/mmuHook.bin
+
+$(dir_build)/k11MainHookpatch.h: $(dir_patches)/k11MainHook.s
+	@mkdir -p "$(@D)"
+	@armips $<
+	@bin2c -o $@ -n k11MainHook $(@D)/k11MainHook.bin
 
 $(dir_build)/twl_k11modulespatch.h: $(dir_patches)/twl_k11modules.s
 	@mkdir -p "$(@D)"
@@ -123,10 +132,6 @@ $(dir_build)/loader.h: $(dir_loader)/Makefile
 $(dir_build)/arm9_exceptions.h: $(dir_arm9_exceptions)/Makefile
 	@$(MAKE) -C $(dir_arm9_exceptions)
 	@bin2c -o $@ -n arm9_exceptions $(@D)/arm9_exceptions.bin
-
-$(dir_build)/arm11_exceptions.h: $(dir_arm11_exceptions)/Makefile
-	@$(MAKE) -C $(dir_arm11_exceptions)
-	@bin2c -o $@ -n arm11_exceptions $(@D)/arm11_exceptions.bin
 
 $(dir_build)/memory.o: CFLAGS += -O3
 $(dir_build)/config.o: CFLAGS += -DCONFIG_TITLE="\"$(name) $(revision) (dev) configuration\""

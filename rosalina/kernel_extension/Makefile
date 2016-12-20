@@ -11,13 +11,14 @@ AS := arm-none-eabi-as
 LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 
-name := arm11_exceptions
+name := kernel_extension
 
 dir_source := source
+dir_include := include
 dir_build := build
 
 ASFLAGS := -mcpu=mpcore -mfpu=vfp
-CFLAGS  := -Wall -Wextra -MMD -MP -mthumb -mthumb-interwork $(ASFLAGS) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
+CFLAGS  := -Wall -Wextra -MMD -MP -mthumb -mthumb-interwork $(ASFLAGS) -I$(dir_include) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math
 LDFLAGS := -nostdlib
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
@@ -25,13 +26,13 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
-all: ../../$(dir_build)/$(name).bin
+all: ../$(dir_build)/$(name).bin
 
 .PHONY: clean
 clean:
 	@rm -rf $(dir_build)
 
-../../$(dir_build)/$(name).bin: $(dir_build)/$(name).elf
+../$(dir_build)/$(name).bin: $(dir_build)/$(name).elf
 	$(OC) -S -O binary $< $@
 
 $(dir_build)/$(name).elf: $(objects)

@@ -1,7 +1,6 @@
 #pragma once
 
-#include <3ds/types.h>
-#include <3ds/os.h>
+#include "types.h"
 
 typedef struct KLinkedListNode
 {
@@ -19,7 +18,7 @@ typedef struct KLinkedList
 
 typedef struct KAutoObject
 {
-    void *vtable;
+    void **vtable;
     u32 refCount;
 } ALIGN(4) KAutoObject;
 
@@ -209,6 +208,7 @@ struct KInterruptEvent
     u32 unknown;
 };
 
+
 typedef struct InterruptData
 {
     InterruptEvent *interruptEvent;
@@ -242,6 +242,8 @@ typedef union InterruptManager
 } InterruptManager;
 
 extern bool isN3DS;
+extern void *officialSVCs[0x7E]; //defined in main.c, will be used everywhere
+
 #define KPROCESS_GET_RVALUE(obj, field)  (isN3DS ? (obj)->N3DS.field : ((*(vu32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? (obj)->O3DS8x.field : (obj)->O3DSPre8x.field))
 
 static inline void *KProcess_ConvertHandle(KProcess *process, Handle handle)
@@ -254,15 +256,3 @@ static inline void *KProcess_ConvertHandle(KProcess *process, Handle handle)
             return KPROCESS_GET_RVALUE(process, handleTable.handleTable[handle & 0x7fff].pointer);
     }
 }
-
-typedef struct ProcessInfo {
-    KProcess *process;
-    u32 pid;
-    char name[8];
-    u64 tid;
-} ProcessInfo;
-
-void Kernel_FetchLoadedProcesses(void);
-void Kernel_CurrentKProcess_GetProcessInfoFromHandle(ProcessInfo *info, Handle handle);
-
-extern ProcessInfo processes_info[0x40];

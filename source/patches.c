@@ -26,9 +26,13 @@
 #include "fs.h"
 #include "../build/rebootpatch.h"
 #include "../build/svcGetCFWInfopatch.h"
-#include "../build/k11modulespatch.h"
 #include "../build/twl_k11modulespatch.h"
+#include "../build/mmuHookpatch.h"
+#include "../build/k11MainHookpatch.h"
+#include "../build/svcBackdoorspatch.h"
 #include "utils.h"
+
+#define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
 {
@@ -41,23 +45,78 @@ u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
     return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
 }
 
-u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
+u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
 {
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
 
-    *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, 4) - 0xB;
+    *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    u32 *arm11SvcTable;
+
+    *arm11ExceptionsPage -= 0xB;
     u32 svcOffset = (-(((*arm11ExceptionsPage)[2] & 0xFFFFFF) << 2) & (0xFFFFFF << 2)) - 8; //Branch offset + 8 for prefetch
-    u32 *arm11SvcTable = (u32 *)(pos + *(u32 *)(pos + 0xFFFF0008 - svcOffset - 0xFFF00000 + 8) - 0xFFF00000); //SVC handler address
-    *arm11SvcHandler = arm11SvcTable;
+    u32 pointedInstructionVA = 0xFFFF0008 - svcOffset;
+    *baseK11VA = pointedInstructionVA & 0xFFFF0000; //This assumes that the pointed instruction has an offset < 0x10000, iirc that's always the case
+    arm11SvcTable = *arm11SvcHandler = (u32 *)(pos + *(u32 *)(pos + pointedInstructionVA - *baseK11VA + 8) - *baseK11VA); //SVC handler address
     while(*arm11SvcTable) arm11SvcTable++; //Look for SVC0 (NULL)
 
-    const u8 pattern2[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-    *freeK11Space = memsearch(pos, pattern2, size, 5) + 1;
+    u32 *freeSpace;
+    for(freeSpace = *arm11ExceptionsPage; freeSpace < *arm11ExceptionsPage + 0x400 && *freeSpace != 0xFFFFFFFF; freeSpace++);
+    *freeK11Space = (u8 *) freeSpace;
 
     return arm11SvcTable;
 }
 
+
+void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space)
+{
+    const u8 pattern[] = {0x0E, 0x32, 0xA0, 0xE3, 0x02, 0xC2, 0xA0, 0xE3};
+
+    u32 *off = (u32 *)memsearch(pos, pattern, size, 8);
+
+    memcpy(*freeK11Space, mmuHook, mmuHook_size);
+    *off = MAKE_BRANCH_LINK(off, *freeK11Space);
+
+    (*freeK11Space) += mmuHook_size;
+}
+
+void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)
+{
+    const u8 pattern[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA};
+
+    u32 *off = (u32 *)memsearch(pos, pattern, size, 12);
+    // look for cpsie i and place our function call in the nop 2 instructions before
+    while(*off != 0xF1080080) off--;
+    off -= 2;
+
+    memcpy(*freeK11Space, k11MainHook, k11MainHook_size);
+
+    u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
+    *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase);
+
+    off = (u32 *)(pos +  (arm11SvcTable[0x50] - baseK11VA)); //svcBindInterrupt
+    while(off[0] != 0xE1A05000 || off[1] != 0xE2100102 || off[2] != 0x5A00000B) off++;
+    off--;
+
+    signed int offset = (*off & 0xFFFFFF) << 2;
+    offset = offset << 6 >> 6; // sign extend
+    offset += 8;
+
+    u32 InterruptManager_mapInterrupt = baseK11VA + ((u8 *)off - pos) + offset;
+    u32 interruptManager = *(u32 *)(off - 4 + (*(off - 6) & 0xFFF) / 4);
+
+    off = (u32 *)memsearch(*freeK11Space, "bind", k11MainHook_size, 4);
+
+    *off++ = InterruptManager_mapInterrupt;
+
+    // Relocate stuff
+    *off++ += relocBase;
+    *off++ += relocBase;
+    off++;
+    *off++ = interruptManager;
+
+    (*freeK11Space) += k11MainHook_size;
+}
 void patchSignatureChecks(u8 *pos, u32 size)
 {
     const u16 sigPatch[2] = {0x2000, 0x4770};
@@ -212,27 +271,19 @@ void injectPxiHook(u8 *pos, u32 size)
 	*(u32*)(off + sizeof(pxiDevDefaultCasePatch)) = 0x08001000;
 }
 
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space)
+void reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage)
 {
-    //Official implementation of svcBackdoor
-    const u8 svcBackdoor[40] = {0xFF, 0x10, 0xCD, 0xE3,  //bic   r1, sp, #0xff
-                                0x0F, 0x1C, 0x81, 0xE3,  //orr   r1, r1, #0xf00
-                                0x28, 0x10, 0x81, 0xE2,  //add   r1, r1, #0x28
-                                0x00, 0x20, 0x91, 0xE5,  //ldr   r2, [r1]
-                                0x00, 0x60, 0x22, 0xE9,  //stmdb r2!, {sp, lr}
-                                0x02, 0xD0, 0xA0, 0xE1,  //mov   sp, r2
-                                0x30, 0xFF, 0x2F, 0xE1,  //blx   r0
-                                0x03, 0x00, 0xBD, 0xE8,  //pop   {r0, r1}
-                                0x00, 0xD0, 0xA0, 0xE1,  //mov   sp, r0
-                                0x11, 0xFF, 0x2F, 0xE1}; //bx    r1
-
     if(!arm11SvcTable[0x7B])
     {
-        memcpy(*freeK11Space, svcBackdoor, 40);
+        memcpy(*freeK11Space, svcBackdoors, 40);
 
-        arm11SvcTable[0x7B] = 0xFFF00000 + *freeK11Space - pos;
+        arm11SvcTable[0x7B] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
         (*freeK11Space) += 40;
     }
+
+    memcpy(*freeK11Space, svcBackdoors + 40, svcBackdoors_size - 40);
+    arm11SvcTable[0x2F] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
+    (*freeK11Space) += (svcBackdoors_size - 40);
 }
 
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
@@ -305,21 +356,6 @@ void patchTwlBg(u8 *pos)
     src2[1] = 0xE800 | ((((u32)dst - (u32)src2 - 4) & 0xFFF) >> 1);
 }
 
-void getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset)
-{
-    //This function has to succeed. Crash if it doesn't (we'll get an exception dump of it anyways)
-
-    const u8 callExceptionDispatcherPattern[] = {0x0F, 0x00, 0xBD, 0xE8, 0x13, 0x00, 0x02, 0xF1};
-    const u8 getTitleIDFromCodeSetPattern[] = {0xDC, 0x05, 0xC0, 0xE1, 0x20, 0x04, 0xA0, 0xE1};
-
-    *stackAddr = *((u32 *)memsearch(pos, callExceptionDispatcherPattern, size, 8) + 3);
-
-    u32 *loadCodeSet = (u32 *)memsearch(pos, getTitleIDFromCodeSetPattern, size, 8);
-    while((*loadCodeSet >> 20) != 0xE59 || ((*loadCodeSet >> 12) & 0xF) != 0) //ldr r0, [rX, #offset]
-        loadCodeSet--;
-    *codeSetOffset = *loadCodeSet & 0xFFF;
-}
-
 void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 {
     const u8 pattern[] = {
@@ -367,13 +403,6 @@ void patchSvcBreak9(u8 *pos, u32 size, u32 k9Address)
     *addr = 0xE12FFF7F;
 }
 
-void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable)
-{
-    //Same as above, for NFIRM arm11
-    u32 *addr = (u32 *)(pos + arm11SvcTable[0x3C] - 0xFFF00000);
-    *addr = 0xE12FFF7F;
-}
-
 void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType)
 {
     if(firmType == TWL_FIRM || firmType == AGB_FIRM)
@@ -404,32 +433,6 @@ void patchArm11SvcAccessChecks(u32 *arm11SvcHandler)
 {
     while(*arm11SvcHandler != 0xE11A0E1B) arm11SvcHandler++; //TST R10, R11,LSL LR
     *arm11SvcHandler = 0xE3B0A001; //MOVS R10, #1
-}
-
-//It's mainly Subv's code here:
-void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space)
-{
-    //We have to detour a function in the ARM11 kernel because builtin modules
-    //are compressed in memory and are only decompressed at runtime.
-
-    //Inject our code into the free space
-    memcpy(*freeK11Space, k11modules, k11modules_size);
-    (*freeK11Space) += k11modules_size;
-
-    //Find the code that decompresses the .code section of the builtin modules and detour it with a jump to our code
-    const u8 pattern[] = { 0x00, 0x00, 0x94, 0xE5, 0x18, 0x10, 0x90, 0xE5, 0x28, 0x20,
-                          0x90, 0xE5, 0x48, 0x00, 0x9D, 0xE5 };
-
-    u32 *off = (u32 *)memsearch(pos, pattern, size, 16);
-
-    //We couldn't find the code that decompresses the module
-    if(off == NULL) return;
-
-    //Inject a jump instruction to our code at the offset we found
-    //Construct a jump (BL) instruction to our code
-    u32 offset = ((((u32)*freeK11Space) - ((u32)off + 8)) >> 2) & 0xFFFFFF;
-
-    *off = offset | (1 << 24) | (0x5 << 25) | (0xE << 28);
 }
 
 void patchN3DSK11ProcessorAffinityChecks(u8 *pos, u32 size)

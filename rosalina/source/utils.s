@@ -1,32 +1,17 @@
 .text
 .arm
-.align 4
-
-@ Those subs are courtesy of TuxSH
+.balign 4
 
 .global svc_7b
-.type   svc_7b, %function
+.type svc_7b, %function
 svc_7b:
-    push {r0, r1, r2}
-    mov r3, sp
-    add r0, pc, #12
-    svc 0x7b
-    add sp, sp, #8
-    ldr r0, [sp], #4
-    bx lr
-    cpsid aif
-    ldr r2, [r3], #4
-    ldmfd r3!, {r0, r1}
-    push {r3, lr}
-    blx r2
-    pop {r3, lr}
-    str r0, [r3, #-4]!
-    mov r0, #0
+    svc 0x2f
     bx lr
 
 .global convertVAToPA
 .type   convertVAToPA, %function
 convertVAToPA:
+    @ needs to be executed in supervisor mode
     mov r1, #0x1000
     sub r1, #1
     and r2, r0, r1
@@ -38,3 +23,23 @@ convertVAToPA:
     addeq r0, r2
     movne r0, #0
     bx lr
+
+.global flushEntireICache
+.type   flushEntireICache, %function
+flushEntireICache:
+    mov r0, #0
+    mcr p15, 0, r0, c7, c10, 5
+    mcr p15, 0, r0, c7, c5,  0  @ invalidate the entire ICache & branch target cache
+    mcr p15, 0, r0, c7, c10, 4  @ data synchronization barrier
+    bx lr
+
+.section .data
+
+.p2align 12
+.global kernel_extension
+kernel_extension: .incbin "build/kernel_extension.bin"
+.p2align 12
+kernel_extension_end:
+
+.global kernel_extension_size
+kernel_extension_size: .word kernel_extension_end - kernel_extension

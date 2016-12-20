@@ -50,28 +50,26 @@ typedef struct __attribute__((packed))
 extern bool isN3DS, isDevUnit;
 
 u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr);
-u32 *getKernel11Info(u8 *pos, u32 size, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
+u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage);
+void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space);
+void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space);
 void patchSignatureChecks(u8 *pos, u32 size);
 void patchTitleInstallMinVersionCheck(u8 *pos, u32 size);
 void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
 void patchFirmWrites(u8 *pos, u32 size);
 void patchOldFirmWrites(u8 *pos, u32 size);
-void reimplementSvcBackdoor(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
+void reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage);
 u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size); // Rosalina
 void patchMPUTable(u8 *pos, u32 size, u8 *arm9SectionDst); // Starbit
 void injectPxiHook(u8 *pos, u32 size); // Starbit
-void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space);
+void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space, u8 *arm11ExceptionsPage); // <- **to be reintroduced in Luma3DS itself**
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
 void patchTwlBg(u8 *pos);
 
-void getInfoForArm11ExceptionHandlers(u8 *pos, u32 size, u32 *stackAddr, u32 *codeSetOffset);
 void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
 void patchSvcBreak9(u8 *pos, u32 size, u32 k9Address);
-void patchSvcBreak11(u8 *pos, u32 *arm11SvcTable);
 void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType);
 void patchKernel11Panic(u8 *pos, u32 size);
 void patchArm11SvcAccessChecks(u32 *arm11SvcHandler);
-void patchK11ModuleChecks(u8 *pos, u32 size, u8 **freeK11Space);
-void patchN3DSK11ProcessorAffinityChecks(u8 *pos, u32 size);
 void patchP9AccessChecks(u8 *pos, u32 size);
 void patchUnitInfoValueSet(u8 *pos, u32 size);

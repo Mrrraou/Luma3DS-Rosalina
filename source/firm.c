@@ -315,8 +315,12 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     u8 *freeK11Space;
     u32 *arm11SvcHandler,
         *arm11ExceptionsPage;
+    u32 baseK11VA;
 
-    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+    u32 *arm11SvcTable = getKernel11Info(arm11Section1, section[1].size, &baseK11VA, &freeK11Space, &arm11SvcHandler, &arm11ExceptionsPage);
+
+    installMMUHook(arm11Section1, section[1].size, &freeK11Space);
+    installK11MainHook(arm11Section1, section[1].size, baseK11VA, arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
 
 
     //Apply signature patches
@@ -344,31 +348,19 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     {
         //Apply anti-anti-DG patches
         patchTitleInstallMinVersionCheck(process9Offset, process9Size);
-
-        //Restore svcBackdoor
-        reimplementSvcBackdoor(arm11Section1, arm11SvcTable, &freeK11Space);
     }
 
-    if(isN3DS) patchN3DSK11ProcessorAffinityChecks(arm11Section1, section[1].size);
+    reimplementSvcBackdoorAndImplementCustomBackdoor(arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
 
     //Apply UNITINFO patch
     if(DEV_OPTIONS == 1) patchUnitInfoValueSet(arm9Section, section[2].size);
 
     if(DEV_OPTIONS != 2)
     {
-        //Install arm11 exception handlers
-        u32 stackAddress,
-            codeSetOffset;
-        getInfoForArm11ExceptionHandlers(arm11Section1, section[1].size, &stackAddress, &codeSetOffset);
-        installArm11Handlers(arm11ExceptionsPage, stackAddress, codeSetOffset);
-
         //Kernel9/Process9 debugging
         patchArm9ExceptionHandlersInstall(arm9Section, section[2].size);
         patchSvcBreak9(arm9Section, section[2].size, (u32)section[2].address);
         patchKernel9Panic(arm9Section, section[2].size, NATIVE_FIRM);
-
-        //Stub svcBreak11 with "bkpt 65535"
-        patchSvcBreak11(arm11Section1, arm11SvcTable);
 
         //Stub kernel11panic with "bkpt 65534"
         patchKernel11Panic(arm11Section1, section[1].size);
@@ -377,7 +369,6 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     if(CONFIG(9))
     {
         patchArm11SvcAccessChecks(arm11SvcHandler);
-        patchK11ModuleChecks(arm11Section1, section[1].size, &freeK11Space);
         patchP9AccessChecks(process9Offset, process9Size);
     }
 }
