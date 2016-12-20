@@ -11,28 +11,28 @@ AS := arm-none-eabi-as
 LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 
-name := rosalina_pxi
+name := starbit
 
 dir_source := source
 dir_include := include
 dir_build := build
 
 ASFLAGS := -mcpu=arm946e-s -mthumb-interwork -march=armv5te
-CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -Os -flto -ffast-math -I$(dir_include)
-LDFLAGS := -nostartfiles
+CFLAGS := -Wall -Wextra -MMD -MP -mthumb $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -Os -flto -ffast-math -I$(dir_include)
+LDFLAGS := -T bootrom.ld -nostartfiles
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
-all: rosalina_pxi.bin
+all: $(name).bin
 
 .PHONY: clean
 clean:
 	@rm -rf $(dir_build)
 
-rosalina_pxi.bin: $(dir_build)/main.bin
+$(name).bin: $(dir_build)/main.bin
 	@cp -a $(dir_build)/main.bin $@
 
 $(dir_build)/main.bin: $(dir_build)/main.elf

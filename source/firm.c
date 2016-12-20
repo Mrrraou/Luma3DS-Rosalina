@@ -335,8 +335,9 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     //Apply firmlaunch patches
     patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
 
-    // Inject Process9 custom thread
-    injectP9Thread(process9Offset, process9Size);
+	// Starbit setup
+    patchMPUTable(arm9Section, section[2].size, section[2].address);
+	injectPxiHook(process9Offset, process9Size);
 
     //11.0 FIRM patches
     if(firmVersion >= (isN3DS ? 0x21 : 0x52))
