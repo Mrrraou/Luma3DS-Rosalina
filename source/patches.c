@@ -23,6 +23,7 @@
 #include "patches.h"
 #include "memory.h"
 #include "config.h"
+#include "fs.h"
 #include "../build/rebootpatch.h"
 #include "../build/svcGetCFWInfopatch.h"
 #include "../build/twl_k11modulespatch.h"
@@ -179,38 +180,95 @@ void patchOldFirmWrites(u8 *pos, u32 size)
 
 u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size)
 {
-  const u8 moduleAmountPattern[]  = {0x05, 0x00, 0x57, 0xE3}; // cmp r7, 5
-  const u8 moduleAmountPatch[]    = {0x06, 0x00, 0x57, 0xE3}; // cmp r7, 6
+    const u8 moduleAmountPattern[]  = {0x05, 0x00, 0x57, 0xE3}; // cmp r7, #5
+    const u8 moduleAmountPatch[]    = {0x06, 0x00, 0x57, 0xE3}; // cmp r7, #6
 
-  const u8 modulePidPattern[] =  {0x00, 0xF0, 0x20, 0xE3,  // nop
-                                  0x05, 0x00, 0xA0, 0xE3}; // mov r0, #5
-  const u8 modulePidPatch[]   =  {0x00, 0xF0, 0x20, 0xE3,  // nop
-                                  0x06, 0x00, 0xA0, 0xE3}; // mov r0, #6
+    const u8 modulePidPattern[] = {
+        0x00, 0xF0, 0x20, 0xE3, // nop
+        0x05, 0x00, 0xA0, 0xE3, // mov r0, #5
+    };
+    const u8 modulePidPatch[] = {
+        0x00, 0xF0, 0x20, 0xE3, // nop
+        0x06, 0x00, 0xA0, 0xE3, // mov r0, #6
+    };
 
-  // This needs to be patched, or K11 won't like it.
-  u32 maxModuleDst      = 0xDFF00000 + section0size - 4;
-  u32 maxModuleDstPatch = maxModuleDst + moduleSize;
-  u32 maxModuleSectionSize      = section0size;
-  u32 maxModuleSectionSizePatch = section0size + moduleSize;
+    // This needs to be patched, or Kernel11 won't like it.
+    u32 maxModuleDst = 0xDFF00000 + section0size - 4;
+    u32 maxModuleDstPatch = maxModuleDst + moduleSize;
+    u32 maxModuleSectionSize = section0size;
+    u32 maxModuleSectionSizePatch = section0size + moduleSize;
 
-  u8 *off;
-  if(!(off = memsearch(startPos, moduleAmountPattern, size, 4)))
-    return 1;
-  memcpy(off, moduleAmountPatch, 4);
+    u8 *off = memsearch(startPos, moduleAmountPattern, size, 4);
+    if(!off)
+        return 1;
+    memcpy(off, moduleAmountPatch, 4);
 
-  if(!(off = memsearch(startPos, modulePidPattern, size, 8)))
-    return 2;
-  memcpy(off, modulePidPatch, 8);
+    off = memsearch(startPos, modulePidPattern, size, 8);
+    if(!off)
+        return 2;
+    memcpy(off, modulePidPatch, 8);
 
-  if(!(off = memsearch(startPos, (u8*)&maxModuleDst, size, 4)))
-    return 3;
-  memcpy(off, (u8*)&maxModuleDstPatch, 4);
+    off = memsearch(startPos, &maxModuleDst, size, 4);
+    if(!off)
+        return 3;
+    memcpy(off, &maxModuleDstPatch, 4);
 
-  if(!(off = memsearch(startPos, (u8*)&maxModuleSectionSize, size, 4)))
-    return 4;
-  memcpy(off, (u8*)&maxModuleSectionSizePatch, 4);
+    off = memsearch(startPos, &maxModuleSectionSize, size, 4);
+    if(!off)
+        return 4;
+    memcpy(off, &maxModuleSectionSizePatch, 4);
 
-  return 0;
+    return 0;
+}
+
+void patchMPUTable(u8 *pos, u32 size, u8 *arm9SectionDst)
+{
+    const u8 mpuTablePattern[] = {
+        0x10, 0xCF, 0x12, 0xEE, // mrc p15, 0, r12, c2, c0, 0
+        0x30, 0x1F, 0x12, 0xEE, // mrc p15, 0, r1, c2, c0, 1
+        0x10, 0x0F, 0x13, 0xEE, // mrc p15, 0, r2, c3, c0, 0
+        0x00, 0x20, 0xA0, 0xE3, // mov r2, #0
+    };
+
+    void *off = memsearch(pos, mpuTablePattern, size, sizeof(mpuTablePattern));
+    off += sizeof(mpuTablePattern);
+
+    u32 *ldr = (u32*)off;
+
+    u32 ldrLiteralOffset = (*ldr & 0xFFF);
+    u8 **ldrLiteral = (u8**)((u8*)(ldr + 2) + ldrLiteralOffset);
+
+    u8 *mpuTable = *ldrLiteral - arm9SectionDst + pos;
+
+    for(u32 i = 0; i < 8; i++)
+    {
+        mpuTable[3 * sizeof(u32) * i + 4] = 3; // Write data access: rw / rw
+        mpuTable[3 * sizeof(u32) * i + 5] = 3; // Write instruction access: rw / rw
+    }
+}
+
+void injectPxiHook(u8 *pos, u32 size)
+{
+    const u8 pxiDevDefaultCasePattern[] = {
+        0x84, 0xD0, 0x8D, 0xE2, // add sp, sp, #0x84
+        0xF0, 0x8F, 0xBD, 0xE8, // ldmfd sp!, {r4-r11, pc}
+        0x40, 0x00, 0xA0, 0xE3, // mov r0, #0x40
+        0x00, 0x00, 0x84, 0xE5, // str r0, [r4]
+    };
+	const u8 pxiDevDefaultCasePatch[] = {
+        0x04, 0xE0, 0x8F, 0xE2, // add lr, pc, #4
+        0x04, 0xF0, 0x1F, 0xE5, // ldr pc, [pc, -#4]
+    };
+
+    // The arm9 section starts at 0x08006000 on New3DS... available space is
+    // fairly limited.
+	fileRead((void*)0x08001000, "/luma/starbit.bin");
+
+	void *off = memsearch(pos, pxiDevDefaultCasePattern, size, sizeof(pxiDevDefaultCasePattern));
+    off += 2 * sizeof(u32);
+
+	memcpy(off, pxiDevDefaultCasePatch, sizeof(pxiDevDefaultCasePatch));
+	*(u32*)(off + sizeof(pxiDevDefaultCasePatch)) = 0x08001000;
 }
 
 void reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage)

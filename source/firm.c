@@ -322,6 +322,7 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
     installMMUHook(arm11Section1, section[1].size, &freeK11Space);
     installK11MainHook(arm11Section1, section[1].size, baseK11VA, arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
 
+
     //Apply signature patches
     patchSignatureChecks(process9Offset, process9Size);
 
@@ -337,6 +338,10 @@ static inline void patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32
 
     //Apply firmlaunch patches
     patchFirmlaunches(process9Offset, process9Size, process9MemAddr);
+
+	// Starbit setup
+    patchMPUTable(arm9Section, section[2].size, section[2].address);
+	injectPxiHook(process9Offset, process9Size);
 
     //11.0 FIRM patches
     if(firmVersion >= (isN3DS ? 0x21 : 0x52))

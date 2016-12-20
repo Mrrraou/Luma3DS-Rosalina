@@ -60,6 +60,8 @@ void patchFirmWrites(u8 *pos, u32 size);
 void patchOldFirmWrites(u8 *pos, u32 size);
 void reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage);
 u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size); // Rosalina
+void patchMPUTable(u8 *pos, u32 size, u8 *arm9SectionDst); // Starbit
+void injectPxiHook(u8 *pos, u32 size); // Starbit
 void implementSvcGetCFWInfo(u8 *pos, u32 *arm11SvcTable, u8 **freeK11Space, u8 *arm11ExceptionsPage); // <- **to be reintroduced in Luma3DS itself**
 void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType);
 void patchTwlBg(u8 *pos);
