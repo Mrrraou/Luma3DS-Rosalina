@@ -4,7 +4,7 @@
 #include "kernel.h"
 
 // For accessing physmem uncached (and directly)
-#define PA_PTR(addr)            (void *)((u32)(addr) | 1 << 31)
+#define PA_PTR(addr)            (void *)((u32)(addr) | 1u << 31)
 #define PA_FROM_VA_PTR(addr)    PA_PTR(convertVAToPA(addr))
 
 static inline u32 makeARMBranch(const void *src, const void *dst, bool link) // the macros for those are ugly and buggy
@@ -28,6 +28,12 @@ void *convertVAToPA(const void *addr);
 u32 getCurrentCoreID(void);
 bool enableIRQ(void);
 
+KProcess (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, Handle processHandle);
+void (*svcFallbackHandler)(u8 svcId);
+u32 *officialSvcHandlerTail;
+
+void svcHandler(void);
+
 extern InterruptManager *interruptManager;
 extern InterruptEvent *customInterruptEvent;
 
@@ -36,5 +42,7 @@ extern void (*flushEntireDCacheAndL2C)(void); // reentrant, but unsafe in fatal 
 extern void (*initFPU)(void);
 extern void (*mcuReboot)(void);
 extern void (*coreBarrier)(void);
+
+Result setR0toR3(...);
 
 bool isN3DS;

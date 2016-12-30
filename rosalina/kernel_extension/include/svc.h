@@ -2,11 +2,12 @@
 
 #include "types.h"
 
-typedef struct SupervisorCallOverride
-{
-    u32 index;
-    void *func;
-} SupervisorCallOverride;
+void *officialSVCs[0x7E] = {NULL};
 
-extern SupervisorCallOverride overrideList[];
-extern u32 overrideListSize;
+static inline void yield(void)
+{
+    ((void (*)(s64))officialSVCs[0x0A])(0);
+}
+
+void svcDefaultHandler(u8 svcId);
+void *svcHook(u32 regs, const u32 *userRegs);

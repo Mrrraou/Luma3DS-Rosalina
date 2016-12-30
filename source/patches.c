@@ -114,6 +114,44 @@ void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u3
     off++;
     *off++ = interruptManager;
 
+    off += 6;
+
+    struct CfwInfo
+    {
+        char magic[4];
+
+        u8 versionMajor;
+        u8 versionMinor;
+        u8 versionBuild;
+        u8 flags;
+
+        u32 commitHash;
+
+        u32 config;
+    } __attribute__((packed)) *info = (struct CfwInfo *)off;
+
+    const char *rev = REVISION;
+
+    info->commitHash = COMMIT_HASH;
+    info->config = configData.config;
+    info->versionMajor = (u8)(rev[1] - '0');
+    info->versionMinor = (u8)(rev[3] - '0');
+
+    bool isRelease;
+
+    if(rev[4] == '.')
+    {
+        info->versionBuild = (u8)(rev[5] - '0');
+        isRelease = rev[6] == 0;
+    }
+    else isRelease = rev[4] == 0;
+
+    if(isRelease) info->flags = 1;
+    if(ISA9LH) info->flags = 1 << 1;
+    /* if(ISN3DS) info->flags |= 1 << 4;
+    if(isSafeMode) info->flags |= 1 << 5;*/
+    //TODO: update codebase to use those flags ^; add isK9LH flag
+
     (*freeK11Space) += k11MainHook_size;
 }
 void patchSignatureChecks(u8 *pos, u32 size)

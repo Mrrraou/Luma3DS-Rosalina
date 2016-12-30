@@ -9,15 +9,38 @@
 
 u32 rosalina_pid;
 
+typedef struct ProcessInfo
+{
+    u32 pid;
+    u64 titleId;
+    char name[8];
+} ProcessInfo;
+
+static ProcessInfo infos[0x40] = {0};
+
 void RosalinaMenu_ProcessList(void)
 {
     svcGetProcessId(&rosalina_pid, 0xFFFF8001);
-    Kernel_FetchLoadedProcesses();
 
+    u32 pidList[0x40], processCount;
+
+    svcGetProcessList(&processCount, pidList, 0x40);
+
+    for(u32 i = 0; i < processCount; i++)
+    {
+        Handle processHande;
+        Result res = svcOpenProcess(&processHandle, pidList[i]);
+        if(R_FAILED(res))
+            continue;
+
+        infos[i].pid = pidList[i];
+        svcGetProcessInfo((s64 *)&infos[i].name, processHandle, 0x10000);
+        svcGetProcessInfo((s64 *)&infos[i].titleId, processHandle, 0x10001);
+    }
     s32 selected = 0, page = 0, pagePrev = 0;
 
     s32 processAmount = 0x40;
-    while(!processes_info[--processAmount].process && processAmount > 0);
+    while(infos[--processAmount].pid == 0 && info[processAmount].name[0] == 0 && processAmount > 0);
     processAmount++;
 
     while(true)
@@ -28,9 +51,9 @@ void RosalinaMenu_ProcessList(void)
 
         for(s32 i = 0; i < PROCESSES_PER_MENU_PAGE; i++)
         {
-            ProcessInfo *info = &processes_info[page * PROCESSES_PER_MENU_PAGE + i];
+            ProcessInfo *info = &infos[page * PROCESSES_PER_MENU_PAGE + i];
 
-            if(!info->process)
+            if(infos[--processAmount].pid == 0 && info[processAmount].name[0] == 0)
                 break;
 
             char str[18];
@@ -67,7 +90,7 @@ void RosalinaMenu_ProcessList(void)
         if(selected < 0)
         {
             s32 i = 0x40;
-            while(!processes_info[--i].process && i > 0);
+            while(infos[--processAmount].pid == 0 && info[processAmount].name[0] == 0 && i > 0);
             selected = i;
         }
         else if(selected >= processAmount)

@@ -72,9 +72,11 @@ void menuThreadMain(void)
         {
             if(R_FAILED(_MCUHWC_GetBatteryLevel(&batteryLevel)))
                 batteryLevel = 255;
+            svcKernelSetState(0x10000, 1);
             menuShow();
+            svcKernelSetState(0x10000, 0);
         }
-        svcSleepThread(5 * 1000 * 1000); // 5ms second
+        svcSleepThread(5 * 1000 * 1000); // 5ms
     }
 }
 

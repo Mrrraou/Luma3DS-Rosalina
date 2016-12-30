@@ -18,6 +18,20 @@ struct Parameters
     void (*initFPU)(void);
     void (*mcuReboot)(void);
     void (*coreBarrier)(void);
+
+    struct CfwInfo
+    {
+        char magic[4];
+
+        u8 versionMajor;
+        u8 versionMinor;
+        u8 versionBuild;
+        u8 flags;
+
+        u32 commitHash;
+
+        u32 config;
+    } __attribute__((packed)) info;
 };
 
 

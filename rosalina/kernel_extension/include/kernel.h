@@ -2,251 +2,1027 @@
 
 #include "types.h"
 
-typedef struct KLinkedListNode
-{
-    struct KLinkedListNode *next;
-    struct KLinkedListNode *prev;
-    void *key;
-} KLinkedListNode;
+struct KMutex;
+struct KProcessO3DS;
+struct KProcessN3DS;
+union  KProcess;
+struct HandleDescriptor;
+struct KDebugThread;
+struct KCodeSet;
+struct KDebug;
+struct KResourceLimit;
+struct KPort;
+struct KSession;
+struct KLinkedListNode;
+struct KThread;
+struct Vtable__KAutoObject;
+struct KClassToken;
+struct Vtable__KBaseInterruptEvent;
+struct KObjectMutex;
+struct KThreadLinkedList;
+struct KMutexLinkedList;
+struct KPreemptionTimer;
 
+/* 12 */
+typedef struct ALIGNED(4) KAutoObject
+{
+  struct Vtable__KAutoObject *vtable;
+  u32 refCount;
+} KAutoObject;
+
+/* 83 */
+typedef struct KLinkedListNodePair
+{
+  KLinkedListNode *first;
+  KLinkedListNode *last;
+} KLinkedListNodePair;
+
+/* 11 */
 typedef struct KLinkedList
 {
-    u32 size;
-    KLinkedListNode *first;
-    KLinkedListNode *last;
+  u32 size;
+  KLinkedListNodePair nodes;
 } KLinkedList;
 
-typedef struct KAutoObject
-{
-    void **vtable;
-    u32 refCount;
-} ALIGN(4) KAutoObject;
-
+/* 13 */
 typedef struct KSynchronizationObject
 {
-    KAutoObject autoObject;
-    KLinkedListNode syncedThreads;
+  KAutoObject autoObject;
+  KLinkedList syncedThreads;
 } KSynchronizationObject;
 
-typedef struct KThread
+/* 91 */
+typedef struct KMutexLinkedListNode
 {
-    KSynchronizationObject syncObject;
-    void **interruptEventVtable;
-    void *waitingOn_1;
-    s64 timerSuspended;
-    u8 unnamed_1[8];
-    u8 unnamed_2[8];
-    u8 signalScheduling;
-    u8 syncing_1;
-    u8 syncing_2;
-    u8 syncing_3;
-    void *debugThread;
-    u32 basePriority;
-    u32 waitingOn_2;
-    u32 resultObjectWaited_2;
-    struct KThread **doubleKThreadPtr;
-    u32 arbitrationAddr;
-    u32 field_50;
-    u32 field_54;
-    u32 field_58;
-    void *mutex_1;
-    KLinkedList mutexesUsed;
-    u32 dynamicPriority;
-    u32 createdByProcessor;
-    u32 unknown_1;
-    u8 gap78[4];
-    u8 unknown_2;
-    u8 unknown_3;
-    u8 affinityMask;
-    union ALIGN(2) KProcess *ownerProcess;
-    u32 threadId;
-    void *svcRegisterStorage;
-    void *endOfThreadContext;
-    u32 idealProcessor;
-    void *threadLocalStorage;
-    void *threadLocalStorageVmem;
-    struct ALIGN(8) KThread *prevThread;
-    struct KThread *nextThread;
-    void *linkedList;
-    u8 gapAC[3];
-    u8 unused;
-} PACKED ALIGN(4) KThread;
+  KMutex *prev;
+  KMutex *next;
+} KMutexLinkedListNode;
 
-typedef struct KCodeSetMemDescriptor
+/* 1 */
+typedef struct ALIGNED(4) KMutex
 {
-    u32 vaStart;
-    u32 totalPages;
-    KLinkedList blocks;
-} KCodeSetMemDescriptor;
+  KSynchronizationObject syncObject;
+  KMutexLinkedListNode mutexListNode;
+  u32 nbThreadsUsingThis;
+  KThread *lockingThread;
+  u32 priority;
+  KProcess *owner;
+} KMutex;
 
-typedef struct KCodeSet
+/* 44 */
+typedef struct ALIGNED(4) Vtable__KAutoObject
 {
-    KAutoObject autoObject;
-    KCodeSetMemDescriptor textSection;
-    KCodeSetMemDescriptor rodataSection;
-    KCodeSetMemDescriptor dataSection;
-    u32 textPages;
-    u32 rodataPages;
-    u32 rwPages;
-    char processName[8];
-    u16 unknown_1;
-    u16 unknown_2;
-    u64 titleId;
-} PACKED ALIGN(4) KCodeSet;
+  void *field_0;
+  void *field_4;
+  void (__cdecl *dtor)(KAutoObject *this);
+  void *substractResource;
+  struct KAutoObject *(__fastcall *DecrementReferenceCount)(struct KAutoObject *this);
+  KProcess *(__cdecl *getParentProcess)(KAutoObject *this);
+  KClassToken *(__fastcall *GetObjectInfo)(KClassToken *out, KAutoObject *this);
+  void *field_1C;
+  void *field_20;
+  void *field_24;
+  void *field_28;
+  void *isInUse;
+  void *isWaiting;
+} Vtable__KAutoObject;
 
-typedef struct HandleDescriptor
+/* 10 */
+typedef struct KLinkedListNode
 {
-    u32 info;
-    void *pointer;
+  KLinkedListNode *next;
+  KLinkedListNode *prev;
+  void *key;
+} KLinkedListNode;
+
+/* 52 */
+typedef struct KBaseInterruptEvent
+{
+  Vtable__KBaseInterruptEvent *vtable;
+} KBaseInterruptEvent;
+
+/* 67 */
+typedef struct KSynchronizationInterruptEvent
+{
+  KBaseInterruptEvent baseInterruptEvent;
+  KSynchronizationInterruptEvent *next;
+} KSynchronizationInterruptEvent;
+
+/* 77 */
+typedef struct KTimeableInterruptEvent
+{
+  KSynchronizationInterruptEvent syncInterruptEvent;
+  s64 timer;
+} KTimeableInterruptEvent;
+
+/* 90 */
+typedef KSynchronizationInterruptEvent KSendableInterruptEvent;
+
+/* 68 */
+typedef KSynchronizationInterruptEvent KSchedulableInterruptEvent;
+
+/* 85 */
+typedef struct KThreadLinkedListNode
+{
+  KThread *prev;
+  KThread *next;
+} KThreadLinkedListNode;
+
+/* 15 */
+typedef struct PACKED ALIGNED(4) KThread
+{
+  KSynchronizationObject syncObject;
+  KTimeableInterruptEvent timeableInterruptEvent;
+  KSendableInterruptEvent sendableInterruptEvent;
+  KSchedulableInterruptEvent schedulableInterruptEvent;
+  u8 schedulingMask;
+  u8 syncing_1;
+  bool shallTerminate;
+  u8 syncing_3;
+  KDebugThread *debugThread;
+  u32 basePriority;
+  KSynchronizationObject *objectThreadIsWaitingOn;
+  Result resultObjectWaited_2;
+  KObjectMutex *mutex;
+  void *arbitrationAddr;
+  KLinkedList objectsToWaitFor;
+  KMutexLinkedList *mutexList;
+  KLinkedList mutexesUsed;
+  s32 dynamicPriority;
+  u32 createdByProcessor;
+  KPreemptionTimer *preemptionTimer;
+  u32 unknown_1;
+  bool isAlive;
+  bool isEnded;
+  u8 affinityMask;
+  KProcess *ownerProcess;
+  u32 threadId;
+  void *svcRegisterStorage;
+  void *endOfThreadContext;
+  s32 idealProcessor;
+  void *threadLocalStorage;
+  void *threadLocalStorageVmem;
+  void *unknown_5;
+  KThreadLinkedListNode threadListNode;
+  KThreadLinkedList *stolenThreadList;
+  s32 highestPriority;
+} KThread;
+
+/* 79 */
+typedef struct KObjectMutex
+{
+  KThread *owner;
+  s16 tryAcquireCounter;
+  s16 contextSwitchCounter;
+} KObjectMutex;
+
+
+
+/* 120 */
+typedef enum ProcessStatus
+{
+  PROCESS_AVAILABLE = 0x1,
+  PROCESS_CLOSING = 0x2,
+  PROCESS_EXITED = 0x3,
+} ProcessStatus;
+
+/* 3 */
+typedef struct ALIGNED(4) HandleDescriptor
+{
+  u32 info;
+  KAutoObject *pointer;
 } HandleDescriptor;
 
+/* 22 */
 typedef struct KProcessHandleTable
 {
-    HandleDescriptor *handleTable;
-    u16 maxHandleCount;
-    u16 highestHandleCount;
-    HandleDescriptor *nextOpenHandleDescriptor;
-    u16 totalHandlesUsed;
-    u16 handlesInUseCount;
-    KThread *runningThread;
-    u16 errorTracker;
-    HandleDescriptor internalTable[40];
+  HandleDescriptor *handleTable;
+  s16 maxHandleCount;
+  s16 highestHandleCount;
+  HandleDescriptor *nextOpenHandleDescriptor;
+  s16 totalHandlesUsed;
+  s16 handlesInUseCount;
+  KObjectMutex mutex;
+  HandleDescriptor internalTable[40];
 } KProcessHandleTable;
 
-#define KPROCESS_DEF_PART_1(nbCores)\
-    KSynchronizationObject syncObject;\
-    u32 unknown_1;\
-    u32 unknown_2;\
-    KThread *runningThread;\
-    u16 errorTracker;\
-    u8 tlbEntriesToInvalidateByCore[4][nbCores];\
-    KLinkedList ownedKMemoryBlocks;\
-    u32 unknown_3;\
-    u32 unknown_4;\
-
-#define KPROCESS_DEF_PART_2()\
-    void *translationTableBase;\
-    u8 contextId;\
-    u8 memAllocRelated;\
-    bool currentlyLoadedApp;\
-    u32 unknown_5;\
-    void *endOfUserlandVmem;\
-    u32 mmuTableSize;\
-    void *mmuTableVA;\
-    u32 totalThreadContextSize;\
-    struct KLinkedList threadLocalPages;\
-    u32 unknown_7;\
-    u32 idealProcessor;\
-    void *debug;\
-    void *resourceLimits;\
-    u8 status;\
-    u8 affinityMask;\
-    u16 ALIGN(4) threadCount;\
-    u16 maxThreadCount;\
-    u8 svcAccessControlMask[16];\
-    u32 interruptFlags[4];\
-    u32 kernelFlags;\
-    u16 handleTableSize;\
-    u16 kernelReleaseVersion;\
-    KCodeSet *codeSet;\
-    u32 processId;\
-    u64 creationTime;\
-    KThread *mainThread;\
-    u32 interruptEnabledFlags[4];\
-    KProcessHandleTable handleTable;\
-    u8 _filler[0x3C];
-
-typedef struct KProcessO3DSPre8x
+/* 45 */
+typedef struct KClassToken
 {
-    KPROCESS_DEF_PART_1(2);
-    KPROCESS_DEF_PART_2();
-} KProcessO3DSPre8x;
+  const char *name;
+  u8 type;
+} KClassToken;
 
-typedef struct KProcessO3DS8x
+/* 55 */
+typedef struct ALIGNED(4) Vtable__KBaseInterruptEvent
 {
-    KPROCESS_DEF_PART_1(2);
-    void *linearVAUserlandBase;
-    u32 unknown_6;
-    KPROCESS_DEF_PART_2();
-} KProcessO3DS8x;
+  KSchedulableInterruptEvent *(*handleInterruptEvent)(KBaseInterruptEvent *, u32);
+} Vtable__KBaseInterruptEvent;
 
-typedef struct KProcessN3DS
+/* 4 */
+typedef struct ALIGNED(4) KDebugThread
 {
-    KPROCESS_DEF_PART_1(4);
-    void *linearVAUserlandBase;
-    u32 unknown_6;
-    KPROCESS_DEF_PART_2();
-} KProcessN3DS;
+  KThread *linkedThread;
+  bool usedSvcBreak;
+  bool debugLocked;
+  bool shallBeDebugLocked;
+  bool scheduledInOrOut;
+  bool threadAttached;
+  bool syscallInOurOut;
+  u8 paddingA[2];
+  u32 threadExitReason;
+  u32 creatorThreadId;
+  u32 FAR;
+} KDebugThread;
 
-#undef KPROCESS_DEF_PART_1
-#undef KPROCESS_DEF_PART_2
+/* 92 */
+typedef struct KMutexLinkedList
+{
+  KMutex *first;
+  KMutex *last;
+} KMutexLinkedList;
+
+/* 93 */
+typedef struct ALIGNED(4) KPreemptionTimer
+{
+  u32 nLimitedTicks;
+  u32 timer;
+  u32 previousWDTValue;
+  u32 wantedDuration;
+} KPreemptionTimer;
+
+/* 84 */
+typedef struct KThreadLinkedList
+{
+  KThread *first;
+  KThread *last;
+} KThreadLinkedList;
+
+/* 96 */
+enum DebugEventType
+{
+  ATTACH_PROCESS = 0x0,
+  ATTACH_THREAD = 0x1,
+  EXIT_THREAD = 0x2,
+  EXIT_PROCESS = 0x3,
+  EXCEPTION = 0x4,
+  DLL_LOAD = 0x5,
+  DLL_UNLOAD = 0x6,
+  SCHEDULE_IN = 0x7,
+  SCHEDULE_OUT = 0x8,
+  SYSCALL_IN = 0x9,
+  SYSCALL_OUT = 0xA,
+  OUTPUT_STRING = 0xB,
+  DBG_EVT_MAP = 0xC,
+};
+
+/* 80 */
+typedef struct KRecursiveLock
+{
+  KThread *owner;
+  u32 lockCount;
+} KRecursiveLock;
+
+/* 97 */
+enum ExceptionDebugEventType
+{
+  UNDEFINED_INSTRUCTION = 0x0,
+  PREFETCH_ABORT = 0x1,
+  DATA_ABORT = 0x2,
+  UNALIGNED_MEMORY_ACCESS = 0x3,
+  ATTACH_BREAK = 0x4,
+  STOP_POINT = 0x5,
+  USER_BREAK = 0x6,
+  DEBUGGER_BREAK = 0x7,
+  UNDEFINED_SYSCALL = 0x8,
+};
+
+/* 6 */
+typedef struct ALIGNED(4) KDebug
+{
+  KSynchronizationObject syncObject;
+  KSendableInterruptEvent sendableInterruptEvent;
+  bool processDebugEventSignaled;
+  bool debugStringFlag;
+  bool isSignalingDebugEvent;
+  bool isPaused;
+  DebugEventType debugEventType;
+  u32 field_24;
+  KThread *lockingThread;
+  u32 debugEventFlags;
+  u32 stopPointType;
+  KLinkedList eventInfos;
+  KLinkedList infoForEventsToContinue;
+  KProcess *owner;
+  KThread *debuggedThread;
+  KThread *threadUsingContinueDebugEvent;
+  u32 coreIDOfThreadUsingContinueDebugEvent;
+  KLinkedList debuggedThreads;
+  KLinkedList threadsOfProcess;
+  KRecursiveLock recursiveLock;
+  KThread *threadUsingSvcBreak;
+  bool noExceptionDebugEventOccured;
+  bool exceptionDebugEventSignaled;
+  bool shouldUnlockAll;
+  bool exceptionDebugEventOccuredWhilePaused;
+  bool userBreakEventOccuredWhilePaused;
+  bool processHasEnded;
+  bool processHasBeenTerminated;
+  bool pendingSvcBreakEvent;
+  u32 *regdump;
+  ExceptionDebugEventType exceptionInfo;
+  u16 nbExceptions;
+  u16 svcID;
+  u16 nbPendingEvents;
+  u16 nbPendingExitProcessEvents;
+  const char *debugString;
+  u32 debugStringLength;
+} KDebug;
+
+/* 7 */
+typedef struct KResourceLimit
+{
+  KAutoObject autoObject;
+  s32 maxResources[10];
+  s32 currentResources[10];
+  KObjectMutex objMutex;
+  KPreemptionTimer preemptionTimer;
+  u32 padding;
+} KResourceLimit;
+
+/* 64 */
+typedef struct SectionInfo
+{
+  void *loadAddress;
+  u32 nbPages;
+} SectionInfo;
+
+/* 23 */
+typedef struct KCodeSetMemDescriptor
+{
+  SectionInfo section;
+  struct KLinkedList blocks;
+} KCodeSetMemDescriptor;
+
+/* 5 */
+typedef struct PACKED ALIGNED(4) KCodeSet
+{
+  KAutoObject autoObject;
+  KCodeSetMemDescriptor textSection;
+  KCodeSetMemDescriptor rodataSection;
+  KCodeSetMemDescriptor dataSection;
+  u32 nbTextPages;
+  u32 nbRodataPages;
+  u32 nbRwPages;
+  char processName[8];
+  u16 unknown_1;
+  u16 unknown_2;
+  u64 titleId;
+} KCodeSet;
+
+/* 30 */
+typedef struct KServerPort
+{
+  KSynchronizationObject syncObject;
+  KLinkedList serverSessions;
+  KPort *parentKPort;
+} KServerPort;
+
+/* 31 */
+typedef struct KClientPort
+{
+  KSynchronizationObject syncObject;
+  s16 connectionCount;
+  s16 maxConnectionCount;
+  KPort *parentKPort;
+} KClientPort;
+
+/* 8 */
+typedef struct KPort
+{
+  KAutoObject autoObject;
+  KServerPort serverPort;
+  KClientPort clientPort;
+} KPort;
+
+/* 33 */
+typedef struct KServerSession
+{
+  KSynchronizationObject syncObject;
+  KSession *parentKSession;
+  KThread *lastStolenThread;
+  KThread *firstStolenThread;
+  KThread *originatingThread;
+} KServerSession;
+
+/* 32 */
+typedef struct KClientSession
+{
+  KSynchronizationObject syncObject;
+  KSession *parentKSession;
+  u32 status;
+  KClientPort *clientPort;
+} KClientSession;
+
+/* 9 */
+typedef struct KSession
+{
+  KAutoObject autoObject;
+  KServerSession serverSession;
+  KClientSession clientSession;
+} KSession;
+
+/* 82 */
+typedef struct KUserBindableInterruptEvent
+{
+  KSchedulableInterruptEvent schedulableInterruptEvent;
+  s32 interruptID;
+} KUserBindableInterruptEvent;
+
+/* 14 */
+typedef struct ALIGNED(4) KEvent
+{
+  KSynchronizationObject syncObject;
+  KUserBindableInterruptEvent userBindableInterruptEvent;
+  bool isSignaled;
+  bool manualClear;
+  u8 resetType;
+  u8 unused;
+  KProcess *owner;
+} KEvent;
+
+/* 16 */
+typedef enum MemOp
+{
+  MEMOP_FREE = 0x1,
+  MEMOP_RESERVE = 0x2,
+  MEMOP_COMMIT = 0x3,
+  MEMOP_MAP = 0x4,
+  MEMOP_UNMAP = 0x5,
+  MEMOP_PROTECT = 0x6,
+  MEMOP_REGION_APP = 0x100,
+  MEMOP_REGION_SYSTEM = 0x200,
+  MEMOP_REGION_BASE = 0x300,
+  MEMOP_LINEAR = 0x10000,
+} MemOp;
+
+/* 17 */
+typedef enum MemPerm
+{
+  MEMPERM_NONE = 0x0,
+  MEMPERM_R = 0x1,
+  MEMPERM_W = 0x2,
+  MEMPERM_RW = 0x3,
+  MEMPERM_X = 0x4,
+  MEMPERM_RX = 0x5,
+  MEMPERM_WX = 0x6,
+  MEMPERM_RWX = 0x7,
+  MEMPERM_DONTCARE = 0x10000000,
+} MemPerm;
+
+/* 18 */
+typedef struct KObjectLink
+{
+  void *nextAvailable;
+  void *first;
+  u32 kheapAllocSize;
+  u32 size;
+} KObjectLink;
+
+/* 19 */
+typedef struct KObjectList
+{
+  KLinkedList list;
+  KObjectMutex mutex;
+  s16 totalObjectsCreated;
+  s16 padding2;
+  KObjectLink objectInfo;
+} KObjectList;
+
+/* 21 */
+typedef struct KSemaphore
+{
+  KSynchronizationObject syncObject;
+  KUserBindableInterruptEvent userBindableInterruptEvent;
+  u32 count;
+  u32 maxCount;
+  KProcess *owner;
+} KSemaphore;
+
+/* 24 */
+typedef struct KBlockInfo
+{
+  void *memSectionStartKVaddr;
+  u32 pageCount;
+} KBlockInfo;
+
+/* 25 */
+typedef struct KMemoryBlock
+{
+  void *baseAddr;
+  u32 sizeInPages;
+  u32 permissions;
+  u32 state;
+  u32 zero;
+} KMemoryBlock;
+
+/* 28 */
+typedef struct ALIGNED(4) KScheduler
+{
+  KSchedulableInterruptEvent interruptEvent;
+  u32 threadSwitchAttempts;
+  bool contextSwitchNeeded;
+  bool contextSwitchStartedDuringInterrupt;
+  bool triggerCrossCoreInterrupt;
+  bool postInterruptReschedulingNeeded;
+  s16 coreNumber;
+  s16 managedThreadsCount;
+  u32 highPriorityThreadsBitfield;
+  u32 lowPriorityThreadsBitfield;
+  KThread *schedulerThread;
+  KThreadLinkedList listOfHandledThreads;
+} KScheduler;
+
+/* 46 */
+typedef struct PACKED CodeSetInfo
+{
+  char name[8];
+  u16 unknown_1;
+  u16 unknown_2;
+  u32 unknown_3;
+  void *textAddr;
+  u32 textSize;
+  void *rodataAddr;
+  u32 rodataSize;
+  void *rwAddr;
+  u32 rwSize;
+  u32 totalTextPages;
+  u32 totalRodataPages;
+  u32 totalRwPages;
+  u32 unknown_4;
+  u64 programId;
+} CodeSetInfo;
+
+/* 53 */
+typedef struct ALIGNED(4) InterruptData
+{
+  KBaseInterruptEvent *iEvent;
+  bool disableUponReceipt;
+  bool isDisabled;
+  u8 priority;
+  u8 padding;
+} InterruptData;
+
+/* 59 */
+typedef struct KFIQInterruptEvent
+{
+  KSchedulableInterruptEvent schedulableInterruptEvent;
+  KEvent *event;
+  bool isLevelHighActive;
+  bool otherFlag;
+} KFIQInterruptEvent;
+
+/* 61 */
+typedef enum TLBOperation
+{
+  NO_TLB_OPERATION = 0x0,
+  FLUSH_TLB_ENTRIES_ON_ASID_MATCH = 0x1,
+  FLUSH_ENTIRE_TLB = 0x2,
+  FLUSH_TLB_ENTRIES_ON_MVA_MATCH = 0x3,
+  TLB_RESET_CONTEXT = 0x4,
+} TLBOperation;
+
+/* 63 */
+typedef struct TLBOperationTarget
+{
+  KProcessHwInfo *contextInfo;
+  void *VA;
+} TLBOperationTarget;
+
+/* 62 */
+typedef struct KTLBOperationsInterruptEvent
+{
+  KBaseInterruptEvent interruptEvent;
+  TLBOperationTarget target;
+  TLBOperation operation;
+} KTLBOperationsInterruptEvent;
+
+/* 65 */
+typedef struct KObjectName
+{
+  char name[12];
+  KClientPort *parentClientPort;
+} KObjectName;
+
+/* 74 */
+typedef enum MemState
+{
+  MEMSTATE_FREE = 0x0,
+  MEMSTATE_RESERVED = 0x1,
+  MEMSTATE_IO = 0x2,
+  MEMSTATE_STATIC = 0x3,
+  MEMSTATE_CODE = 0x4,
+  MEMSTATE_PRIVATE = 0x5,
+  MEMSTATE_SHARED = 0x6,
+  MEMSTATE_CONTINUOUS = 0x7,
+  MEMSTATE_ALIASED = 0x8,
+  MEMSTATE_ALIAS = 0x9,
+  MEMSTATE_ALIAS_CODE = 0xA,
+  MEMSTATE_LOCKED = 0xB,
+} MemState;
+
+/* 75 */
+typedef struct MemoryInfo
+{
+  void *baseVA;
+  u32 size;
+  u32 permissions;
+  MemoryState state;
+  u32 padding;
+} MemoryInfo;
+
+/* 76 */
+typedef struct PageInfo
+{
+  u32 flags;
+} PageInfo;
+
+/* 78 */
+typedef struct KTimerAndWDTManager
+{
+  KSynchronizationInterruptEvent syncInterruptEvent;
+  u32 counter;
+  u32 previousCounter;
+  KTimeableInterruptEvent innerInterruptEvent;
+  KRecursiveLock recursiveLock;
+} KTimerAndWDTManager;
+
+/* 81 */
+typedef struct PACKED ALIGNED(4) KTimer
+{
+  KSynchronizationObject syncObject;
+  KTimeableInterruptEvent timeableInterruptEvent;
+  bool signaled;
+  u8 resetType;
+  u16 padding;
+  s64 interval;
+  s64 currentValue;
+  KProcess *owner;
+} KTimer;
+
+/* 86 */
+typedef struct KSchedulableInterruptEventLinkedList
+{
+  KSchedulableInterruptEvent *first;
+  KSchedulableInterruptEvent *last;
+  u32 unused;
+  KThread *handlingKernelThread;
+} KSchedulableInterruptEventLinkedList;
+
+/* 87 */
+typedef KSchedulableInterruptEvent KThreadTerminationInterruptEvent;
+
+/* 88 */
+typedef KSchedulableInterruptEvent KThreadExitInterruptEvent;
+
+/* 89 */
+typedef struct ALIGNED(4) KInterruptEventMailbox
+{
+  u32 mailboxID;
+  KSendableInterruptEvent *first;
+  KSendableInterruptEvent *last;
+  bool isBusy;
+  KThread *handlingThread;
+} KInterruptEventMailbox;
+
+/* 94 */
+typedef enum LimitableResource
+{
+  LIMITABLE_RESOURCE_MAX_PRIORITY = 0x0,
+  LIMITABLE_RESOURCE_MAX_COMMIT = 0x1,
+  LIMITABLE_RESOURCE_MAX_THREAD = 0x2,
+  LIMITABLE_RESOURCE_MAX_EVENT = 0x3,
+  LIMITABLE_RESOURCE_MAX_MUTEX = 0x4,
+  LIMITABLE_RESOURCE_MAX_SEMAPHORE = 0x5,
+  LIMITABLE_RESOURCE_MAX_TIMER = 0x6,
+  LIMITABLE_RESOURCE_MAX_SHAREDMEMORY = 0x7,
+  LIMITABLE_RESOURCE_MAX_ADDRESSARBITER = 0x8,
+  LIMITABLE_RESOURCE_MAX_CPUTIME = 0x9,
+  LIMITABLE_RESOURCE_END = 0xA,
+  LIMITABLE_RESOURCE_MAX_BIT = 0x80000000,
+} LimitableResource;
+
+/* 99 */
+typedef struct ALIGNED(4) CpuRegisters
+{
+  u32 r[13];
+  u32 sp;
+  u32 lr;
+  u32 pc;
+  u32 cpsr;
+} CpuRegisters;
+
+/* 100 */
+typedef struct FpuRegisters
+{
+  union
+  {
+      double d[16];
+      float  f[32];
+  };
+  u32 fpscr;
+  u32 fpexc;
+} FpuRegisters;
+
+/* 98 */
+typedef struct ThreadContext
+{
+  CpuRegisters cpuRegisters;
+  FpuRegisters fpuRegisters;
+} ThreadContext;
+
+/* 101 */
+typedef struct KAttachProcessDebugEventInfo
+{
+  KProcess *process;
+} KAttachProcessDebugEventInfo;
+
+/* 102 */
+typedef struct KAttachThreadDebugEventInfo
+{
+  u32 creatorThreadId;
+  void *threadLocalStorage;
+  u32 *processEntrypoint;
+} KAttachThreadDebugEventInfo;
+
+
+/// Reasons for an exit thread event.
+typedef enum ExitThreadEventReason
+{
+    EXITTHREAD_EVENT_NONE              = 0, ///< No reason.
+    EXITTHREAD_EVENT_TERMINATE         = 1, ///< Thread terminated.
+    EXITTHREAD_EVENT_UNHANDLED_EXC     = 2, ///< Unhandled exception occurred.
+    EXITTHREAD_EVENT_TERMINATE_PROCESS = 3, ///< Process terminated.
+} ExitThreadEventReason;
+
+/// Reasons for an exit process event.
+typedef enum ExitProcessEventReason
+{
+    EXITPROCESS_EVENT_NONE                = 0, ///< No reason.
+    EXITPROCESS_EVENT_TERMINATE           = 1, ///< Process terminated.
+    EXITPROCESS_EVENT_UNHANDLED_EXCEPTION = 2, ///< Unhandled exception occurred.
+} ExitProcessEventReason;
+
+/* 103 */
+typedef struct KExitThreadDebugEventInfo
+{
+  ExitThreadEventReason reason;
+} KExitThreadDebugEventInfo;
+
+/* 104 */
+struct KExitProcessDebugEventInfo
+{
+  ExitProcessEventReason reason;
+};
+
+/// Stop point types
+typedef enum StopPointType
+{
+    STOPPOINT_SVC_FF        = 0, ///< See @ref SVC_STOP_POINT.
+    STOPPOINT_BREAKPOINT    = 1, ///< Breakpoint.
+    STOPPOINT_WATCHPOINT    = 2, ///< Watchpoint.
+} StopPointType;
+
+/* 105 */
+typedef struct KFaultExceptionDebugEventInfo
+{
+  u32 faultInfo;
+  StopPointType stopPointType;
+} KFaultExceptionDebugEventInfo;
+
+/// Reasons for a user break.
+typedef enum UserBreakType
+{
+    USERBREAK_PANIC         = 0, ///< Panic.
+    USERBREAK_ASSERT        = 1, ///< Assertion failed.
+    USERBREAK_USER          = 2, ///< User related.
+    USERBREAK_LOAD_RO       = 3, ///< Load RO.
+    USERBREAK_UNLOAD_RO     = 4, ///< Unload RO.
+} UserBreakType;
+
+/* 106 */
+typedef struct KUserBreakExceptionDebugEventInfo
+{
+  UserBreakType reason;
+  u32 croInfo, croInfoSize;
+} KUserBreakExceptionDebugEventInfo;
+
+/* 107 */
+typedef struct KDebuggerBreakDebugEventInfo
+{
+  KThread *currentThreads[4];
+} KDebuggerBreakDebugEventInfo;
+
+/* 109 */
+typedef struct KExceptionDebugEventInfo
+{
+  ExceptionDebugEventType type;
+  void *address;
+  u32 category;
+  union
+  {
+    KFaultExceptionDebugEventInfo fault;
+    KUserBreakExceptionDebugEventInfo userBreak;
+    KDebuggerBreakDebugEventInfo debuggerBreak;
+  };
+};
+
+/* 110 */
+typedef struct KScheduleDebugEventInfo
+{
+  u64 clockTick;
+  u32 cpuId;
+  u32 unk[5];
+  u32 unkEventInfo;
+  u32 padding;
+} KScheduleDebugEventInfo;
+
+/* 111 */
+typedef struct KSyscallDebugEventInfo
+{
+  u64 clockTick;
+  u32 svcId;
+} KSyscallDebugEventInfo;
+
+/* 112 */
+typedef struct KOutputStringDebugEventInfo
+{
+  const char *str;
+  u32 size;
+} KOutputStringDebugEventInfo;
+
+/* 113 */
+typedef struct KMapDebugEventInfo
+{
+  void *address;
+  u32 size;
+  MemPerm permissions;
+  MemState state;
+} KMapDebugEventInfo;
+
+/* 115 */
+typedef struct KEventInfo
+{
+  DebugEventType type;
+  u32 threadId;
+  u32 flags;
+  bool processIsBeingAttached;
+  bool needsToBeContinued;
+  bool other;
+  bool isProcessed;
+  union
+  {
+    KAttachProcessDebugEventInfo attachProcess;
+    KAttachThreadDebugEventInfo attachThread;
+    KExitThreadDebugEventInfo exitThread;
+    KExitProcessDebugEventInfo exitProcess;
+    KExceptionDebugEventInfo exception;
+    KScheduleDebugEventInfo schedule;
+    KSyscallDebugEventInfo syscall;
+    KOutputStringDebugEventInfo outputString;
+    KMapDebugEventInfo map;
+  };
+} KEventInfo;
+
+
+#define DEFINE_CONSOLE_SPECIFIC_STRUCTS(console, nbCores)
+/* 60 */
+typedef struct ALIGNED(4) KProcessHwInfoN3DS
+{
+  KObjectMutex mutex;
+  u32 processTLBEntriesNeedToBeFlushedOnCore[4];
+  KLinkedList ownedKMemoryBlocks;
+  u32 unknown_3;
+  u32 field_28;
+  void *translationTableBase;
+  u8 contextId;
+  bool globalTLBFlushRequired;
+  bool isCurrentlyLoadedApp;
+  u32 unknown_5;
+  void *endOfUserlandVmem;
+  void *linearVAUserlandBase;
+  u32 unknown_6;
+  u32 mmuTableSize;
+  u32 *mmuTableVA;
+} KProcessHwInfoN3DS;
+
+typedef struct ALIGNED(4) KProcessHwInfoO3DS8x
+{
+  KObjectMutex mutex;
+  u32 processTLBEntriesNeedToBeFlushedOnCore[2];
+  KLinkedList ownedKMemoryBlocks;
+  u32 unknown_3;
+  u32 field_28;
+  void *translationTableBase;
+  u8 contextId;
+  bool globalTLBFlushRequired;
+  bool isCurrentlyLoadedApp;
+  u32 unknown_5;
+  void *endOfUserlandVmem;
+  void *linearVAUserlandBase;
+  u32 unknown_6;
+  u32 mmuTableSize;
+  u32 *mmuTableVA;
+} KProcessHwInfoO3DS8x;
+
+typedef struct ALIGNED(4) KProcessHwInfoO3DSPre8x
+{
+  KObjectMutex mutex;
+  u32 processTLBEntriesNeedToBeFlushedOnCore[2];
+  KLinkedList ownedKMemoryBlocks;
+  u32 unknown_3;
+  u32 field_28;
+  void *translationTableBase;
+  u8 contextId;
+  bool globalTLBFlushRequired;
+  bool isCurrentlyLoadedApp;
+  u32 unknown_5;
+  void *endOfUserlandVmem;
+  u32 mmuTableSize;
+  u32 *mmuTableVA;
+} KProcessHwInfoO3DSPre8x;
+
+#define INSTANCIATE_KPROCESS(sys) \
+typedef struct KProcess##sys\
+{\
+  KSynchronizationObject syncObject;\
+  KSendableInterruptEvent sendableInterruptEvent;\
+  KProcessHwInfo##sys hwInfo;\
+  u32 totalThreadContextSize;\
+  KLinkedList threadLocalPages;\
+  u32 unknown_7;\
+  s32 idealProcessor;\
+  KDebug *debug;\
+  KResourceLimit *resourceLimits;\
+  ProcessStatus status;\
+  u8 affinityMask;\
+  u16 padding;\
+  s16 threadCount;\
+  s16 maxThreadCount;\
+  u32 svcAccessControlMask[4];\
+  u32 interruptFlags[4];\
+  u32 kernelFlags;\
+  u16 handleTableSize;\
+  u16 kernelReleaseVersion;\
+  KCodeSet *codeSet;\
+  u32 processId;\
+  s64 creationTime;\
+  KThread *mainThread;\
+  u32 interruptEnabledFlags[4];\
+  KProcessHandleTable handleTable;\
+  u8 gap234[52];\
+  u64 unused;\
+} KProcess##sys;
+
+INSTANCIATE_KPROCESS(N3DS);
+INSTANCIATE_KPROCESS(O3DS8x);
+INSTANCIATE_KPROCESS(O3DSPre8x);
 
 typedef union KProcess
 {
-    KProcessO3DSPre8x O3DSPre8x;
-    KProcessO3DS8x O3DS8x;
     KProcessN3DS N3DS;
+    KProcessO3DS8x O3DS8x;
+    KProcessO3DSPre8x O3DSPre8x;
 } KProcess;
 
-struct InterruptEvent;
-typedef struct InterruptEvent InterruptEvent;
-struct KInterruptEvent;
-typedef struct KInterruptEvent KInterruptEvent;
-
-// See https://www.3dbrew.org/wiki/ARM11_Interrupts#InterruptEvent
-struct InterruptEvent
+/* 54 */
+typedef struct InterruptManagerN3DS
 {
-    struct
-    {
-        KInterruptEvent* (*handleInterruptAndGetKInterruptEvent)(InterruptEvent *this, u32 interruptID); // actual interrupt handler
-    } *vtable;
-};
-
-struct KInterruptEvent
-{
-    InterruptEvent interruptEvent;
-    u32 unknown;
-};
-
-
-typedef struct InterruptData
-{
-    InterruptEvent *interruptEvent;
-    bool willBeMasked, isMasked;
-    u8 priority;
-    u8 padding;
-} InterruptData;
+  InterruptData privateInterrupts[4][32];
+  InterruptData publicEvents[96];
+  KObjectMutex mutex;
+} InterruptManagerN3DS;
 
 typedef struct InterruptManagerO3DS
 {
-    InterruptData privateInterrupts[2][32];
-    InterruptData publicEvents[0x60];
-    KThread *actingThread;
-    s16 errorTracker;
-    s16 padding;
+  InterruptData privateInterrupts[2][32];
+  InterruptData publicEvents[96];
+  KObjectMutex mutex;
 } InterruptManagerO3DS;
-
-typedef struct InterruptManagerN3DS
-{
-    InterruptData privateInterrupts[4][32];
-    InterruptData publicEvents[0x60];
-    KThread *actingThread;
-    s16 errorTracker;
-    s16 padding;
-} InterruptManagerN3DS;
 
 typedef union InterruptManager
 {
-    InterruptManagerO3DS O3DS;
     InterruptManagerN3DS N3DS;
+    InterruptManagerO3DS O3DS;
 } InterruptManager;
+
 
 extern bool isN3DS;
 extern void *officialSVCs[0x7E]; //defined in main.c, will be used everywhere
 
 #define KPROCESS_GET_RVALUE(obj, field)  (isN3DS ? (obj)->N3DS.field : ((*(vu32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? (obj)->O3DS8x.field : (obj)->O3DSPre8x.field))
 
-static inline void *KProcess_ConvertHandle(KProcess *process, Handle handle)
+static inline void *KProcess__ConvertHandle(KProcess *process, Handle handle)
 {
     switch(handle)
     {
@@ -255,4 +1031,9 @@ static inline void *KProcess_ConvertHandle(KProcess *process, Handle handle)
         default:
             return KPROCESS_GET_RVALUE(process, handleTable.handleTable[handle & 0x7fff].pointer);
     }
+}
+
+static inline KCodeSet *codeSetOfProcess(KProcess *process)
+{
+    return KPROCESS_GET_RVALUE(process, codeSet);
 }
