@@ -147,7 +147,7 @@ void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u3
     else isRelease = rev[4] == 0;
 
     if(isRelease) info->flags = 1;
-    if(ISA9LH) info->flags = 1 << 1;
+    //if(ISA9LH) info->flags = 1 << 1;
     /* if(ISN3DS) info->flags |= 1 << 4;
     if(isSafeMode) info->flags |= 1 << 5;*/
     //TODO: update codebase to use those flags ^; add isK9LH flag

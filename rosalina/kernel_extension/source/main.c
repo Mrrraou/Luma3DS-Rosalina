@@ -37,17 +37,16 @@ static void setupFatalExceptionHandlers(void)
     swapHandlerInVeneer(PREFETCH_ABORT, prefetchAbortHandler);
     swapHandlerInVeneer(DATA_ABORT, dataAbortHandler);
 
-    swapHandlerInVeneer(SVC, svcHandler);
-
+    swapHandlerInVeneer(SVC, 0);
     void **arm11SvcTable = (void**)originalHandlers[(u32)SVC];
     while(*arm11SvcTable != NULL) arm11SvcTable++; //Look for SVC0 (NULL)
     memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
-
+/*
     u32 *off = (u32 *)originalHandlers[(u32) SVC];
     for(; off[0] != 0xE1A00009; off++);
     svcFallbackHandler = (void (*)(u8))decodeARMBranch(++off);
     for(; off[0] != 0xE8DD6F00; off++);
-    officialSvcHandlerTail = off;
+    officialSvcHandlerTail = off;*/
 }
 
 static void findUsefulFunctions(void)
