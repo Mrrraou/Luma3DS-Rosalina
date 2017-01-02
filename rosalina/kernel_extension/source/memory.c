@@ -39,7 +39,7 @@ int memcmp(const void *buf1, const void *buf2, u32 size)
     return 0;
 }
 
-void *memset_(void *dest, u32 value, u32 size)
+void *memset(void *dest, u32 value, u32 size)
 {
     u8 *destc = (u8 *)dest;
 

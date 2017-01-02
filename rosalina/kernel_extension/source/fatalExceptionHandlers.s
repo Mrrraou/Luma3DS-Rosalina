@@ -179,7 +179,7 @@ undefinedInstructionHandler:
 prefetchAbortHandler:
     TEST_IF_MODE_AND_ARM_INST_OR_JUMP _prefetchAbortNormalHandler, 0x13
 
-    ldr sp, =(BreakHook + 12 + 4)
+    ldr sp, =(BreakHook + 3*4 + 4)
     cmp lr, sp
     bne _prefetchAbortNormalHandler
 

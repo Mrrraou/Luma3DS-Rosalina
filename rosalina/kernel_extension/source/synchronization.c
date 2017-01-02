@@ -10,7 +10,7 @@ u32 getNumberOfCores(void)
 SGI0Callback_t SGI0HandlersPerCore[4] = {NULL};
 u32 SGI0ParametersPerCore[4] = {0};
 
-KInterruptEvent *SGI0Handler(InterruptEvent UNUSED *this, u32 UNUSED interruptID)
+KSchedulableInterruptEvent *SGI0Handler(KBaseInterruptEvent UNUSED *this, u32 UNUSED interruptID)
 {
     u32 sourceCore = (MPCORE_INT_ACK >> 10) & 3;
 

@@ -1,5 +1,4 @@
 #include "kernel_extension.h"
-#include "kernel.h"
 #include "utils.h"
 
 #define MPCORE_REGS_BASE        ((u32)PA_PTR(0x17E00000))
@@ -9,7 +8,7 @@
 struct Parameters
 {
     void (*SGI0HandlerCallback)(struct Parameters *, u32 *);
-    InterruptManager *interruptManager;
+    void *interruptManager;
     u32 *L2MMUTable; // bit31 mapping
 
     void (*flushEntireICache)(void);

@@ -66,14 +66,14 @@ void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
     dumpHeader.stackDumpSize = copyMemorySafely(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF), 1);
     final += dumpHeader.stackDumpSize;
 
-    if(convertVAToPA((void *)0xFFFF9004) != NULL)
+    if(currentCoreContext->objectContext.currentProcess)
     {
         vu64 *additionalData = (vu64 *)final;
         dumpHeader.additionalDataSize = 16;
-        KCodeSet *currentKCodeSet = KPROCESS_GET_RVALUE(*(KProcess**)0xFFFF9004, codeSet);
+        KCodeSet *currentCodeSet = codeSetOfProcess(currentCoreContext->objectContext.currentProcess);
 
-        memcpy((void *)additionalData, currentKCodeSet->processName, 8);
-        additionalData[1] = currentKCodeSet->titleId;
+        memcpy((void *)additionalData, currentCodeSet->processName, 8);
+        additionalData[1] = currentCodeSet->titleId;
     }
     else dumpHeader.additionalDataSize = 0;
 

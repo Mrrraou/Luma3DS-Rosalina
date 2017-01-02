@@ -2,7 +2,7 @@
 
 #include "types.h"
 
-void *officialSVCs[0x7E] = {NULL};
+extern void *officialSVCs[0x7E];
 
 static inline void yield(void)
 {
@@ -10,4 +10,4 @@ static inline void yield(void)
 }
 
 void svcDefaultHandler(u8 svcId);
-void *svcHook(u32 regs, const u32 *userRegs);
+void *svcHook(u8 *pageEnd);

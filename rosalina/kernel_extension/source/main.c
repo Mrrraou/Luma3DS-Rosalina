@@ -2,6 +2,7 @@
 #include "synchronization.h"
 #include "fatalExceptionHandlers.h"
 #include "svc.h"
+#include "svcHandler.h"
 #include "memory.h"
 
 static const u32 *const exceptionsPage = (const u32 *)0xFFFF0000;
@@ -36,13 +37,13 @@ static void setupFatalExceptionHandlers(void)
     swapHandlerInVeneer(PREFETCH_ABORT, prefetchAbortHandler);
     swapHandlerInVeneer(DATA_ABORT, dataAbortHandler);
 
-    swapHandlerInVeneer(SVC, svcHandler); //NULL so it's not replaced
+    swapHandlerInVeneer(SVC, svcHandler);
 
     void **arm11SvcTable = (void**)originalHandlers[(u32)SVC];
     while(*arm11SvcTable != NULL) arm11SvcTable++; //Look for SVC0 (NULL)
     memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
 
-    u32 *off = (u32 *)officialHandlers[(u32) SVC];
+    u32 *off = (u32 *)originalHandlers[(u32) SVC];
     for(; off[0] != 0xE1A00009; off++);
     svcFallbackHandler = (void (*)(u8))decodeARMBranch(++off);
     for(; off[0] != 0xE8DD6F00; off++);
@@ -51,7 +52,7 @@ static void setupFatalExceptionHandlers(void)
 
 static void findUsefulFunctions(void)
 {
-    KProcessHandleTable__ToKProcess = (KProcess (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
+    KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
 }
 
 struct Parameters
@@ -67,7 +68,7 @@ struct Parameters
     void (*mcuReboot)(void);
     void (*coreBarrier)(void);
 
-     CFWInfo info;
+     CfwInfo cfwInfo;
 };
 
 void main(volatile struct Parameters *p)
@@ -85,4 +86,5 @@ void main(volatile struct Parameters *p)
 
     setupSGI0Handler();
     setupFatalExceptionHandlers();
+    findUsefulFunctions();
 }

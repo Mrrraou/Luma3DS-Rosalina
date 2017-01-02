@@ -1,4 +1,5 @@
-#include "GetProcessInfo.h"
+#include "svc/GetProcessInfo.h"
+#include "memory.h"
 
 Result GetProcessInfoHook(u32 dummy, Handle processHandle, u32 type)
 {
@@ -7,7 +8,8 @@ Result GetProcessInfoHook(u32 dummy, Handle processHandle, u32 type)
 
     if(type == 0x10000 || type == 0x10001)
     {
-        KProcess *process = KProcessHandleTable__ToKProcess(currentKProcess->handleTable, processHandle);
+        KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
+        KProcess *process = KProcessHandleTable__ToKProcess(handleTable, processHandle);
 
         if(process == NULL)
             res = 0xD8E007F7; // invalid handle
@@ -18,7 +20,7 @@ Result GetProcessInfoHook(u32 dummy, Handle processHandle, u32 type)
         else
             out = codeSetOfProcess(process)->titleId;
 
-        return setR0toR3(res, (u32)out >> 32, (u32)out);
+        return setR0toR3(res, (u32)(out >> 32), (u32)out);
     }
 
     else

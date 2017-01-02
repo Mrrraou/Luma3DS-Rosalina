@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../utils.h"
-#include "../kernel.h"
+#include "utils.h"
+#include "kernel.h"
 
-void __attribute__((noreturn)) BreakHook(...);
+void __attribute__((noreturn)) BreakHook(UserBreakType type, ...);

@@ -45,9 +45,9 @@ typedef s32 Result;                 ///< Function result.
 /// Aligns a struct (and other types?) to m, making sure that the size of the struct is a multiple of m.
 #define ALIGN(m)   __attribute__((aligned(m)))
 /// Packs a struct (and other types?) so it won't include padding bytes.
-#define PACKED     __attribute__((packed))
-
-#define UNUSED	   __attribute__((unused))
+#define PACKED      __attribute__((packed))
+#define USED        __attribute__((used))
+#define UNUSED      __attribute__((unused))
 /// Packs a system version from its components.
 #define SYSTEM_VERSION(major, minor, revision) \
     (((major)<<24)|((minor)<<16)|((revision)<<8))
