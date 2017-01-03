@@ -55,6 +55,7 @@ static void K_SGI0HandlerCallback(volatile struct Parameters *p)
 
     p->flushEntireDCacheAndL2C();
     p->flushEntireICache();
+    p->coreBarrier();
 }
 
 u32 ALIGN(0x400) L2MMUTableFor0x40000000[256] = {0};
@@ -87,9 +88,8 @@ static void K_ConfigureAndSendSGI0ToAllCores(void)
     // Now let's configure the L2 table
 
     //4KB extended small pages: [SYS:RW USR:-- X  TYP:NORMAL SHARED OUTER NOCACHE, INNER CACHED WB WA]
-    u32 kernel_extension_pa = (u32)convertVAToPA(kernel_extension);
     for(u32 offset = 0; offset < kernel_extension_size; offset += 0x1000)
-        L2MMUTableFor0x40000000[offset >> 12] = (kernel_extension_pa + offset) | 0x516;
+        L2MMUTableFor0x40000000[offset >> 12] = (u32)convertVAToPA(kernel_extension + offset) | 0x516;
 
     MPCORE_GID_SGI = 0xF0000; // http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0360f/CACGDJJC.html
 }

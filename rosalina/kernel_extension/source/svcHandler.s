@@ -19,7 +19,8 @@ svcHandler:
     strb r9, [sp, #0x58+3]  @ page end - 0xb8 + 3: svc being handled
     strb r10, [sp, #0x58+1] @ page end - 0xb8 + 1: "allow debug" flag
 
-    add r0, sp, #0xd0       @ page end
+    @ sp = page end - 0x110
+    add r0, sp, #0x110       @ page end
     blx svcHook
     mov r8, r0
     ldmfd sp, {r0-r7, r12, lr}
