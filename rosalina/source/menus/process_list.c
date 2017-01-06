@@ -18,14 +18,14 @@ static ProcessInfo infos[0x40] = {0};
 
 void RosalinaMenu_ProcessList(void)
 {
-    svcGetProcessId(&rosalina_pid, 0xFFFF8001);
+    svcGetProcessId(&rosalina_pid, CUR_PROCESS_HANDLE);
 
     u32 pidList[0x40];
-    s32 processCount;
+    s32 processAmount;
 
-    svcGetProcessList(&processCount, pidList, 0x40);
+    svcGetProcessList(&processAmount, pidList, 0x40);
 
-    for(s32 i = 0; i < processCount; i++)
+    for(s32 i = 0; i < processAmount; i++)
     {
         Handle processHandle;
         Result res = svcOpenProcess(&processHandle, pidList[i]);
@@ -39,22 +39,15 @@ void RosalinaMenu_ProcessList(void)
     }
     s32 selected = 0, page = 0, pagePrev = 0;
 
-    s32 processAmount = 0x40;
-    while(infos[--processAmount].pid == 0 && infos[processAmount].name[0] == 0 && processAmount > 0);
-    processAmount++;
-
     while(true)
     {
         if(page != pagePrev)
             draw_clearFramebuffer();
         draw_string("Process list", 10, 10, COLOR_TITLE);
 
-        for(s32 i = 0; i < PROCESSES_PER_MENU_PAGE; i++)
+        for(s32 i = 0; i < PROCESSES_PER_MENU_PAGE && page * PROCESSES_PER_MENU_PAGE + i < processAmount; i++)
         {
             ProcessInfo *info = &infos[page * PROCESSES_PER_MENU_PAGE + i];
-
-            if(infos[--processAmount].pid == 0 && infos[processAmount].name[0] == 0)
-                break;
 
             char str[18];
             hexItoa(info->pid, str, 8, false);
@@ -88,11 +81,7 @@ void RosalinaMenu_ProcessList(void)
         }
 
         if(selected < 0)
-        {
-            s32 i = 0x40;
-            while(infos[--processAmount].pid == 0 && infos[processAmount].name[0] == 0 && i > 0);
-            selected = i;
-        }
+            selected = processAmount - 1;
         else if(selected >= processAmount)
             selected = 0;
 

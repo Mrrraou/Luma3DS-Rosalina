@@ -44,9 +44,9 @@ static void setupFatalExceptionHandlers(void)
     memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
 
     u32 *off = (u32 *)originalHandlers[(u32) SVC];
-    for(; off[0] != 0xE1A00009; off++);
-    svcFallbackHandler = (void (*)(u8))decodeARMBranch(++off);
-    for(; off[0] != 0xE8DD6F00; off++);
+    while(*off++ != 0xE1A00009);
+    svcFallbackHandler = (void (*)(u8))decodeARMBranch(off);
+    for(;*off != 0xE8DD6F00; off++);
     officialSvcHandlerTail = off;
 }
 

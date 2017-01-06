@@ -10,8 +10,8 @@ svcHandler:
     sub sp, #0x18
     mrs r9, spsr
     ands r9, #0x20
-    ldreqb r9, [lr, #-2]
-    ldrneb r9, [lr, #-4]
+    ldrneb r9, [lr, #-2]
+    ldreqb r9, [lr, #-4]
 
     mov lr, #0              @ do stuff as if the "allow debug" flag is always set
     push {r0-r7, r12, lr}

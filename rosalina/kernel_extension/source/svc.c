@@ -7,10 +7,10 @@
 void *officialSVCs[0x7E] = {NULL};
 
 void *svcHook(u8 *pageEnd)
-{ return officialSVCs[*(u8 *)(pageEnd - 0xB5)];
-    /*KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
+{
+    KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
     u64 titleId = codeSetOfProcess(currentProcess)->titleId;
-    while(rosalinaState != 0 && *KPROCESS_GET_PTR(currentProcess, processId) >= 6 && (u32)(titleId >> 32) != 0x00040130) yield();
+    //while(rosalinaState != 0 && *KPROCESS_GET_PTR(currentProcess, processId) >= 6 && (u32)(titleId >> 32) != 0x00040130) yield();
 
     u32 svcId = *(u8 *)(pageEnd - 0xB5);
     switch(svcId)
@@ -25,5 +25,5 @@ void *svcHook(u8 *pageEnd)
             return KernelSetStateHook;
         default:
             return (svcId <= 0x7D) ? officialSVCs[svcId] : NULL;
-    }*/
+    }
 }

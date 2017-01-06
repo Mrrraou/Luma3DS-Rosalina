@@ -20,7 +20,7 @@ Result GetProcessInfoHook(u32 dummy, Handle processHandle, u32 type)
         else
             out = codeSetOfProcess(process)->titleId;
 
-        return setR0toR3(res, (u32)(out >> 32), (u32)out);
+        return setR0toR3(res, (u32)out, (u32)(out >> 32));
     }
 
     else
