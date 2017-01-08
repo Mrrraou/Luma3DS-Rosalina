@@ -76,8 +76,10 @@ void menuThreadMain(void)
             menuShow();
             svcKernelSetState(0x10000, 0);
         }
-        svcSleepThread(5 * 1000 * 1000); // 5ms
+        svcSleepThread(50 * 1000 * 1000); // 5ms
     }
+
+    svcKernelSetState(0x10000, 0);
 }
 
 static void menuDraw(Menu *menu, u32 selected)

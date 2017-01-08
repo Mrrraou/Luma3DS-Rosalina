@@ -54,7 +54,7 @@ typedef s32 Result;                 ///< Function result.
 
 #define MPCORE_REGS_BASE        (0x17E00000 | (1u << 31))
 #define MPCORE_SCU_CFG          (*(vu32 *)(MPCORE_REGS_BASE + 4))
-#define MPCORE_INT_ACK          (*(vu32 *)(MPCORE_REGS_BASE + 0x1C0))
+#define MPCORE_INT_ACK          (*(vu32 *)(MPCORE_REGS_BASE + 0x10C))
 
 #define MPCORE_GID_REGS_BASE    (MPCORE_REGS_BASE + 0x1000)
 #define MPCORE_GID_SGI          (*(vu32 *)(MPCORE_GID_REGS_BASE + 0xF00))

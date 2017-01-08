@@ -53,6 +53,18 @@ static void setupFatalExceptionHandlers(void)
 static void findUsefulFunctions(void)
 {
     KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
+
+    u32 *off = (u32 *)KProcessHandleTable__ToKProcess;
+    while(*off != 0xE8BD80F0) off++;
+    KProcessHandleTable__ToKAutoObject = (KAutoObject * (*)(KProcessHandleTable *, Handle))decodeARMBranch(off + 2);
+
+    off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[9]); // KThread::Terminate
+    while(*off != 0xE5C4007D) off++;
+    KSynchronizationObject__Signal = (void (*)(KSynchronizationObject *, bool))decodeARMBranch(off + 3);
+
+    off = (u32 *)officialSVCs[0x24];
+    while(*off != 0xE59F004C) off++;
+    WaitSynchronization1 = (Result (*)(void *, KThread *, KSynchronizationObject *, s64))(off + 6);
 }
 
 struct Parameters

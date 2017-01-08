@@ -42,7 +42,6 @@
         ldr sp, [sp]
         cmp sp, #0
         bne _die_loop
-
         ldr sp, =_regs
         stmia sp, {r0-r7}
 
@@ -71,13 +70,13 @@ _commonHandler:
         cmp r3, #0
         bne _try_lock
 
-    push {r1, lr}           @ attempt to hang the other cores
+    push {r1, r12, lr}           @ attempt to hang the other cores
     adr r0, _die
     mov r1, #0xf
     mov r2, #1
     mov r3, #0
     bl executeFunctionOnCores
-    pop {r1, lr}
+    pop {r1, r12, lr}
 
     mrs r2, spsr
     mrs r3, cpsr

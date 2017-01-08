@@ -56,6 +56,15 @@ setR0toR3:
 .global KProcessHandleTable__ToKProcess
 KProcessHandleTable__ToKProcess: .word 0
 
+.global KProcessHandleTable__ToKAutoObject
+KProcessHandleTable__ToKAutoObject: .word 0
+
+.global KSynchronizationObject__Signal
+KSynchronizationObject__Signal: .word 0
+
+.global WaitSynchronization1
+WaitSynchronization1: .word 0
+
 .global svcFallbackHandler
 svcFallbackHandler: .word 0
 
@@ -78,6 +87,9 @@ coreBarrier: .word 0
 .global cfwInfo
 cfwInfo: .word 0,0,0,0
 
+.global SGI0Handler
+SGI0Handler: .word 0  @ see synchronization.c
+
 .global isN3DS
 isN3DS: .byte 0
 
@@ -86,7 +98,6 @@ isN3DS: .byte 0
 .section .data
 .balign 4
 
-_customInterruptEventVtable: .word SGI0Handler  @ see synchronization.c
-_customInterruptEventObj: .word _customInterruptEventVtable
+_customInterruptEventObj: .word SGI0Handler
 .global customInterruptEvent
 customInterruptEvent: .word _customInterruptEventObj

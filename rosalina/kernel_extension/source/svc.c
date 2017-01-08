@@ -10,7 +10,10 @@ void *svcHook(u8 *pageEnd)
 {
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
     u64 titleId = codeSetOfProcess(currentProcess)->titleId;
-    //while(rosalinaState != 0 && *KPROCESS_GET_PTR(currentProcess, processId) >= 6 && (u32)(titleId >> 32) != 0x00040130) yield();
+    u32 highTitleId = (u32)(titleId >> 32), lowTitleId = (u32)titleId;
+    while(rosalinaState != 0 && *KPROCESS_GET_PTR(currentProcess, processId) >= 6 &&
+      (highTitleId != 0x00040130 || (highTitleId == 0x00040130 && (lowTitleId == 0x1A02 || lowTitleId == 0x1C02))))
+        yield();//WaitSynchronization1(rosalinaSyncObj, currentCoreContext->objectContext.currentThread, rosalinaSyncObj, -1LL);
 
     u32 svcId = *(u8 *)(pageEnd - 0xB5);
     switch(svcId)

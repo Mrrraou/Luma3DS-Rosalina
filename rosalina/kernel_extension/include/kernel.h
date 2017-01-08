@@ -88,7 +88,7 @@ typedef struct KMutexLinkedList
 typedef struct KClassToken
 {
   const char *name;
-  u8 type;
+  u8 flags;
 } KClassToken;
 
 /* 44 */
@@ -98,15 +98,12 @@ typedef struct ALIGN(4) Vtable__KAutoObject
   void *field_4;
   void (*dtor)(KAutoObject *this);
   void *substractResource;
-  KAutoObject *(*DecrementReferenceCount)(struct KAutoObject *this);
-  union KProcess *(*getParentProcess)(KAutoObject *this);
-  KClassToken *(*GetObjectInfo)(KClassToken *out, KAutoObject *this);
+  KAutoObject *(*DecrementReferenceCount)(KAutoObject *this);
+  union KProcess *(*GetParentProcess)(KAutoObject *this);
+  KClassToken *(*GetClassToken)(KClassToken *out, KAutoObject *this);
   void *field_1C;
   void *field_20;
   void *field_24;
-  void *field_28;
-  void *isInUse;
-  void *isWaiting;
 } Vtable__KAutoObject;
 
 /* 52 */
@@ -660,13 +657,20 @@ typedef struct KTimerAndWDTManager
   KRecursiveLock recursiveLock;
 } KTimerAndWDTManager;
 
+typedef enum ResetType
+{
+  RESET_ONESHOT = 0x0,
+  RESET_STICKY = 0x1,
+  RESET_PULSE = 0x2,
+} ResetType;
+
 /* 81 */
 typedef struct PACKED ALIGN(4) KTimer
 {
   KSynchronizationObject syncObject;
   KTimeableInterruptEvent timeableInterruptEvent;
   bool signaled;
-  u8 resetType;
+  ResetType resetType;
   u16 padding;
   s64 interval;
   s64 currentValue;

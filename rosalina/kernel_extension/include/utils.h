@@ -28,7 +28,12 @@ void *convertVAToPA(const void *addr);
 u32 getCurrentCoreID(void);
 bool enableIRQ(void);
 
-KProcess *(*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, Handle processHandle);
+KProcess * (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, Handle processHandle);
+KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, Handle handle);
+void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool isPulse);
+Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
+
+
 void (*svcFallbackHandler)(u8 svcId);
 u32 *officialSvcHandlerTail;
 
