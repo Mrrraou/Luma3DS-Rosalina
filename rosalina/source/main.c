@@ -17,38 +17,6 @@ static Handle handles[MAX_HANDLES];
 static Handle client_handle;
 static int active_handles;
 
-bool isN3DS = false;
-u8 *vramKMapping, *dspAndAxiWramMapping, *fcramKMapping;
-static void K_InitMappingInfo(void)
-{
-    isN3DS = convertVAToPA((void*)0xE9000000) != 0; // check if there's the extra FCRAM
-    if(convertVAToPA((void *)0xF0000000) != 0)
-    {
-        // Older mappings
-        fcramKMapping = (u8*)0xF0000000;
-        vramKMapping = (u8*)0xE8000000;
-        dspAndAxiWramMapping = (u8*)0xEFF00000;
-    }
-    else
-    {
-        // Newer mappings
-        fcramKMapping = (u8*)0xE0000000;
-        vramKMapping = (u8*)0xD8000000;
-        dspAndAxiWramMapping = (u8*)0xDFF00000;
-    }
-}
-
-static void K_PatchDebugMode(void)
-{
-    /*
-    vu8 *debugEnabled = (vu8*)0xFFF2E00A;
-    *debugEnabled = true; // enables DebugActiveProcess and other debug SVCs
-    */
-    // Actually, nevermind... The mapping for 0xFFF2E000 differs between kernel versions,
-    // and probably differs between consoles too. Causes a data abort if not mapped,
-    // of course...
-}
-
 // this is called before main
 void __appInit()
 {
@@ -78,8 +46,6 @@ void __ctru_exit()
 
 void initSystem()
 {
-  svc_7b(K_InitMappingInfo);
-  svc_7b(K_PatchDebugMode);
   installKernelExtension();
 
   __sync_init();
