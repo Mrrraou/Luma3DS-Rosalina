@@ -1,7 +1,6 @@
 #include <3ds.h>
 #include "menus/process_patches.h"
 #include "memory.h"
-#include "kernel.h"
 #include "destructured_patch.h"
 #include "draw.h"
 
@@ -40,25 +39,31 @@ const u8 fsArchiveCheckPatch[] 	 = {0x01, 0x20, 	// mov r0, #1
 
 u32* PatchProcessByName(char *name, DestructuredPatch *patch, u32 addr, u32 size)
 {
-	Kernel_FetchLoadedProcesses();
+    u32 pidList[0x40];
+    s32 processCount;
+    svcGetProcessList(&processCount, pidList, 0x40);
+    Handle dstProcessHandle = 0;
 
-	ProcessInfo *processInfo;
-	for(u32 i = 0; i < sizeof(processes_info) / sizeof(ProcessInfo); i++)
-	{
-		if(strncmp(processes_info[i].name, name, 8) == 0)
-		{
-			processInfo = &processes_info[i];
-			break;
-		}
-	}
+    for(s32 i = 0; i < processCount; i++)
+    {
+        Handle processHandle;
+        Result res = svcOpenProcess(&processHandle, pidList[i]);
+        if(R_FAILED(res))
+            continue;
 
-	if(!processInfo)
+        char procName[8] = {0};
+        svcGetProcessInfo((s64 *)procName, processHandle, 0x10000);
+        if(strncmp(procName, name, 8) == 0)
+            dstProcessHandle = processHandle;
+        else
+            svcCloseHandle(processHandle);
+    }
+
+	if(dstProcessHandle == 0)
 		return NULL;
 
 	Result res;
-	Handle processHandle;
-	if(R_FAILED(res = svcOpenProcess(&processHandle, processInfo->pid)))
-		return NULL;
+	Handle processHandle = dstProcessHandle;
 
 	if(R_FAILED(res = svcMapProcessMemory(processHandle, addr, addr + size)))
 		return NULL;
@@ -90,25 +95,32 @@ void ProcessPatches_PatchFS(void)
 	draw_flushFramebuffer();
 
 	bool success = false;
-	Kernel_FetchLoadedProcesses();
 
-	ProcessInfo *processInfo;
-	for(u32 i = 0; i < sizeof(processes_info) / sizeof(ProcessInfo); i++)
-	{
-		if(strncmp(processes_info[i].name, "fs", 8) == 0)
-		{
-			processInfo = &processes_info[i];
-			break;
-		}
-	}
+    u32 pidList[0x40];
+    s32 processCount;
+    svcGetProcessList(&processCount, pidList, 0x40);
+    Handle dstProcessHandle = 0;
 
-	if(!processInfo)
+    for(s32 i = 0; i < processCount; i++)
+    {
+        Handle processHandle;
+        Result res = svcOpenProcess(&processHandle, pidList[i]);
+        if(R_FAILED(res))
+            continue;
+
+        char procName[8] = {0};
+        svcGetProcessInfo((s64 *)procName, processHandle, 0x10000);
+        if(strncmp(procName, "fs", 8) == 0)
+            dstProcessHandle = processHandle;
+        else
+            svcCloseHandle(processHandle);
+    }
+
+	if(dstProcessHandle == 0)
 		goto END;
 
 	Result res;
-	Handle processHandle;
-	if(R_FAILED(res = svcOpenProcess(&processHandle, processInfo->pid)))
-		goto END;
+	Handle processHandle = dstProcessHandle;
 
 	if(R_FAILED(res = svcMapProcessMemory(processHandle, 0x100000, 0x134000)))
 		goto END;

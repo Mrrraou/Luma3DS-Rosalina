@@ -65,5 +65,6 @@ customHandler: .ascii "hdlr"
 interruptManager: .word 0
 L2MMUTable: .word 0
 funcs: .word 0,0,0,0,0
+CFWInfo: .word 0,0,0,0
 
 .close

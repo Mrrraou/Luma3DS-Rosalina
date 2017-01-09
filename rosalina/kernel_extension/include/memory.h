@@ -3,9 +3,9 @@
 #include "types.h"
 
 u32 copyMemorySafely(void *dst, const void *src, u32 size, u32 alignment);
-void memcpy(void *dest, const void *src, u32 size);
-int memcmp(const void *buf1, const void *buf2, u32 size);
-void *memset_(void *dest, u32 value, u32 size); // thanks binutils for the nice bug involving memset.
+void memcpy(void *dest, const void *src, u32 size) USED;
+int memcmp(const void *buf1, const void *buf2, u32 size) USED;
+void *memset(void *dest, u32 value, u32 size) USED; // thanks binutils for the nice bug involving memset.
 void *memset32(void *dest, u32 value, u32 size);
 u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize);
 char *strncpy(char *dest, const char *src, u32 size);

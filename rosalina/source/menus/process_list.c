@@ -4,21 +4,40 @@
 #include "draw.h"
 #include "menu.h"
 #include "utils.h"
-#include "kernel.h"
-
 
 u32 rosalina_pid;
 
+typedef struct ProcessInfo
+{
+    u32 pid;
+    u64 titleId;
+    char name[8];
+} ProcessInfo;
+
+static ProcessInfo infos[0x40] = {0};
+
 void RosalinaMenu_ProcessList(void)
 {
-    svcGetProcessId(&rosalina_pid, 0xFFFF8001);
-    Kernel_FetchLoadedProcesses();
+    svcGetProcessId(&rosalina_pid, CUR_PROCESS_HANDLE);
 
+    u32 pidList[0x40];
+    s32 processAmount;
+
+    svcGetProcessList(&processAmount, pidList, 0x40);
+
+    for(s32 i = 0; i < processAmount; i++)
+    {
+        Handle processHandle;
+        Result res = svcOpenProcess(&processHandle, pidList[i]);
+        if(R_FAILED(res))
+            continue;
+
+        infos[i].pid = pidList[i];
+        svcGetProcessInfo((s64 *)&infos[i].name, processHandle, 0x10000);
+        svcGetProcessInfo((s64 *)&infos[i].titleId, processHandle, 0x10001);
+        svcCloseHandle(processHandle);
+    }
     s32 selected = 0, page = 0, pagePrev = 0;
-
-    s32 processAmount = 0x40;
-    while(!processes_info[--processAmount].process && processAmount > 0);
-    processAmount++;
 
     while(true)
     {
@@ -26,12 +45,9 @@ void RosalinaMenu_ProcessList(void)
             draw_clearFramebuffer();
         draw_string("Process list", 10, 10, COLOR_TITLE);
 
-        for(s32 i = 0; i < PROCESSES_PER_MENU_PAGE; i++)
+        for(s32 i = 0; i < PROCESSES_PER_MENU_PAGE && page * PROCESSES_PER_MENU_PAGE + i < processAmount; i++)
         {
-            ProcessInfo *info = &processes_info[page * PROCESSES_PER_MENU_PAGE + i];
-
-            if(!info->process)
-                break;
+            ProcessInfo *info = &infos[page * PROCESSES_PER_MENU_PAGE + i];
 
             char str[18];
             hexItoa(info->pid, str, 8, false);
@@ -65,11 +81,7 @@ void RosalinaMenu_ProcessList(void)
         }
 
         if(selected < 0)
-        {
-            s32 i = 0x40;
-            while(!processes_info[--i].process && i > 0);
-            selected = i;
-        }
+            selected = processAmount - 1;
         else if(selected >= processAmount)
             selected = 0;
 

@@ -14,8 +14,7 @@
 
 #define FB_BOTTOM_VRAM              ((void*)0x1F48F000)
 #define FB_BOTTOM_VRAM_PA           0x1848F000
-#define FB_TOP_SIZE                 (400 * 240 * 3)
-#define FB_BOTTOM_SIZE              (320 * 240 * 3)
+#define FB_BOTTOM_SIZE              (320 * 240 * 2)
 
 #define SCREEN_BOT_WIDTH  320
 #define SCREEN_BOT_HEIGHT 240
@@ -23,10 +22,11 @@
 #define SPACING_Y 11
 #define SPACING_X 6
 
-#define COLOR_TITLE 0xFF9900
-#define COLOR_WHITE 0xFFFFFF
-#define COLOR_RED   0x0000FF
-#define COLOR_BLACK 0x000000
+#define MAKE_COLOR_RGB565(R, G, B) (((R) << 11)| ((G) << 5) | (B))
+#define COLOR_TITLE MAKE_COLOR_RGB565(0x00, 0x26, 0x1F) //0x04DF //0xFF9900
+#define COLOR_WHITE MAKE_COLOR_RGB565(0x1F, 0x3F, 0x1F)
+#define COLOR_RED   MAKE_COLOR_RGB565(0x1F, 0x00, 0x00)
+#define COLOR_BLACK MAKE_COLOR_RGB565(0x00, 0x00, 0x00)
 
 
 #define draw_clearFramebuffer() draw_fillFramebuffer(0)
@@ -42,4 +42,4 @@ void draw_restoreFramebuffer(void);
 void draw_flushFramebuffer(void);
 
 void createBitmapHeader(u8 *dst, u32 width, u32 heigth);
-u8 *convertFrameBuffer(bool top);
+u8 *convertFrameBufferLine(bool top, u32 y);

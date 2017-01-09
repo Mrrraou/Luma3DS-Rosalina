@@ -34,8 +34,42 @@ enableIRQ:
     cpsie i
     bx lr
 
+.global atomicStore32
+.type   atomicStore32, %function
+atomicStore32:
+    ldrex r2, [r0]
+    strex r2, r1, [r0]
+    cmp r2, #0
+    bne atomicStore32
+    bx lr
+
+.thumb
+
+.global setR0toR3
+.type   setR0toR3, %function
+setR0toR3:
+    bx lr
+
 .bss
 .balign 4
+
+.global KProcessHandleTable__ToKProcess
+KProcessHandleTable__ToKProcess: .word 0
+
+.global KProcessHandleTable__ToKAutoObject
+KProcessHandleTable__ToKAutoObject: .word 0
+
+.global KSynchronizationObject__Signal
+KSynchronizationObject__Signal: .word 0
+
+.global WaitSynchronization1
+WaitSynchronization1: .word 0
+
+.global svcFallbackHandler
+svcFallbackHandler: .word 0
+
+.global officialSvcHandlerTail
+officialSvcHandlerTail: .word 0
 
 .global interruptManager
 interruptManager: .word 0
@@ -50,6 +84,12 @@ mcuReboot: .word 0
 .global coreBarrier
 coreBarrier: .word 0
 
+.global cfwInfo
+cfwInfo: .word 0,0,0,0
+
+.global SGI0Handler
+SGI0Handler: .word 0  @ see synchronization.c
+
 .global isN3DS
 isN3DS: .byte 0
 
@@ -58,7 +98,6 @@ isN3DS: .byte 0
 .section .data
 .balign 4
 
-_customInterruptEventVtable: .word SGI0Handler  @ see synchronization.c
-_customInterruptEventObj: .word _customInterruptEventVtable
+_customInterruptEventObj: .word SGI0Handler
 .global customInterruptEvent
 customInterruptEvent: .word _customInterruptEventObj

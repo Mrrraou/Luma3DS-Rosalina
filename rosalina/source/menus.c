@@ -16,7 +16,7 @@ Menu menu_rosalina = {
     {
         {"Process list", METHOD, .method = &RosalinaMenu_ProcessList},
         {"Process patches menu...", MENU, .menu = &menu_process_patches},
-        {"Take screenshot (takes a while)", METHOD, .method = &RosalinaMenu_TakeScreenShot},
+        {"Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenShot},
         {"New 3DS menu...", MENU, .menu = &menu_n3ds},
         {"Credits", METHOD, .method = &RosalinaMenu_ShowCredits}
     }
@@ -60,14 +60,22 @@ void RosalinaMenu_TakeScreenShot(void)
     createBitmapHeader(buf, 400, 240);
     TRY(IFile_Write(&file, &total, buf, 54, 0));
 
-    TRY(IFile_Write(&file, &total, convertFrameBuffer(true), 3*400*240, 0));
+    for(u32 y = 0; y < 240; y++)
+    {
+        u8 *line = convertFrameBufferLine(true, y);
+        TRY(IFile_Write(&file, &total, line, 3*400, 0));
+    }
     TRY(IFile_Close(&file));
 
     TRY(IFile_Open(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/luma/screenshot_bottom.bmp"), FS_OPEN_CREATE | FS_OPEN_WRITE));
     createBitmapHeader(buf, 320, 240);
     TRY(IFile_Write(&file, &total, buf, 54, 0));
 
-    TRY(IFile_Write(&file, &total, convertFrameBuffer(false), 3*320*240, 0));
+    for(u32 y = 0; y < 240; y++)
+    {
+        u8 *line = convertFrameBufferLine(false, y);
+        TRY(IFile_Write(&file, &total, line, 3*320, 0));
+    }
 
 end:
     IFile_Close(&file);

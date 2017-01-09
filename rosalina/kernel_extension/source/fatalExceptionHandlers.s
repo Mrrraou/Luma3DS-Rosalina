@@ -42,7 +42,6 @@
         ldr sp, [sp]
         cmp sp, #0
         bne _die_loop
-
         ldr sp, =_regs
         stmia sp, {r0-r7}
 
@@ -71,13 +70,13 @@ _commonHandler:
         cmp r3, #0
         bne _try_lock
 
-    push {r1, lr}           @ attempt to hang the other cores
+    push {r1, r12, lr}           @ attempt to hang the other cores
     adr r0, _die
-    mov r1, #0xF
+    mov r1, #0xf
     mov r2, #1
     mov r3, #0
     bl executeFunctionOnCores
-    pop {r1, lr}
+    pop {r1, r12, lr}
 
     mrs r2, spsr
     mrs r3, cpsr
@@ -179,29 +178,17 @@ undefinedInstructionHandler:
 prefetchAbortHandler:
     TEST_IF_MODE_AND_ARM_INST_OR_JUMP _prefetchAbortNormalHandler, 0x13
 
-    mov sp, r0
-    ldr r0, [lr, #-4]
-
-    cps #0x11                           @ switch to FIQ mode because it has more banked registers
-    ldr r8, =0xe12fff7f
-    cmp r0, r8
-    cps #0x17                           @ switch back to abort mode
-    mov r0, sp
+    ldr sp, =(BreakHook + 3*4 + 4)
+    cmp lr, sp
     bne _prefetchAbortNormalHandler
 
-    cps #0x13                           @ switch to supervisor mode
-    cmp r10, #0                         @ implementation details of the official svc handler
-    addne r8, sp, #0x28
-    moveq r8, sp
-    cps #0x17                           @ switch back to abort mode
-
-    ldr r9, [r8, #0x1c]
-    ldr lr, [r8, #0x18]
-    tst r9, #0x20
+    sub sp, r0, #0x110
+    pop {r0-r7, r12, lr}
+    pop {r8-r11}
+    ldr lr, [sp, #8]!
+    ldr sp, [sp, #4]
+    msr spsr, sp
     addne lr, #2                        @ adjust address for later
-    msr spsr, r9
-    mov sp, r8                          @ not sure whether you can put the base in the reglist when transferring regs from user-mode
-    ldmfd sp, {r8-r11}^
 
     GEN_USUAL_HANDLER _prefetchAbortNormal, 2
 
