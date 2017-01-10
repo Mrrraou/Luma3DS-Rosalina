@@ -66,6 +66,16 @@ MyThread menuCreateThread(void)
 
 void menuThreadMain(void)
 {
+    s64 dummy;
+    bool isN3DS = svcGetSystemInfo(&dummy, 0x10001, 0) == 0;
+
+    if(!isN3DS)
+    {
+        menu_rosalina.items--;
+        for(u32 i = 3; i <= menu_rosalina.items; i++)
+            menu_rosalina.item[i] = menu_rosalina.item[i+1];
+    }
+
     while(true)
     {
         if((HID_PAD & (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT)) == (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT))
@@ -78,8 +88,6 @@ void menuThreadMain(void)
         }
         svcSleepThread(50 * 1000 * 1000); // 5ms
     }
-
-    svcKernelSetState(0x10000, 0);
 }
 
 static void menuDraw(Menu *menu, u32 selected)

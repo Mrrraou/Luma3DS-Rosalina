@@ -15,7 +15,7 @@ void draw_copyFramebuffer(void *dst)
     memcpy(dst, FB_BOTTOM_VRAM, FB_BOTTOM_SIZE);
 }
 
-void draw_copyToFramebuffer(void *src)
+void draw_copyToFramebuffer(const void *src)
 {
     memcpy(FB_BOTTOM_VRAM, src, FB_BOTTOM_SIZE);
 }
@@ -43,7 +43,7 @@ void draw_character(char character, u32 posX, u32 posY, u32 color)
     }
 }
 
-u32 draw_string(char *string, u32 posX, u32 posY, u32 color)
+u32 draw_string(const char *string, u32 posX, u32 posY, u32 color)
 {
   for(u32 i = 0, line_i = 0; i < ((u32) strlen(string)); i++)
   {

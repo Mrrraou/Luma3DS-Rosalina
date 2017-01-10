@@ -3,10 +3,7 @@
 #include <3ds/types.h>
 #include "menu.h"
 
-
-void N3DS_SetMode_FasterClockL2(void);
-void N3DS_SetMode_FasterClock(void);
-void N3DS_SetMode_L2(void);
-void N3DS_SetMode_None(void);
+void N3DS_ChangeClockRate(void);
+void N3DS_EnableDisableL2Cache(void);
 
 extern Menu menu_n3ds;

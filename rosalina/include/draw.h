@@ -30,10 +30,10 @@
 #define COLOR_BLACK MAKE_COLOR_RGB565(0x00, 0x00, 0x00)
 
 void draw_copyFramebuffer(void *dst);
-void draw_copyToFramebuffer(void *src);
+void draw_copyToFramebuffer(const void *src);
 void draw_fillFramebuffer(u32 value);
 void draw_character(char character, u32 posX, u32 posY, u32 color);
-u32 draw_string(char *string, u32 posX, u32 posY, u32 color);
+u32 draw_string(const char *string, u32 posX, u32 posY, u32 color);
 
 static inline void draw_clearFramebuffer(void)
 {
