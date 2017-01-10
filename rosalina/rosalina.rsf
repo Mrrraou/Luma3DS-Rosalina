@@ -41,87 +41,15 @@ AccessControlInfo:
   HandleTableSize: 150
 
   MemoryMapping:
-    - 0x1F000000 - 0x1F5FFFFF                 # VRAM
+    - 0x1F000000 - 0x1F5FFFFF                 # VRAM (cached)
 
   IORegisterMapping:
-    - 0x1EC46000                            # HID IO registers
-    - 0x1EF00000                            # GSP IO registers
+    # We're using the global custom bit31 mapping
 
   SystemCallAccess:
-    ControlMemory: 0x1
-    QueryMemory: 0x2
-    ExitProcess: 0x3
-    GetProcessIdealProcessor: 0x6
-    CreateThread: 0x8
-    ExitThread: 0x9
-    OpenProcess: 0x33
-    Break: 0x3C
-    FlushProcessDataCache: 0x54
-    DebugActiveProcess: 0x60
-    BreakDebugProcess: 0x61
-    TerminateDebugProcess: 0x62
-    GetProcessDebugEvent: 0x63
-    ContinueDebugEvent: 0x64
-    GetProcessList: 0x65
-    ControlProcessMemory: 0x70
-    MapProcessMemory: 0x71
-    UnmapProcessMemory: 0x72
-    KernelSetState: 0x7C
-    AcceptSession: 74
-    ArbitrateAddress: 34
-    CancelTimer: 28
-    ClearEvent: 25
-    ClearTimer: 29
-    CloseHandle: 35
-    ConnectToPort: 45
-    CreateAddressArbiter: 33
-    CreateCodeSet: 115
-    CreateEvent: 23
-    CreateMemoryBlock: 30
-    CreateMutex: 19
-    CreatePort: 71
-    CreateProcess: 117
-    CreateSemaphore: 21
-    CreateSessionToPort: 72
-    CreateTimer: 26
-    DuplicateHandle: 39
-    GetCurrentProcessorNumber: 17
-    GetHandleInfo: 41
-    GetProcessId: 53
-    GetProcessIdOfThread: 54
-    GetProcessInfo: 43
-    GetResourceLimit: 56
-    GetResourceLimitCurrentValues: 58
-    GetResourceLimitLimitValues: 57
-    GetSystemInfo: 42
-    GetSystemTick: 40
-    GetThreadContext: 59
-    GetThreadId: 55
-    GetThreadIdealProcessor: 15
-    GetThreadInfo: 44
-    GetThreadPriority: 11
-    MapMemoryBlock: 31
-    OutputDebugString: 61
-    RandomStub: 116
-    ReleaseMutex: 20
-    ReleaseSemaphore: 22
-    ReplyAndReceive1: 75
-    ReplyAndReceive2: 76
-    ReplyAndReceive3: 77
-    ReplyAndReceive4: 78
-    ReplyAndReceive: 79
-    SendSyncRequest1: 46    # GetCFWInfo
+  # The kernel extension removes svc perms checks, so...
     SendSyncRequest2: 47    # CustomBackdoor
-    SendSyncRequest3: 48
-    SendSyncRequest4: 49
-    SendSyncRequest: 50
-    SetThreadPriority: 12
-    SetTimer: 27
-    SignalEvent: 24
-    SleepThread: 10
-    UnmapMemoryBlock: 32
-    WaitSynchronization1: 36
-    WaitSynchronizationN: 37
+
   InterruptNumbers:
   ServiceAccessControl:
     - srv:pm

@@ -10,7 +10,7 @@
     push {r0-r1, r3-r7}
     mov r0, #0
     mov r1, #0x30000000 ; end address
-    ldr r3, =#0x40402   ; supersection (priv: rwx, usr: no access) of strongly ordered memory, shared
+    ldr r3, =#0x40C02   ; supersection (rwx for all) of strongly ordered memory, shared
     loop:
         orr r4, r0, #0x80000000
         orr r5, r0, r3

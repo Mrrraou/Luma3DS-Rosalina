@@ -7,6 +7,7 @@
 // For accessing physmem uncached (and directly)
 #define PA_PTR(addr)            (void *)((u32)(addr) | 1 << 31)
 #define PA_FROM_VA_PTR(addr)    PA_PTR(convertVAToPA(addr))
+#define REG32(addr)             (*(vu32 *)(PA_PTR(addr)))
 
 static inline void *decodeARMBranch(const void *src)
 {

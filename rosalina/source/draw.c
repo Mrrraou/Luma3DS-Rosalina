@@ -198,8 +198,7 @@ static inline void convertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Framebuffer
 
 static u8 line[3*400];
 
-extern u8 *vramKMapping, *fcramKMapping;
-void K_convertFrameBufferLine(bool top, u32 y)
+u8 *convertFrameBufferLine(bool top, u32 y)
 {
     GSPGPU_FramebufferFormats fmt = top ? (GSPGPU_FramebufferFormats)(GPU_FB_TOP_1_FMT & 7) : (GSPGPU_FramebufferFormats)(GPU_FB_BOTTOM_1_FMT & 7);
     u32 width = top ? 400 : 320;
@@ -210,10 +209,5 @@ void K_convertFrameBufferLine(bool top, u32 y)
 
     for(u32 x = 0; x < width; x++)
         convertPixelToBGR8(line + x * 3 , addr + (x*240 + y) * formatSizes[(u8)fmt], fmt);
-}
-
-u8 *convertFrameBufferLine(bool top, u32 y)
-{
-    svc_7b(K_convertFrameBufferLine, top, y);
     return line;
 }

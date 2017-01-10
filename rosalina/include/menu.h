@@ -2,8 +2,9 @@
 
 #include <3ds/types.h>
 #include "MyThread.h"
+#include "utils.h"
 
-#define HID_PAD                 (*((vu32*)0x1EC46000) ^ 0xFFF)
+#define HID_PAD                 (REG32(0x10146000) ^ 0xFFF)
 
 #define BUTTON_A          (1 << 0)
 #define BUTTON_B          (1 << 1)
