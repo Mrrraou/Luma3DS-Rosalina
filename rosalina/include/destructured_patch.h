@@ -17,4 +17,4 @@ typedef struct DestructuredPatch {
 } DestructuredPatch;
 
 
-u32* DestructuredPatch_FindAndApply(DestructuredPatch *patch, u32 *code, u32 codeSize);
+u8 *DestructuredPatch_FindAndApply(DestructuredPatch *patch, u8 *code, u32 codeSize, bool isThumb);

@@ -3,31 +3,38 @@
 #include "memory.h"
 
 
-u32* DestructuredPatch_FindAndApply(DestructuredPatch *patch, u32 *code, u32 codeSize)
+u8 *DestructuredPatch_FindAndApply(DestructuredPatch *patch, u8 *code, u32 codeSize, bool isThumb)
 {
-	u8 *max = (u8*)code + codeSize;
-	while((u8*)code + patch->matchSize < max)
-	{
-		bool foundMatch = true;
-		for(u32 i = 0; i < patch->matchItems; i++)
-		{
-			if(*(u32*)((void*)code + patch->match[i].offset) != patch->match[i].opcode)
-			{
-				foundMatch = false;
-				break;
-			}
-		}
+    u8 *max = code + codeSize;
+    while(code + patch->matchSize < max)
+    {
+        bool foundMatch = true;
 
-		if(foundMatch)
-		{
-			for(u32 i = 0; i < patch->patchItems; i++)
-				*(u32*)((void*)code + patch->patch[i].offset) = patch->patch[i].opcode;
+        for(u32 i = 0; i < patch->matchItems; i++)
+        {
+            u8 *offset = code + patch->match[i].offset;
+            u32 opcode = isThumb ? (u32)*(u16 *)offset : *(u32 *)offset;
+            if(opcode != patch->match[i].opcode)
+            {
+                foundMatch = false;
+                break;
+            }
+        }
 
-			return code;
-		}
+        if(foundMatch)
+        {
+            for(u32 i = 0; i < patch->patchItems; i++)
+            {
+                if(isThumb)
+                    *(u16 *)(code + patch->patch[i].offset) = patch->patch[i].opcode;
+                else
+                    *(u32 *)(code + patch->patch[i].offset) = patch->patch[i].opcode;
+            }
+            return code;
+        }
 
-		code++;
-	}
+        code += isThumb ? 2 : 4;
+    }
 
-	return NULL;
+    return NULL;
 }
