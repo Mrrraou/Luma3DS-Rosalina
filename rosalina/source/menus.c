@@ -24,19 +24,14 @@ Menu menu_rosalina = {
 
 void RosalinaMenu_ShowCredits(void)
 {
-    draw_string("Rosalina - Development build", 10, 10, COLOR_TITLE);
+    draw_string("Rosalina -- Luma3DS", 10, 10, COLOR_TITLE);
 
-    draw_string("Developed with memes by Mrrraou", 10, 30, COLOR_WHITE);
+    draw_string("Luma3DS (c) 2016-2017 AuroraWright, TuxSH", 10, 30, COLOR_WHITE);
     draw_string(
         (
-            "Special thanks to:\n"
-            "  The SALT team (Daz <3), TiniVi, yifanlu,\n"
-            "  TuxSH, AuroraWright, #CTRDev memers,\n"
-            "  3dbrew contributors\n"
-            "  (and motezazer for reading 3dbrew to me)\n\n"
-            "-------------------------------------------\n"
-            "Using ctrulib, devkitARM + ctrtool\n"
-            "CFW based on Luma3DS (developer branch)"
+            "Special thanks for Rosalina to:\n"
+            "  Dazzozo (and SALT), Bond697, yifanlu,\n"
+            "  #CTRDev, motezazer, other people\n"
         ), 10, 50, COLOR_WHITE);
 
     draw_flushFramebuffer();
