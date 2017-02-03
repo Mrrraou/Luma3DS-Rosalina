@@ -65,6 +65,11 @@ static void findUsefulFunctions(void)
     off = (u32 *)officialSVCs[0x24];
     while(*off != 0xE59F004C) off++;
     WaitSynchronization1 = (Result (*)(void *, KThread *, KSynchronizationObject *, s64))(off + 6);
+
+    off = (u32 *)officialSVCs[(u32) DATA_ABORT];
+    while(*off != (u32)exceptionStackTop) off++;
+    kernelUsrCopyFuncsStart = (void *)off[1];
+    kernelUsrCopyFuncsEnd = (void *)off[2];
 }
 
 struct Parameters
@@ -80,11 +85,16 @@ struct Parameters
     void (*mcuReboot)(void);
     void (*coreBarrier)(void);
 
-     CfwInfo cfwInfo;
+    u32 *exceptionStackTop;
+    u32 kernelVersion;
+
+    CfwInfo cfwInfo;
 };
 
+u32 kernelVersion;
+
 void main(volatile struct Parameters *p)
-{
+{return;
     isN3DS = getNumberOfCores() == 4;
     interruptManager = p->interruptManager;
 
@@ -94,6 +104,8 @@ void main(volatile struct Parameters *p)
     mcuReboot = p->mcuReboot;
     coreBarrier = p->coreBarrier;
 
+    exceptionStackTop = p->exceptionStackTop;
+    kernelVersion = p->kernelVersion;
     cfwInfo = p->cfwInfo;
 
     setupSGI0Handler();

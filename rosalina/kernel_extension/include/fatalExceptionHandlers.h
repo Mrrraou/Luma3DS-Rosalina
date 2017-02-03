@@ -24,6 +24,8 @@
 
 #include "types.h"
 
+bool isExceptionFatal(u32 spsr);
+
 void FIQHandler(void);
 void undefinedInstructionHandler(void);
 void prefetchAbortHandler(void);

@@ -34,19 +34,26 @@
     bne \lbl
 .endm
 
-.macro GEN_USUAL_HANDLER name, index
+
+.macro GEN_USUAL_HANDLER name, index, pos
     \name\()Handler:
-        cpsid aif
-
-        ldr sp, =_fatalExceptionOccured
+        ldr sp, =exceptionStackTop
         ldr sp, [sp]
-        cmp sp, #0
-        bne _die_loop
-        ldr sp, =_regs
-        stmia sp, {r0-r7}
 
-        ldr sp, =(_fatalExceptionStack + 0x400)
-        mov r1, #\index
+        push {r0-r12, lr}
+        mrs r0, spsr
+        blx isExceptionFatal
+        cmp r0, #0
+        pop {r0-r12, lr}
+        beq _exc_is_fatal_\name
+
+        ldr sp, =originalHandlers
+        ldr sp, [sp, #\pos]
+        bx sp
+
+        _exc_is_fatal_\name:
+        push {r8, r9}
+        mov r8, r1
         b _commonHandler
 .endm
 
@@ -61,6 +68,20 @@ _die_loop:
     b _die_loop
 
 _commonHandler:
+    cpsid aif
+
+    push {r0}
+    ldr r0, =_fatalExceptionOccured
+    ldr r0, [r0]
+    cmp r0, #0
+    bne _die_loop
+    pop {r0}
+
+    ldr r9, =_regs
+    stmia r9, {r0-r7}
+    mov r1, r8
+    pop {r8,r9}
+
     ldr r0, =_fatalExceptionOccured
     mov r4, #1
 
@@ -142,7 +163,7 @@ _commonHandler:
 
 .global FIQHandler
 .type   FIQHandler, %function
-GEN_USUAL_HANDLER FIQ, 0
+GEN_USUAL_HANDLER FIQ, 0, 28
 
 .global undefinedInstructionHandler
 .type   undefinedInstructionHandler, %function
@@ -171,7 +192,7 @@ undefinedInstructionHandler:
     add sp, #0x20
     rfefd sp!  @ retry aborted instruction
 
-    GEN_USUAL_HANDLER _undefinedInstructionNormal, 1
+    GEN_USUAL_HANDLER _undefinedInstructionNormal, 1, 4
 
 .global prefetchAbortHandler
 .type   prefetchAbortHandler, %function
@@ -190,14 +211,46 @@ prefetchAbortHandler:
     msr spsr, sp
     addne lr, #2                        @ adjust address for later
 
-    GEN_USUAL_HANDLER _prefetchAbortNormal, 2
+    GEN_USUAL_HANDLER _prefetchAbortNormal, 2, 12
 
 .global dataAbortHandler
 .type   dataAbortHandler, %function
-GEN_USUAL_HANDLER dataAbort, 3
+dataAbortHandler:
+    ldr sp, =exceptionStackTop
+    ldr sp, [sp]
+    push {r0-r3}
+    mrs r0, spsr
+    and r0, #0x1f
+    cmp r0, #0x10
+    beq _dataAbortNormalHandler
+
+    sub r0, lr, #8
+    ldr r1, =kernelUsrCopyFuncsStart
+    ldr r2, =kernelUsrCopyFuncsEnd
+    cmp r0, r1
+    bcc _dataAbortNormalHandler_check_safecpy
+    cmp r0, r2
+    bcc _dataAbortNormalHandler_set_flags_and_return
+
+    _dataAbortNormalHandler_check_safecpy:
+    ldr r1, =safecpy
+    ldr r2, =_safecpy_end
+    cmp r0, r1
+    bcc _dataAbortHandler_jump_to_normal_handler
+    cmp r0, r2
+    bcs _dataAbortHandler_jump_to_normal_handler
+
+    _dataAbortNormalHandler_set_flags_and_return:
+    pop {r0-r3}
+    msr spsr_f, #(1 << 30)
+    mov r12, #0
+    sub pc, lr, #4
+
+    _dataAbortHandler_jump_to_normal_handler:
+    pop {r0-r3}
+    GEN_USUAL_HANDLER _dataAbortNormal, 3, 16
 
 .bss
 .balign 4
 _regs: .skip (4 * 23)
 _fatalExceptionOccured: .word 0
-_fatalExceptionStack: .skip 0x400

@@ -1053,14 +1053,16 @@ typedef union InterruptManager
 extern bool isN3DS;
 extern void *officialSVCs[0x7E]; //defined in main.c, will be used everywhere
 
+extern u32 kernelVersion;
 #define KPROCESS_OFFSETOF(field) (isN3DS ? offsetof(KProcessN3DS, field) :\
-((*(vu32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? offsetof(KProcessO3DS8x, field) :\
+((kernelVersion >= SYSTEM_VERSION(2, 44, 6)) ? offsetof(KProcessO3DS8x, field) :\
 offsetof(KProcessO3DSPre8x, field)))
 
 #define KPROCESS_GET_PTR(obj, field) (isN3DS ? &(obj)->N3DS.field :\
-((*(vu32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? &(obj)->O3DS8x.field :\
+((kernelVersion >= SYSTEM_VERSION(2, 44, 6)) ? &(obj)->O3DS8x.field :\
 &(obj)->O3DSPre8x.field ))
 
+#define KPROCESS_GET_RVALUE(obj, field) *(KPROCESS_GET_PTR(obj, field))
 //#define KPROCESS_GET_RVALUE(obj, field)  (isN3DS ? (obj)->N3DS.field : ((*(vu32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? (obj)->O3DS8x.field : (obj)->O3DSPre8x.field))
 /*
 static inline void *KProcess__ConvertHandle(KProcess *process, Handle handle)

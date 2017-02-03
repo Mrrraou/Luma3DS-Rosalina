@@ -27,6 +27,7 @@ static inline void *decodeARMBranch(const void *src)
 void *convertVAToPA(const void *addr);
 u32 getCurrentCoreID(void);
 bool enableIRQ(void);
+u32 safecpy(void *dst, const void *src, u32 len);
 
 KProcess * (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, Handle processHandle);
 KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, Handle handle);
@@ -50,6 +51,10 @@ Result setR0toR3(Result r0, ...);
 
 extern bool isN3DS;
 
+extern u32 *exceptionStackTop;
+extern void *kernelUsrCopyFuncsStart, *kernelUsrCopyFuncsEnd;
+
+extern u32 kernelVersion;
 typedef struct PACKED CfwInfo
 {
     char magic[4];

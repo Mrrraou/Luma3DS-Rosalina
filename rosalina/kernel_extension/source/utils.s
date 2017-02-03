@@ -43,6 +43,29 @@ atomicStore32:
     bne atomicStore32
     bx lr
 
+.global safecpy
+.type   safecpy, %function
+safecpy:
+    push {r4, lr}
+    mov r3, #0
+    movs r12, #1
+
+    _safecpy_loop:
+        ldrb r4, [r1, r3]
+        cmp r12, #0
+        beq _safecpy_loop_end
+        strb r4, [r0, r3]
+        add r3, #1
+        cmp r3, r2
+        blo _safecpy_loop
+
+    _safecpy_loop_end:
+    mov r0, r3
+    pop {r4, pc}
+
+.global _safecpy_end
+_safecpy_end:
+
 .thumb
 
 .global setR0toR3
@@ -84,11 +107,20 @@ mcuReboot: .word 0
 .global coreBarrier
 coreBarrier: .word 0
 
+.global exceptionStackTop
+exceptionStackTop: .word 0
+
 .global cfwInfo
 cfwInfo: .word 0,0,0,0
 
 .global SGI0Handler
 SGI0Handler: .word 0  @ see synchronization.c
+
+.global kernelUsrCopyFuncsStart
+kernelUsrCopyFuncsStart: .word 0
+
+.global kernelUsrCopyFuncsEnd
+kernelUsrCopyFuncsEnd: .word 0
 
 .global isN3DS
 isN3DS: .byte 0

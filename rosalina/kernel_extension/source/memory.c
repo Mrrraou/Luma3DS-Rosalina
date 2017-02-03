@@ -1,20 +1,6 @@
 #include "memory.h"
 #include "utils.h"
 
-u32 copyMemorySafely(void *dst, const void *src, u32 size, u32 alignment)
-{
-    u8 *out = (u8 *)dst;
-    const u8 *in = (const u8 *)src;
-
-    if(((u32)src & (alignment - 1)) != 0 || convertVAToPA(src) == NULL || (size != 0 && convertVAToPA((u8 *)src + size - 1) == NULL))
-        return 0;
-
-    for(u32 i = 0; i < size; i++)
-        *out++ = *in++;
-
-    return size;
-}
-
 void memcpy(void *dest, const void *src, u32 size)
 {
     u8 *destc = (u8 *)dest;

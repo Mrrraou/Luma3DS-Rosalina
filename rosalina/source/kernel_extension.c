@@ -18,6 +18,9 @@ struct Parameters
     void (*mcuReboot)(void);
     void (*coreBarrier)(void);
 
+    u32 *exceptionStackTop;
+    u32 kernelVersion;
+
     struct CfwInfo
     {
         char magic[4];
@@ -37,6 +40,7 @@ struct Parameters
 static void K_SGI0HandlerCallback(volatile struct Parameters *p)
 {
     vu32 *L1MMUTable;
+    u32 TTBCR;
 
     __asm__ volatile("cpsid aif"); // disable interrupts
 
@@ -46,6 +50,11 @@ static void K_SGI0HandlerCallback(volatile struct Parameters *p)
     __asm__ volatile("mrc p15, 0, %0, c2, c0, 1" : "=r"(L1MMUTable));
     L1MMUTable = (vu32 *)(((u32)L1MMUTable & ~0x3FFF) | (1 << 31));
 
+    __asm__ volatile("mrc p15, 0, %0, c2, c0, 2" : "=r"(TTBCR));
+    p->exceptionStackTop = (u32 *)0xFFFF2000 + (1 << (32 - TTBCR - 20));
+
+    p->kernelVersion = *(vu32*)0x1FF80000;
+    
     // Actually map the kernel ext
     u32 L2MMUTableAddr = (u32)(p->L2MMUTable) & ~(1 << 31);
     L1MMUTable[0x40000000 >> 20] = L2MMUTableAddr | 1;

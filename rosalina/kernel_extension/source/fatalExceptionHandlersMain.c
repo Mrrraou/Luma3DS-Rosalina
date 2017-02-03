@@ -28,6 +28,28 @@
 #define REG_DUMP_SIZE   4 * 23
 #define CODE_DUMP_SIZE  48
 
+bool isExceptionFatal(u32 spsr)
+{
+    if((spsr & 0x1f) != 0) return true;
+
+    KThread *thread = currentCoreContext->objectContext.currentThread;
+    KProcess *curProcess = currentCoreContext->objectContext.currentProcess;
+
+    if(thread != NULL && thread->threadLocalStorage != NULL
+       && *((vu32 *)thread->threadLocalStorage + 0x10) != 0)
+       return false;
+
+    if(curProcess != NULL)
+    {
+        thread = KPROCESS_GET_RVALUE(curProcess, mainThread);
+        if(thread != NULL && thread->threadLocalStorage != NULL
+           && *((vu32 *)thread->threadLocalStorage + 0x10) != 0)
+           return false;
+    }
+
+    return true;
+}
+
 void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
 {
     ExceptionDumpHeader dumpHeader;
@@ -55,25 +77,28 @@ void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
 
     //Dump code
     u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //Doesn't work well on 32-bit Thumb instructions, but it isn't much of a problem
-    dumpHeader.codeDumpSize = copyMemorySafely(codeDump, instr, dumpHeader.codeDumpSize, ((cpsr & 0x20) != 0) ? 2 : 4);
+    dumpHeader.codeDumpSize = ((u32)instr & (((cpsr & 0x20) != 0) ? 2 : 4)) != 0 ? 0 : safecpy(codeDump, instr, dumpHeader.codeDumpSize);
 
     //Copy register dump and code dump
     final = (u8 *)(finalBuffer + sizeof(ExceptionDumpHeader));
-    final += copyMemorySafely(final, registerDump, dumpHeader.registerDumpSize, 1);
-    final += copyMemorySafely(final, codeDump, dumpHeader.codeDumpSize, 1);
+    final += safecpy(final, registerDump, dumpHeader.registerDumpSize);
+    final += safecpy(final, codeDump, dumpHeader.codeDumpSize);
 
     //Dump stack in place
-    dumpHeader.stackDumpSize = copyMemorySafely(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF), 1);
+    dumpHeader.stackDumpSize = safecpy(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF));
     final += dumpHeader.stackDumpSize;
 
     if(currentCoreContext->objectContext.currentProcess)
     {
         vu64 *additionalData = (vu64 *)final;
-        dumpHeader.additionalDataSize = 16;
         KCodeSet *currentCodeSet = codeSetOfProcess(currentCoreContext->objectContext.currentProcess);
-
-        memcpy((void *)additionalData, currentCodeSet->processName, 8);
-        additionalData[1] = currentCodeSet->titleId;
+        if(currentCodeSet != NULL)
+        {
+            dumpHeader.additionalDataSize = 16;
+            memcpy((void *)additionalData, currentCodeSet->processName, 8);
+            additionalData[1] = currentCodeSet->titleId;
+        }
+        else dumpHeader.additionalDataSize = 0;
     }
     else dumpHeader.additionalDataSize = 0;
 
