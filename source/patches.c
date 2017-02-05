@@ -30,6 +30,7 @@
 
 #include "patches.h"
 #include "fs.h"
+#include "exceptions.h"
 #include "memory.h"
 #include "config.h"
 #include "utils.h"
@@ -96,7 +97,19 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
     return arm11SvcTable;
 }
 
-void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)
+void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space)
+{
+    const u8 pattern[] = {0x0E, 0x32, 0xA0, 0xE3, 0x02, 0xC2, 0xA0, 0xE3};
+
+    u32 *off = (u32 *)memsearch(pos, pattern, size, 8);
+
+    memcpy(*freeK11Space, mmuHook_bin, mmuHook_bin_size);
+    *off = MAKE_BRANCH_LINK(off, *freeK11Space);
+
+    (*freeK11Space) += mmuHook_bin_size;
+}
+
+void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)
 {
     const u8 pattern[] = {0x00, 0x00, 0xA0, 0xE1, 0x03, 0xF0, 0x20, 0xE3, 0xFD, 0xFF, 0xFF, 0xEA};
 
@@ -105,7 +118,7 @@ void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u3
     while(*off != 0xF1080080) off--;
     off -= 2;
 
-    memcpy(*freeK11Space, k11MainHook, k11MainHook_size);
+    memcpy(*freeK11Space, k11MainHook_bin, k11MainHook_bin_size);
 
     u32 relocBase = 0xFFFF0000 + (*freeK11Space - (u8 *)arm11ExceptionsPage);
     *off = MAKE_BRANCH_LINK(baseK11VA + ((u8 *)off - pos), relocBase);
@@ -121,7 +134,7 @@ void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u3
     u32 InterruptManager_mapInterrupt = baseK11VA + ((u8 *)off - pos) + offset;
     u32 interruptManager = *(u32 *)(off - 4 + (*(off - 6) & 0xFFF) / 4);
 
-    off = (u32 *)memsearch(*freeK11Space, "bind", k11MainHook_size, 4);
+    off = (u32 *)memsearch(*freeK11Space, "bind", k11MainHook_bin_size, 4);
 
     *off++ = InterruptManager_mapInterrupt;
 
@@ -131,7 +144,7 @@ void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u3
     off++;
     *off++ = interruptManager;
 
-    off += 6;
+    off += 8;
 
     struct CfwInfo
     {
@@ -167,7 +180,7 @@ void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u3
     if(ISN3DS) info->flags |= 1 << 4;
     if(isSafeMode) info->flags |= 1 << 5;
 
-    (*freeK11Space) += k11MainHook_size;
+    (*freeK11Space) += k11MainHook_bin_size;
 }
 
 u32 patchSignatureChecks(u8 *pos, u32 size)
@@ -327,23 +340,23 @@ u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
     return 0;
 }
 
-u32 reimplementSvcBackdoorAndImplementCustomBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
+u32 reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage)
 {
     if(!arm11SvcTable[0x7B])
     {
         if(*(u32 *)(*freeK11Space + 40 - 4) != 0xFFFFFFFF) return 1;
 
-        memcpy(*freeK11Space, svcBackdoors, 40);
+        memcpy(*freeK11Space, svcBackdoors_bin, 40);
 
         arm11SvcTable[0x7B] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
         (*freeK11Space) += 40;
     }
 
-    if(*(u32 *)(*freeK11Space + (svcBackdoors_size - 40) - 4) != 0xFFFFFFFF) return 1;
+    if(*(u32 *)(*freeK11Space + (svcBackdoors_bin_size - 40) - 4) != 0xFFFFFFFF) return 1;
 
-    memcpy(*freeK11Space, svcBackdoors + 40, svcBackdoors_size - 40);
+    memcpy(*freeK11Space, svcBackdoors_bin + 40, svcBackdoors_bin_size - 40);
     arm11SvcTable[0x2F] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
-    (*freeK11Space) += (svcBackdoors_size - 40);
+    (*freeK11Space) += (svcBackdoors_bin_size - 40);
 
     return 0;
 }
@@ -351,15 +364,10 @@ u32 reimplementSvcBackdoorAndImplementCustomBackdoor(u8 *pos, u32 *arm11SvcTable
 u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size)
 {
     const u8 moduleAmountPattern[]  = {0x05, 0x00, 0x57, 0xE3}; // cmp r7, #5
-    const u8 moduleAmountPatch[]    = {0x06, 0x00, 0x57, 0xE3}; // cmp r7, #6
 
     const u8 modulePidPattern[] = {
         0x00, 0xF0, 0x20, 0xE3, // nop
         0x05, 0x00, 0xA0, 0xE3, // mov r0, #5
-    };
-    const u8 modulePidPatch[] = {
-        0x00, 0xF0, 0x20, 0xE3, // nop
-        0x06, 0x00, 0xA0, 0xE3, // mov r0, #6
     };
 
     // This needs to be patched, or Kernel11 won't like it.
@@ -428,7 +436,7 @@ void injectPxiHook(u8 *pos, u32 size)
 
     // The arm9 section starts at 0x08006000 on New3DS... available space is
     // fairly limited.
-	fileRead((void*)0x08001000, "/luma/starbit.bin");
+	fileRead((void*)0x08001000, "/luma/starbit.bin", 0x5000);
 
 	void *off = memsearch(pos, pxiDevDefaultCasePattern, size, sizeof(pxiDevDefaultCasePattern));
     off += 2 * sizeof(u32);

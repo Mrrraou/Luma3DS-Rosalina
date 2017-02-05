@@ -25,19 +25,19 @@ INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 ASFLAGS := -mcpu=mpcore -mfloat-abi=hard -mtp=soft
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
 	  -ffunction-sections -fdata-sections $(INCLUDE) -DARM11 -D_3DS
-LDFLAGS := -Xlinker --defsym="__start__=0x14000000" -specs=3dsx.specs $(ASFLAGS)
+LDFLAGS := -Wl,--section-start,.text=0x14000000 -specs=3dsx.specs $(ASFLAGS)
 
 objects = $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c))
 
 .PHONY: all
-all: ../$(dir_build)/$(name).cxi
+all: ../$(dir_build)/$(name).bin
 
 .PHONY: clean
 clean:
 	@rm -rf $(dir_build)
 
-../$(dir_build)/$(name).cxi: $(dir_build)/$(name).elf
+../$(dir_build)/$(name).bin: $(dir_build)/$(name).elf
 	@makerom -f ncch -rsf loader.rsf -nocodepadding -o $@ -elf $<
 
 $(dir_build)/$(name).elf: $(objects)

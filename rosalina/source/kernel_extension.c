@@ -54,7 +54,7 @@ static void K_SGI0HandlerCallback(volatile struct Parameters *p)
     p->exceptionStackTop = (u32 *)0xFFFF2000 + (1 << (32 - TTBCR - 20));
 
     p->kernelVersion = *(vu32*)0x1FF80000;
-    
+
     // Actually map the kernel ext
     u32 L2MMUTableAddr = (u32)(p->L2MMUTable) & ~(1 << 31);
     L1MMUTable[0x40000000 >> 20] = L2MMUTableAddr | 1;

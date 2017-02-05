@@ -142,8 +142,8 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     u32 kernel9Size = (u32)(process9Offset - arm9Section) - sizeof(Cxi) - 0x200,
         ret = 0;
 
-    installMMUHook(arm11Section1, section[1].size, &freeK11Space);
-    installK11MainHook(arm11Section1, section[1].size, baseK11VA, arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
+    installMMUHook(arm11Section1, firm->section[1].size, &freeK11Space);
+    installK11MainHook(arm11Section1, firm->section[1].size, isSafeMode, baseK11VA, arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
 
     //Apply signature patches
     ret += patchSignatureChecks(process9Offset, process9Size);
@@ -169,10 +169,9 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     {
         //Apply anti-anti-DG patches
         ret += patchTitleInstallMinVersionChecks(process9Offset, process9Size, firmVersion);
-
-        //Restore svcBackdoor
-        ret += reimplementSvcBackdoorAndImplementCustomBackdoor(arm11Section1, arm11SvcTable, baseK11VA, &freeK11Space);
     }
+
+    ret += reimplementSvcBackdoorAndImplementCustomBackdoor(arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
 
     //Apply UNITINFO patches
     if(devMode == 2)
@@ -289,14 +288,15 @@ u32 patch1x2xNativeAndSafeFirm(u32 devMode)
     return ret;
 }
 
-static inline void copySection0AndInjectSystemModules(FirmwareType firmType, bool loadFromStorage)
+static inline u32 copySection0AndInjectSystemModules(FirmwareType firmType, bool loadFromStorage)
 {
     u32 maxModuleSize = firmType == NATIVE_FIRM ? 0x80000 : 0x600000,
         srcModuleSize,
         dstModuleSize;
     const char *extModuleSizeError = "The external FIRM modules are too large.";
 
-    for(u8 *src = (u8 *)firm + firm->section[0].offset, *srcEnd = src + firm->section[0].size, *dst = firm->section[0].address;
+    u8 *src, *srcEnd, *dst;
+    for(src = (u8 *)firm + firm->section[0].offset, srcEnd = src + firm->section[0].size, dst = firm->section[0].address;
         src < srcEnd; src += srcModuleSize, dst += dstModuleSize, maxModuleSize -= dstModuleSize)
     {
         srcModuleSize = ((Cxi *)src)->ncch.contentSize * 0x200;
@@ -345,7 +345,7 @@ static inline void copySection0AndInjectSystemModules(FirmwareType firmType, boo
     }
 
     // Inject Rosalina
-    rosalinaModuleSize = fileRead(dst, "/luma/rosalina.cxi");
+    return fileRead(dst, "/luma/rosalina.cxi", maxModuleSize);
 }
 
 void launchFirm(FirmwareType firmType, bool loadFromStorage)
@@ -354,8 +354,8 @@ void launchFirm(FirmwareType firmType, bool loadFromStorage)
     u32 sectionNum;
     if(firmType == NATIVE_FIRM || (loadFromStorage && (firmType == TWL_FIRM || firmType == AGB_FIRM)))
     {
-        copySection0AndInjectSystemModules(firmType, loadFromStorage);
-        if(patchK11ModuleLoading(section[0].size, rosalinaModuleSize, (u8*) firm + section[1].offset, section[1].size))
+        u32 rosalinaModuleSize = copySection0AndInjectSystemModules(firmType, loadFromStorage);
+        if(patchK11ModuleLoading(firm->section[0].size, rosalinaModuleSize, (u8*) firm + firm->section[1].offset, firm->section[1].size))
             error("Could not inject Rosalina");
         sectionNum = 1;
     }
