@@ -20,26 +20,25 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   Thanks to the everyone who contributed in the development of this file
+*/
+
 #pragma once
+
 #include "types.h"
 
-u32 readMPUConfig(u32 regionSettings[8]);
-void FIQHandler(void);
-void undefinedInstructionHandler(void);
-void dataAbortHandler(void);
-void prefetchAbortHandler(void);
+#define I2C1_REG_OFF 0x10161000
+#define I2C2_REG_OFF 0x10144000
+#define I2C3_REG_OFF 0x10148000
 
-typedef struct __attribute__((packed))
-{
-    u32 magic[2];
-    u16 versionMinor, versionMajor;
-    
-    u16 processor, core;
-    u32 type;
-    
-    u32 totalSize;
-    u32 registerDumpSize;
-    u32 codeDumpSize;
-    u32 stackDumpSize;
-    u32 additionalDataSize;
-} ExceptionDumpHeader;
+#define I2C_REG_DATA  0
+#define I2C_REG_CNT   1
+#define I2C_REG_CNTEX 2
+#define I2C_REG_SCL   4
+
+#define I2C_DEV_MCU  3
+#define I2C_DEV_GYRO 10
+#define I2C_DEV_IR   13
+
+bool i2cWriteRegister(u8 dev_id, u8 reg, u8 data);

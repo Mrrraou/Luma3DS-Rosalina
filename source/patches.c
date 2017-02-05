@@ -20,36 +20,65 @@
 *   Notices displayed by works containing it.
 */
 
+/*
+*   Signature patches by an unknown author
+*   firmlaunches patching code originally by delebile
+*   FIRM partition writes patches by delebile
+*   ARM11 modules patching code originally by Subv
+*   Idea for svcBreak patches from yellows8 and others on #3dsdev
+*/
+
 #include "patches.h"
+#include "fs.h"
 #include "memory.h"
 #include "config.h"
-#include "fs.h"
-#include "../build/rebootpatch.h"
-#include "../build/svcGetCFWInfopatch.h"
-#include "../build/twl_k11modulespatch.h"
-#include "../build/mmuHookpatch.h"
-#include "../build/k11MainHookpatch.h"
-#include "../build/svcBackdoorspatch.h"
 #include "utils.h"
+#include "../build/bundled.h"
 
-#define MAKE_BRANCH_LINK(src,dst) (0xEB000000 | ((u32)((((u8 *)(dst) - (u8 *)(src)) >> 2) - 2) & 0xFFFFFF))
-
-u8 *getProcess9(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
+static inline void pathChanger(u8 *pos)
 {
-    u8 *off = memsearch(pos, "ess9", size, 4);
+    const char *pathFile = "path.txt";
+    u8 path[57];
 
-    *process9Size = *(u32 *)(off - 0x60) * 0x200;
-    *process9MemAddr = *(u32 *)(off + 0xC);
+    u32 pathSize = fileRead(path, pathFile, sizeof(path));
 
-    //Process9 code offset (start of NCCH + ExeFS offset + ExeFS header size)
-    return off - 0x204 + (*(u32 *)(off - 0x64) * 0x200) + 0x200;
+    if(pathSize < 6) return;
+
+    if(path[pathSize - 1] == 0xA) pathSize--;
+    if(path[pathSize - 1] == 0xD) pathSize--;
+
+    if(pathSize < 6 || pathSize > 55 || path[0] != '/' || memcmp(path + pathSize - 4, ".bin", 4) != 0) return;
+
+    u16 finalPath[56];
+    for(u32 i = 0; i < pathSize; i++)
+        finalPath[i] = (u16)path[i];
+
+    finalPath[pathSize] = 0;
+
+    u8 *posPath = memsearch(pos, u"sd", reboot_bin_size, 4) + 0xA;
+    memcpy(posPath, finalPath, (pathSize + 1) * 2);
+}
+
+u8 *getProcess9Info(u8 *pos, u32 size, u32 *process9Size, u32 *process9MemAddr)
+{
+    u8 *temp = memsearch(pos, "NCCH", size, 4);
+
+    if(temp == NULL) error("Failed to get Process9 data.");
+
+    Cxi *off = (Cxi *)(temp - 0x100);
+
+    *process9Size = (off->ncch.exeFsSize - 1) * 0x200;
+    *process9MemAddr = off->exHeader.systemControlInfo.textCodeSet.address;
+
+    return (u8 *)off + (off->ncch.exeFsOffset + 1) * 0x200;
 }
 
 u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 **arm11SvcHandler, u32 **arm11ExceptionsPage)
 {
     const u8 pattern[] = {0x00, 0xB0, 0x9C, 0xE5};
-
     *arm11ExceptionsPage = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(*arm11ExceptionsPage == NULL) error("Failed to get Kernel11 data.");
 
     u32 *arm11SvcTable;
 
@@ -65,19 +94,6 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
     *freeK11Space = (u8 *) freeSpace;
 
     return arm11SvcTable;
-}
-
-
-void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space)
-{
-    const u8 pattern[] = {0x0E, 0x32, 0xA0, 0xE3, 0x02, 0xC2, 0xA0, 0xE3};
-
-    u32 *off = (u32 *)memsearch(pos, pattern, size, 8);
-
-    memcpy(*freeK11Space, mmuHook, mmuHook_size);
-    *off = MAKE_BRANCH_LINK(off, *freeK11Space);
-
-    (*freeK11Space) += mmuHook_size;
 }
 
 void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)
@@ -132,7 +148,7 @@ void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u3
     } __attribute__((packed)) *info = (struct CfwInfo *)off;
 
     const char *rev = REVISION;
-
+    memcpy(&info->magic, "LUMA", 4);
     info->commitHash = COMMIT_HASH;
     info->config = configData.config;
     info->versionMajor = (u8)(rev[1] - '0');
@@ -148,72 +164,188 @@ void installK11MainHook(u8 *pos, u32 size, u32 baseK11VA, u32 *arm11SvcTable, u3
     else isRelease = rev[4] == 0;
 
     if(isRelease) info->flags = 1;
-    //if(ISA9LH) info->flags = 1 << 1;
-    /* if(ISN3DS) info->flags |= 1 << 4;
-    if(isSafeMode) info->flags |= 1 << 5;*/
-    //TODO: update codebase to use those flags ^; add isK9LH flag
+    if(ISN3DS) info->flags |= 1 << 4;
+    if(isSafeMode) info->flags |= 1 << 5;
 
     (*freeK11Space) += k11MainHook_size;
 }
-void patchSignatureChecks(u8 *pos, u32 size)
-{
-    const u16 sigPatch[2] = {0x2000, 0x4770};
 
+u32 patchSignatureChecks(u8 *pos, u32 size)
+{
     //Look for signature checks
     const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
              pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
 
-    u16 *off = (u16 *)memsearch(pos, pattern, size, 4),
-        *off2 = (u16 *)(memsearch(pos, pattern2, size, 4) - 1);
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+    u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
 
-    *off = sigPatch[0];
-    off2[0] = sigPatch[0];
-    off2[1] = sigPatch[1];
+    if(off == NULL || temp == NULL) return 1;
+
+    u16 *off2 = (u16 *)(temp - 1);
+    *off = off2[0] = 0x2000;
+    off2[1] = 0x4770;
+
+    return 0;
 }
 
-void patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
+u32 patchOldSignatureChecks(u8 *pos, u32 size)
+{
+    // Look for signature checks
+    // Pattern 2 works for 1.x, 2.x + factory FIRM.
+    // For patchSignatureChecks-style (temp - 1 instead of temp - 3):
+    // 1.x+2.x: pattern2[] = {0xB5, 0x23, 0x4E, 0x0C};
+    // factory: pattern2[] = {0xB5, 0x16, 0x4E, 0x0C};
+    const u8 pattern[] = {0xC0, 0x1C, 0xBD, 0xE7},
+             pattern2[] = {0x4E, 0x0C, 0x00, 0x71, 0x68};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+    u8 *temp = memsearch(pos, pattern2, size, sizeof(pattern2));
+
+    if(off == NULL || temp == NULL) return 1;
+
+    u16 *off2 = (u16 *)(temp - 3);
+    *off = off2[0] = 0x2000;
+    off2[1] = 0x4770;
+
+    return 0;
+}
+
+u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr)
 {
     //Look for firmlaunch code
     const u8 pattern[] = {0xE2, 0x20, 0x20, 0x90};
 
-    u8 *off = memsearch(pos, pattern, size, 4) - 0x13;
+    u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return 1;
+
+    off -= 0x13;
 
     //Firmlaunch function offset - offset in BLX opcode (A4-16 - ARM DDI 0100E) + 1
     u32 fOpenOffset = (u32)(off + 9 - (-((*(u32 *)off & 0x00FFFFFF) << 2) & (0xFFFFFF << 2)) - pos + process9MemAddr);
 
     //Copy firmlaunch code
-    memcpy(off, reboot, reboot_size);
+    memcpy(off, reboot_bin, reboot_bin_size);
 
     //Put the fOpen offset in the right location
-    u32 *pos_fopen = (u32 *)memsearch(off, "OPEN", reboot_size, 4);
+    u32 *pos_fopen = (u32 *)memsearch(off, "OPEN", reboot_bin_size, 4);
     *pos_fopen = fOpenOffset;
+
+    if(CONFIG(USECUSTOMPATH)) pathChanger(off);
+
+    return 0;
 }
 
-void patchFirmWrites(u8 *pos, u32 size)
+u32 patchFirmWrites(u8 *pos, u32 size)
 {
-    const u16 writeBlock[2] = {0x2000, 0x46C0};
-
     //Look for FIRM writing code
-    u8 *const off1 = memsearch(pos, "exe:", size, 4);
+    u8 *off = memsearch(pos, "exe:", size, 4);
+
+    if(off == NULL) return 1;
+
     const u8 pattern[] = {0x00, 0x28, 0x01, 0xDA};
 
-    u16 *off2 = (u16 *)memsearch(off1 - 0x100, pattern, 0x100, 4);
+    u16 *off2 = (u16 *)memsearch(off - 0x100, pattern, 0x100, sizeof(pattern));
 
-    off2[0] = writeBlock[0];
-    off2[1] = writeBlock[1];
+    if(off2 == NULL) return 1;
+
+    off2[0] = 0x2000;
+    off2[1] = 0x46C0;
+
+    return 0;
 }
 
-void patchOldFirmWrites(u8 *pos, u32 size)
+u32 patchOldFirmWrites(u8 *pos, u32 size)
 {
-    const u16 writeBlockOld[2] = {0x2400, 0xE01D};
-
     //Look for FIRM writing code
     const u8 pattern[] = {0x04, 0x1E, 0x1D, 0xDB};
 
-    u16 *off = (u16 *)memsearch(pos, pattern, size, 4);
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
 
-    off[0] = writeBlockOld[0];
-    off[1] = writeBlockOld[1];
+    if(off == NULL) return 1;
+
+    off[0] = 0x2400;
+    off[1] = 0xE01D;
+
+    return 0;
+}
+
+u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion)
+{
+    const u8 pattern[] = {0xFF, 0x00, 0x00, 0x02};
+
+    u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return firmVersion == 0xFFFFFFFF ? 0 : 1;
+
+    off++;
+
+    //Zero out the first TitleID in the list
+    memset32(off, 0, 8);
+
+    return 0;
+}
+
+u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x28, 0x2A, 0xD0, 0x08};
+
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(temp == NULL) return 1;
+
+    u16 *off = (u16 *)(temp - 1);
+    *off = 0x2001; //mov r0, #1
+
+    return 0;
+}
+
+u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x07, 0xD1, 0x28, 0x7A};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return 1;
+
+    off--;
+    *off = 0x2001; //mov r0, #1
+
+    return 0;
+}
+
+u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x03, 0x7C, 0x28, 0x00};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return 1;
+
+    *off = 0x2301; //mov r3, #1
+
+    return 0;
+}
+
+u32 reimplementSvcBackdoorAndImplementCustomBackdoor(u8 *pos, u32 *arm11SvcTable, u32 baseK11VA, u8 **freeK11Space)
+{
+    if(!arm11SvcTable[0x7B])
+    {
+        if(*(u32 *)(*freeK11Space + 40 - 4) != 0xFFFFFFFF) return 1;
+
+        memcpy(*freeK11Space, svcBackdoors, 40);
+
+        arm11SvcTable[0x7B] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
+        (*freeK11Space) += 40;
+    }
+
+    if(*(u32 *)(*freeK11Space + (svcBackdoors_size - 40) - 4) != 0xFFFFFFFF) return 1;
+
+    memcpy(*freeK11Space, svcBackdoors + 40, svcBackdoors_size - 40);
+    arm11SvcTable[0x2F] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
+    (*freeK11Space) += (svcBackdoors_size - 40);
+
+    return 0;
 }
 
 u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size)
@@ -237,24 +369,20 @@ u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 siz
     u32 maxModuleSectionSizePatch = section0size + moduleSize;
 
     u8 *off = memsearch(startPos, moduleAmountPattern, size, 4);
-    if(!off)
-        return 1;
-    memcpy(off, moduleAmountPatch, 4);
+    if(!off) return 1;
+    *off = 6;
 
     off = memsearch(startPos, modulePidPattern, size, 8);
-    if(!off)
-        return 2;
-    memcpy(off, modulePidPatch, 8);
+    if(!off) return 1;
+    *(off + 4) = 6;
 
     off = memsearch(startPos, &maxModuleDst, size, 4);
-    if(!off)
-        return 3;
-    memcpy(off, &maxModuleDstPatch, 4);
+    if(!off) return 1;
+    *(u32 *)off = maxModuleDstPatch;
 
     off = memsearch(startPos, &maxModuleSectionSize, size, 4);
-    if(!off)
-        return 4;
-    memcpy(off, &maxModuleSectionSizePatch, 4);
+    if(!off) return 1;
+    *(u32 *)off = maxModuleSectionSizePatch;
 
     return 0;
 }
@@ -309,198 +437,216 @@ void injectPxiHook(u8 *pos, u32 size)
 	*(u32*)(off + sizeof(pxiDevDefaultCasePatch)) = 0x08001000;
 }
 
-void reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage)
+
+u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
 {
-    if(!arm11SvcTable[0x7B])
-    {
-        memcpy(*freeK11Space, svcBackdoors, 40);
+    const u8 pattern[] = {0x80, 0xE5, 0x40, 0x1C};
 
-        arm11SvcTable[0x7B] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
-        (*freeK11Space) += 40;
-    }
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
-    memcpy(*freeK11Space, svcBackdoors + 40, svcBackdoors_size - 40);
-    arm11SvcTable[0x2F] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
-    (*freeK11Space) += (svcBackdoors_size - 40);
-}
+    if(temp == NULL) return 1;
 
-void patchTitleInstallMinVersionCheck(u8 *pos, u32 size)
-{
-    const u8 pattern[] = {0x0A, 0x81, 0x42, 0x02};
-
-    u8 *off = memsearch(pos, pattern, size, 4);
-
-    if(off != NULL) off[4] = 0xE0;
-}
-
-void applyLegacyFirmPatches(u8 *pos, FirmwareType firmType)
-{
-    const patchData twlPatches[] = {
-        {{0x1650C0, 0x165D64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
-        {{0x173A0E, 0x17474A}, { .type1 = 0x2001 }, 1},
-        {{0x174802, 0x17553E}, { .type1 = 0x2000 }, 2},
-        {{0x174964, 0x1756A0}, { .type1 = 0x2000 }, 2},
-        {{0x174D52, 0x175A8E}, { .type1 = 0x2001 }, 2},
-        {{0x174D5E, 0x175A9A}, { .type1 = 0x2001 }, 2},
-        {{0x174D6A, 0x175AA6}, { .type1 = 0x2001 }, 2},
-        {{0x174E56, 0x175B92}, { .type1 = 0x2001 }, 1},
-        {{0x174E58, 0x175B94}, { .type1 = 0x4770 }, 1}
-    },
-    agbPatches[] = {
-        {{0x9D2A8, 0x9DF64}, {{ 6, 0x00, 0x20, 0x4E, 0xB0, 0x70, 0xBD }}, 0},
-        {{0xD7A12, 0xD8B8A}, { .type1 = 0xEF26 }, 1}
-    };
-
-    /* Calculate the amount of patches to apply. Only count the boot screen patch for AGB_FIRM
-       if the matching option was enabled (keep it as last) */
-    u32 numPatches = firmType == TWL_FIRM ? (sizeof(twlPatches) / sizeof(patchData)) :
-                                            (sizeof(agbPatches) / sizeof(patchData) - !CONFIG(6));
-    const patchData *patches = firmType == TWL_FIRM ? twlPatches : agbPatches;
-
-    //Patch
-    for(u32 i = 0; i < numPatches; i++)
-    {
-        switch(patches[i].type)
-        {
-            case 0:
-                memcpy(pos + patches[i].offset[isN3DS ? 1 : 0], patches[i].patch.type0 + 1, patches[i].patch.type0[0]);
-                break;
-            case 2:
-                *(u16 *)(pos + patches[i].offset[isN3DS ? 1 : 0] + 2) = 0;
-            case 1:
-                *(u16 *)(pos + patches[i].offset[isN3DS ? 1 : 0]) = patches[i].patch.type1;
-                break;
-        }
-    }
-}
-
-void patchTwlBg(u8 *pos)
-{
-    u8 *dst = pos + (isN3DS ? 0xFEA4 : 0xFCA0);
-
-    memcpy(dst, twl_k11modules, twl_k11modules_size); //Install K11 hook
-
-    u32 *off = (u32 *)memsearch(dst, "LAUN", twl_k11modules_size, 4);
-    *off = isN3DS ? 0xCDE88 : 0xCD5F8; //Dev SRL launcher offset
-
-    u16 *src1 = (u16 *)(pos + (isN3DS ? 0xE38 : 0xE3C)),
-        *src2 = (u16 *)(pos + (isN3DS ? 0xE54 : 0xE58));
-
-    //Construct BLX instructions:
-    src1[0] = 0xF000 | ((((u32)dst - (u32)src1 - 4) & (0xFFF << 11)) >> 12);
-    src1[1] = 0xE800 | ((((u32)dst - (u32)src1 - 4) & 0xFFF) >> 1);
-
-    src2[0] = 0xF000 | ((((u32)dst - (u32)src2 - 4) & (0xFFF << 11)) >> 12);
-    src2[1] = 0xE800 | ((((u32)dst - (u32)src2 - 4) & 0xFFF) >> 1);
-}
-
-void patchArm9ExceptionHandlersInstall(u8 *pos, u32 size)
-{
-    const u8 pattern[] = {
-        0x18, 0x10, 0x80, 0xE5,
-        0x10, 0x10, 0x80, 0xE5,
-        0x20, 0x10, 0x80, 0xE5,
-        0x28, 0x10, 0x80, 0xE5,
-    }; //i.e when it stores ldr pc, [pc, #-4]
-
-    u32* off = (u32 *)(memsearch(pos, pattern, size, sizeof(pattern)));
-    if(off == NULL) return;
-    off += sizeof(pattern)/4;
+    u32 *off = (u32 *)(temp - 0xA);
 
     for(u32 r0 = 0x08000000; *off != 0xE3A01040; off++) //Until mov r1, #0x40
     {
-        if((*off >> 26) != 0x39 || ((*off >> 16) & 0xF) != 0 || ((*off >> 25) & 1) != 0 || ((*off >> 20) & 5) != 0)
-            continue; //Discard everything that's not str rX, [r0, #imm](!)
+        //Discard everything that's not str rX, [r0, #imm](!)
+        if((*off & 0xFE5F0000) != 0xE4000000) continue;
 
-        int rD = (*off >> 12) & 0xF,
-            offset = (*off & 0xFFF) * ((((*off >> 23) & 1) == 0) ? -1 : 1),
-            writeback = (*off >> 21) & 1,
-            pre = (*off >> 24) & 1;
+        u32 rD = (*off >> 12) & 0xF,
+            offset = (*off & 0xFFF) * ((((*off >> 23) & 1) == 0) ? -1 : 1);
+        bool writeback = ((*off >> 21) & 1) != 0,
+             pre = ((*off >> 24) & 1) != 0;
 
         u32 addr = r0 + ((pre || !writeback) ? offset : 0);
-        if((addr & 7) != 0 && addr != 0x08000014 && addr != 0x08000004)
-            *off = 0xE1A00000; //nop
-        else
-            *off = 0xE5800000 | (rD << 12) | (addr & 0xFFF); //Preserve IRQ and SVC handlers
+        if((addr & 7) != 0 && addr != 0x08000014 && addr != 0x08000004) *off = 0xE1A00000; //nop
+        else *off = 0xE5800000 | (rD << 12) | (addr & 0xFFF); //Preserve IRQ and SVC handlers
 
         if(!pre) addr += offset;
         if(writeback) r0 = addr;
     }
+
+    return 0;
 }
 
-void patchSvcBreak9(u8 *pos, u32 size, u32 k9Address)
+u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address)
 {
-    //Stub svcBreak with "bkpt 65535" so we can debug the panic.
-    //Thanks @yellows8 and others for mentioning this idea on #3dsdev.
-    const u8 svcHandlerPattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
+    //Stub svcBreak with "bkpt 65535" so we can debug the panic
 
-    u32 *arm9SvcTable = (u32 *)memsearch(pos, svcHandlerPattern, size, 4);
-    while(*arm9SvcTable) arm9SvcTable++; //Look for SVC0 (NULL)
+    //Look for the svc handler
+    const u8 pattern[] = {0x00, 0xE0, 0x4F, 0xE1}; //mrs lr, spsr
 
-    u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - k9Address);
+    u32 *arm9SvcTable = (u32 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(arm9SvcTable == NULL) return 1;
+
+    while(*arm9SvcTable != 0) arm9SvcTable++; //Look for SVC0 (NULL)
+
+    u32 *addr = (u32 *)(pos + arm9SvcTable[0x3C] - kernel9Address);
     *addr = 0xE12FFF7F;
+
+    return 0;
 }
 
-void patchKernel9Panic(u8 *pos, u32 size, FirmwareType firmType)
+u32 patchKernel9Panic(u8 *pos, u32 size)
 {
-    if(firmType == TWL_FIRM || firmType == AGB_FIRM)
-    {
-        u8 *off = pos + (isN3DS ? 0x723C : 0x69A8);
-        *(u16 *)off = 0x4778;           //bx pc
-        *(u16 *)(off + 2) = 0x46C0;     //nop
-        *(u32 *)(off + 4) = 0xE12FFF7E; //bkpt 65534
-    }
-    else
-    {
-        const u8 pattern[] = {0x00, 0x20, 0xA0, 0xE3, 0x02, 0x30, 0xA0, 0xE1, 0x02, 0x10, 0xA0, 0xE1, 0x05, 0x00, 0xA0, 0xE3};
+    const u8 pattern[] = {0xFF, 0xEA, 0x04, 0xD0};
 
-        u32 *off = (u32 *)memsearch(pos, pattern, size, 16);
-        *off = 0xE12FFF7E;
-    }
-}
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
-void patchKernel11Panic(u8 *pos, u32 size)
-{
-    const u8 pattern[] = {0x02, 0x0B, 0x44, 0xE2, 0x00, 0x10, 0x90, 0xE5};
+    if(temp == NULL) return 1;
 
-    u32 *off = (u32 *)memsearch(pos, pattern, size, 8);
+    u32 *off = (u32 *)(temp - 0x12);
     *off = 0xE12FFF7E;
+
+    return 0;
 }
 
-void patchArm11SvcAccessChecks(u32 *arm11SvcHandler)
+u32 patchP9AccessChecks(u8 *pos, u32 size)
 {
-    while(*arm11SvcHandler != 0xE11A0E1B) arm11SvcHandler++; //TST R10, R11,LSL LR
-    *arm11SvcHandler = 0xE3B0A001; //MOVS R10, #1
-}
+    const u8 pattern[] = {0x00, 0x08, 0x49, 0x68};
 
-void patchN3DSK11ProcessorAffinityChecks(u8 *pos, u32 size)
-{
-    const u8 pattern[] =   {0x0F, 0x2C, 0x01, 0xE2, 0x03, 0x0C, 0x52, 0xE3, 0x03, 0x00, 0x00, 0x0A, 0x02};
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
 
-    u8 *off = memsearch(pos, pattern, size, 13);
-    off[11] = 0xEA; //BEQ -> B
+    if(temp == NULL) return 1;
 
-    off = memsearch(pos + 16, pattern, size, 13);
-    off[11] = 0xEA; //BEQ -> B
-}
-
-void patchP9AccessChecks(u8 *pos, u32 size)
-{
-    const u8 pattern[] = {0xE0, 0x00, 0x40, 0x39, 0x08, 0x58};
-
-    u16 *off = (u16 *)memsearch(pos, pattern, size, 6) - 7;
-
+    u16 *off = (u16 *)(temp - 3);
     off[0] = 0x2001; //mov r0, #1
     off[1] = 0x4770; //bx lr
+
+    return 0;
 }
 
-void patchUnitInfoValueSet(u8 *pos, u32 size)
+u32 patchUnitInfoValueSet(u8 *pos, u32 size)
 {
     //Look for UNITINFO value being set during kernel sync
     const u8 pattern[] = {0x01, 0x10, 0xA0, 0x13};
 
-    u8 *off = memsearch(pos, pattern, size, 4);
+    u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
 
-    off[0] = isDevUnit ? 0 : 1;
+    if(off == NULL) return 1;
+
+    off[0] = ISDEVUNIT ? 0 : 1;
     off[3] = 0xE3;
+
+    return 0;
+}
+
+u32 patchLgySignatureChecks(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x47, 0xC1, 0x17, 0x49};
+
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(temp == NULL) return 1;
+
+    u16 *off = (u16 *)(temp + 1);
+    off[0] = 0x2000;
+    off[1] = 0xB04E;
+    off[2] = 0xBD70;
+
+    return 0;
+}
+
+u32 patchTwlInvalidSignatureChecks(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x20, 0xF6, 0xE7, 0x7F};
+
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(temp == NULL) return 1;
+
+    u16 *off = (u16 *)(temp - 1);
+    *off = 0x2001; //mov r0, #1
+
+    return 0;
+}
+
+u32 patchTwlNintendoLogoChecks(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0xC0, 0x30, 0x06, 0xF0};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return 1;
+
+    off[1] = 0x2000;
+    off[2] = 0;
+
+    return 0;
+}
+
+u32 patchTwlWhitelistChecks(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x22, 0x00, 0x20, 0x30};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return 1;
+
+    off[2] = 0x2000;
+    off[3] = 0;
+
+    return 0;
+}
+
+u32 patchTwlFlashcartChecks(u8 *pos, u32 size, u32 firmVersion)
+{
+    const u8 pattern[] = {0x25, 0x20, 0x00, 0x0E};
+
+    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(temp == NULL)
+    {
+        if(firmVersion == 0xFFFFFFFF) return patchOldTwlFlashcartChecks(pos, size);
+
+        return 1;
+    }
+
+    u16 *off = (u16 *)(temp + 3);
+    off[0] = off[6] = off[0xC] = 0x2001; //mov r0, #1
+    off[1] = off[7] = off[0xD] = 0; //nop
+
+    return 0;
+}
+
+u32 patchOldTwlFlashcartChecks(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x06, 0xF0, 0xA0, 0xFD};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return 1;
+
+    off[0] = off[6] = 0x2001; //mov r0, #1
+    off[1] = off[7] = 0; //nop
+
+    return 0;
+}
+
+u32 patchTwlShaHashChecks(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x10, 0xB5, 0x14, 0x22};
+
+    u16 *off = (u16 *)memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return 1;
+
+    off[0] = 0x2001; //mov r0, #1
+    off[1] = 0x4770;
+
+    return 0;
+}
+
+u32 patchAgbBootSplash(u8 *pos, u32 size)
+{
+    const u8 pattern[] = {0x00, 0x00, 0x01, 0xEF};
+
+    u8 *off = memsearch(pos, pattern, size, sizeof(pattern));
+
+    if(off == NULL) return 1;
+
+    off[2] = 0x26;
+
+    return 0;
 }

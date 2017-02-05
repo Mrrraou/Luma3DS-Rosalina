@@ -24,7 +24,7 @@
     \name:
         ldr sp, =#0x02000000    @ We make the (full descending) stack point to the end of ITCM for our exception handlers. 
                                 @ It doesn't matter if we're overwriting stuff here, since we're going to reboot.
-                                
+
         stmfd sp!, {r0-r7}      @ FIQ has its own r8-r14 regs
         ldr r1, =\@             @ macro expansion counter
         b _commonHandler
@@ -62,6 +62,7 @@ _commonHandler:
     bic r5, r3, #0xf
     orr r5, #0x3
     msr cpsr_c, r5             @ switch to supervisor mode
+    ldmfd sp, {r8-r11}^
     ldr r2, [sp, #0x1c]        @ implementation details of the official svc handler
     ldr r4, [sp, #0x18]
     msr cpsr_c, r3             @ restore processor mode
@@ -78,12 +79,12 @@ _commonHandler:
     stmfd r6!, {r8-lr}
     msr cpsr_c, r3             @ restore processor mode
     mov sp, r6
-    
+
     stmfd sp!, {r2,lr}         @ it's a bit of a mess, but we will fix that later
                                @ order of saved regs now: cpsr, pc + (2/4/8), r8-r14, r0-r7
-                            
+
     mov r0, sp
-    
+
     b mainHandler
 
 GEN_HANDLER FIQHandler

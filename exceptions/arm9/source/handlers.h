@@ -24,14 +24,23 @@
 
 #include "types.h"
 
-#define PATTERN(a) a "_*.bin"
+typedef struct __attribute__((packed))
+{
+    u32 magic[2];
+    u16 versionMinor, versionMajor;
 
-bool mountFs(bool isSd, bool switchToCtrNand);
-u32 fileRead(void *dest, const char *path, u32 maxSize);
-u32 getFileSize(const char *path);
-bool fileWrite(const void *buffer, const char *path, u32 size);
-void fileDelete(const char *path);
-void loadPayload(u32 pressed, const char *payloadPath);
-void payloadMenu(void);
-u32 firmRead(void *dest, u32 firmType);
-void findDumpFile(const char *path, char *fileName);
+    u16 processor, core;
+    u32 type;
+
+    u32 totalSize;
+    u32 registerDumpSize;
+    u32 codeDumpSize;
+    u32 stackDumpSize;
+    u32 additionalDataSize;
+} ExceptionDumpHeader;
+
+u32 readMPUConfig(u32 *regionSettings);
+void FIQHandler(void);
+void undefinedInstructionHandler(void);
+void dataAbortHandler(void);
+void prefetchAbortHandler(void);

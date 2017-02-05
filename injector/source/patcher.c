@@ -313,7 +313,7 @@ static void patchCfgGetRegion(u8 *code, u32 size, u8 regionId, u32 CFGUHandleOff
 
 void patchCode(u64 progId, u8 *code, u32 size)
 {
-    loadCFWInfo();
+    //loadCFWInfo();
 
     switch(progId)
     {
@@ -360,7 +360,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
             );
 
             //Apply only if the updated NAND hasn't been booted
-            if((BOOTCONFIG(0, 3) != 0) == (BOOTCONFIG(2, 1) && CONFIG(1)))
+            if(false)//if((BOOTCONFIG(0, 3) != 0) == (BOOTCONFIG(2, 1) && CONFIG(1)))
             {
                 static const u8 skipEshopUpdateCheckPattern[] = {
                     0x30, 0xB5, 0xF1, 0xB0
@@ -404,7 +404,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         case 0x0004001000027000LL: // KOR MSET
         case 0x0004001000028000LL: // TWN MSET
         {
-            if(CONFIG(4))
+            if(false)//CONFIG(4))
             {
                 static const u16 verPattern[] = u"Ver.";
                 const u32 currentNand = BOOTCONFIG(0, 3);
@@ -442,7 +442,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
 
             u32 cpuSetting = MULTICONFIG(1);
 
-            if(cpuSetting)
+            if(false)//cpuSetting)
             {
                 static const u8 cfgN3dsCpuPattern[] = {
                     0x00, 0x40, 0xA0, 0xE1, 0x07, 0x00
@@ -458,7 +458,6 @@ void patchCode(u64 progId, u8 *code, u32 size)
                 }
             }
 
-            // Patch courtesy of TuxSH
             // Makes ErrDisp to not start up
             static const u64 errDispTid = 0x0004003000008A02ULL;
             u32 *errDispTidLoc = (u32 *)memsearch(code, &errDispTid, size, sizeof(errDispTid));
@@ -545,7 +544,7 @@ void patchCode(u64 progId, u8 *code, u32 size)
         }
 
         default:
-            if(CONFIG(3))
+            if(false)//CONFIG(3))
             {
                 u32 tidHigh = (progId & 0xFFFFFFF000000000LL) >> 0x24;
 
