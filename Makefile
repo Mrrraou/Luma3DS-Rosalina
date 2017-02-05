@@ -43,7 +43,7 @@ all: a9lh
 release: $(dir_out)/$(name)$(revision).7z
 
 .PHONY: a9lh
-a9lh: $(dir_out)/arm9loaderhax.bin
+a9lh: $(dir_out)/DOWN_LumaT.bin
 
 .PHONY: clean
 clean:
@@ -60,7 +60,7 @@ $(dir_out) $(dir_build):
 $(dir_out)/$(name)$(revision).7z: all
 	@7z a -mx $@ ./$(@D)/* ./$(dir_exceptions)/exception_dump_parser.py
 
-$(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin $(dir_out)
+$(dir_out)/DOWN_LumaT.bin: $(dir_build)/main.bin $(dir_out)
 	@cp -a $(dir_build)/main.bin $@
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
