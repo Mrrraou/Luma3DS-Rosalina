@@ -30,7 +30,7 @@
 
 bool isExceptionFatal(u32 spsr)
 {
-    if((spsr & 0x1f) != 0) return true;
+    if((spsr & 0x1f) != 0x10) return true;
 
     KThread *thread = currentCoreContext->objectContext.currentThread;
     KProcess *curProcess = currentCoreContext->objectContext.currentProcess;
@@ -82,7 +82,8 @@ void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
     //Copy register dump and code dump
     final = (u8 *)(finalBuffer + sizeof(ExceptionDumpHeader));
     final += safecpy(final, registerDump, dumpHeader.registerDumpSize);
-    final += safecpy(final, codeDump, dumpHeader.codeDumpSize);
+    memcpy(final, codeDump, dumpHeader.codeDumpSize);
+    final += dumpHeader.codeDumpSize;
 
     //Dump stack in place
     dumpHeader.stackDumpSize = safecpy(final, (const void *)registerDump[13], 0x1000 - (registerDump[13] & 0xFFF));

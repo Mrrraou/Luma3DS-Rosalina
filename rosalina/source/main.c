@@ -46,7 +46,7 @@ void __ctru_exit()
 
 void initSystem()
 {
-//  installKernelExtension();
+    installKernelExtension();
 
   __sync_init();
   __appInit();

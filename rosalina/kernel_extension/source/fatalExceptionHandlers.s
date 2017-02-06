@@ -45,7 +45,7 @@
         blx isExceptionFatal
         cmp r0, #0
         pop {r0-r12, lr}
-        beq _exc_is_fatal_\name
+        bne _exc_is_fatal_\name
 
         ldr sp, =originalHandlers
         ldr sp, [sp, #\pos]
@@ -53,7 +53,7 @@
 
         _exc_is_fatal_\name:
         push {r8, r9}
-        mov r8, r1
+        mov r8, #\index
         b _commonHandler
 .endm
 
@@ -228,19 +228,20 @@ dataAbortHandler:
     ldr r1, =kernelUsrCopyFuncsStart
     ldr r2, =kernelUsrCopyFuncsEnd
     cmp r0, r1
-    bcc _dataAbortNormalHandler_check_safecpy
+    blo _dataAbortHandler_check_safecpy
     cmp r0, r2
-    bcc _dataAbortNormalHandler_set_flags_and_return
+    blo _dataAbortHandler_set_flags_and_return
 
-    _dataAbortNormalHandler_check_safecpy:
+    _dataAbortHandler_check_safecpy:
+    sub r0, lr, #8
     ldr r1, =safecpy
     ldr r2, =_safecpy_end
     cmp r0, r1
-    bcc _dataAbortHandler_jump_to_normal_handler
+    blo _dataAbortHandler_jump_to_normal_handler
     cmp r0, r2
-    bcs _dataAbortHandler_jump_to_normal_handler
+    bhs _dataAbortHandler_jump_to_normal_handler
 
-    _dataAbortNormalHandler_set_flags_and_return:
+    _dataAbortHandler_set_flags_and_return:
     pop {r0-r3}
     msr spsr_f, #(1 << 30)
     mov r12, #0

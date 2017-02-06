@@ -66,7 +66,7 @@ static void findUsefulFunctions(void)
     while(*off != 0xE59F004C) off++;
     WaitSynchronization1 = (Result (*)(void *, KThread *, KSynchronizationObject *, s64))(off + 6);
 
-    off = (u32 *)officialSVCs[(u32) DATA_ABORT];
+    off = (u32 *)originalHandlers[(u32) DATA_ABORT];
     while(*off != (u32)exceptionStackTop) off++;
     kernelUsrCopyFuncsStart = (void *)off[1];
     kernelUsrCopyFuncsEnd = (void *)off[2];
@@ -94,7 +94,7 @@ struct Parameters
 u32 kernelVersion;
 
 void main(volatile struct Parameters *p)
-{return;
+{
     isN3DS = getNumberOfCores() == 4;
     interruptManager = p->interruptManager;
 
