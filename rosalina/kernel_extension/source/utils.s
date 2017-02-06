@@ -122,6 +122,12 @@ kernelUsrCopyFuncsStart: .word 0
 .global kernelUsrCopyFuncsEnd
 kernelUsrCopyFuncsEnd: .word 0
 
+.global isDevUnit
+isDevUnit: .word 0
+
+.global enableUserExceptionHandlersForCPUExc
+enableUserExceptionHandlersForCPUExc: .word 0
+
 .global isN3DS
 isN3DS: .byte 0
 

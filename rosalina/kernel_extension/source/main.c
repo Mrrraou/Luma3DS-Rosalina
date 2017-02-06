@@ -50,7 +50,7 @@ static void setupFatalExceptionHandlers(void)
     officialSvcHandlerTail = off;
 }
 
-static void findUsefulFunctions(void)
+static void findUsefulSymbols(void)
 {
     KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
 
@@ -70,6 +70,11 @@ static void findUsefulFunctions(void)
     while(*off != (u32)exceptionStackTop) off++;
     kernelUsrCopyFuncsStart = (void *)off[1];
     kernelUsrCopyFuncsEnd = (void *)off[2];
+
+    off = (u32 *)0xFFFF0000;
+    while(*off != 0x96007F9) off++;
+    isDevUnit = *(bool **)(off - 1);
+    enableUserExceptionHandlersForCPUExc = *(bool **)(off + 1);
 }
 
 struct Parameters
@@ -93,6 +98,15 @@ struct Parameters
 
 u32 kernelVersion;
 
+void enableDebuggingFeatures(void)
+{
+    *isDevUnit = true; // for debug SVCs and user exc. handlers, etc.
+
+    u32 *off = (u32 *)officialSVCs[0x7C];
+    while(off[0] != 0xE5D00001 || off[1] != 0xE3500000) off++;
+    off[2] = 0xE1A00000; // in case 6: beq -> nop
+}
+
 void main(volatile struct Parameters *p)
 {
     isN3DS = getNumberOfCores() == 4;
@@ -110,5 +124,6 @@ void main(volatile struct Parameters *p)
 
     setupSGI0Handler();
     setupFatalExceptionHandlers();
-    findUsefulFunctions();
+    findUsefulSymbols();
+    enableDebuggingFeatures();
 }

@@ -54,6 +54,9 @@ extern bool isN3DS;
 extern u32 *exceptionStackTop;
 extern void *kernelUsrCopyFuncsStart, *kernelUsrCopyFuncsEnd;
 
+bool *isDevUnit;
+bool *enableUserExceptionHandlersForCPUExc;
+
 extern u32 kernelVersion;
 typedef struct PACKED CfwInfo
 {
