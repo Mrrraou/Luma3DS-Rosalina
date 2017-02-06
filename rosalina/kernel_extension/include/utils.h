@@ -29,49 +29,5 @@ u32 getCurrentCoreID(void);
 bool enableIRQ(void);
 u32 safecpy(void *dst, const void *src, u32 len);
 
-KProcess * (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, Handle processHandle);
-KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, Handle handle);
-void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool isPulse);
-Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
-
-
-void (*svcFallbackHandler)(u8 svcId);
-u32 *officialSvcHandlerTail;
-
-extern InterruptManager *interruptManager;
-extern KBaseInterruptEvent *customInterruptEvent;
-
-extern void (*flushEntireICache)(void);
-extern void (*flushEntireDCacheAndL2C)(void); // reentrant, but unsafe in fatal exception contexts in case the kernel is f*cked up
-extern void (*initFPU)(void);
-extern void (*mcuReboot)(void);
-extern void (*coreBarrier)(void);
-
 Result setR0toR3(Result r0, ...);
-
-extern bool isN3DS;
-
-extern u32 *exceptionStackTop;
-extern void *kernelUsrCopyFuncsStart, *kernelUsrCopyFuncsEnd;
-
-bool *isDevUnit;
-bool *enableUserExceptionHandlersForCPUExc;
-
-extern u32 kernelVersion;
-typedef struct PACKED CfwInfo
-{
-    char magic[4];
-
-    u8 versionMajor;
-    u8 versionMinor;
-    u8 versionBuild;
-    u8 flags;
-
-    u32 commitHash;
-
-    u32 config;
-} CfwInfo;
-
-extern CfwInfo cfwInfo;
-
 void atomicStore32(s32 *dst, s32 value);

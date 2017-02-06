@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "globals.h"
 #include "synchronization.h"
 #include "fatalExceptionHandlers.h"
 #include "svc.h"

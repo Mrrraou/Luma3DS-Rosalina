@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "globals.h"
 
 extern void *officialSVCs[0x7E];
 
