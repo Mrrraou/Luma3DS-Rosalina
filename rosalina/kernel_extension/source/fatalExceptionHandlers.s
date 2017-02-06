@@ -222,7 +222,7 @@ dataAbortHandler:
     mrs r0, spsr
     and r0, #0x1f
     cmp r0, #0x10
-    beq _dataAbortNormalHandler
+    beq _dataAbortHandler_jump_to_normal_handler
 
     sub r0, lr, #8
     ldr r1, =kernelUsrCopyFuncsStart
