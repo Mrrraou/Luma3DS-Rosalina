@@ -99,13 +99,13 @@ struct Parameters
 
 u32 kernelVersion;
 
-void enableDebuggingFeatures(void)
+void enableDebugFeatures(void)
 {
     *isDevUnit = true; // for debug SVCs and user exc. handlers, etc.
 
     u32 *off = (u32 *)officialSVCs[0x7C];
     while(off[0] != 0xE5D00001 || off[1] != 0xE3500000) off++;
-    off[2] = 0xE1A00000; // in case 6: beq -> nop
+    *(u32 *)PA_FROM_VA_PTR(off + 2) = 0xE1A00000; // in case 6: beq -> nop
 }
 
 void main(volatile struct Parameters *p)
@@ -126,5 +126,5 @@ void main(volatile struct Parameters *p)
     setupSGI0Handler();
     setupFatalExceptionHandlers();
     findUsefulSymbols();
-    enableDebuggingFeatures();
+    enableDebugFeatures();
 }

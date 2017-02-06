@@ -76,60 +76,8 @@ setR0toR3:
 .bss
 .balign 4
 
-.global KProcessHandleTable__ToKProcess
-KProcessHandleTable__ToKProcess: .word 0
-
-.global KProcessHandleTable__ToKAutoObject
-KProcessHandleTable__ToKAutoObject: .word 0
-
-.global KSynchronizationObject__Signal
-KSynchronizationObject__Signal: .word 0
-
-.global WaitSynchronization1
-WaitSynchronization1: .word 0
-
-.global svcFallbackHandler
-svcFallbackHandler: .word 0
-
-.global officialSvcHandlerTail
-officialSvcHandlerTail: .word 0
-
-.global interruptManager
-interruptManager: .word 0
-.global flushEntireICache
-flushEntireICache: .word 0
-.global flushEntireDCacheAndL2C
-flushEntireDCacheAndL2C: .word 0
-.global initFPU
-initFPU: .word 0
-.global mcuReboot
-mcuReboot: .word 0
-.global coreBarrier
-coreBarrier: .word 0
-
-.global exceptionStackTop
-exceptionStackTop: .word 0
-
-.global cfwInfo
-cfwInfo: .word 0,0,0,0
-
 .global SGI0Handler
 SGI0Handler: .word 0  @ see synchronization.c
-
-.global kernelUsrCopyFuncsStart
-kernelUsrCopyFuncsStart: .word 0
-
-.global kernelUsrCopyFuncsEnd
-kernelUsrCopyFuncsEnd: .word 0
-
-.global isDevUnit
-isDevUnit: .word 0
-
-.global enableUserExceptionHandlersForCPUExc
-enableUserExceptionHandlersForCPUExc: .word 0
-
-.global isN3DS
-isN3DS: .byte 0
 
 .balign 4
 
