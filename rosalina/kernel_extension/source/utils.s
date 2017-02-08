@@ -66,6 +66,12 @@ safecpy:
 .global _safecpy_end
 _safecpy_end:
 
+.global getR1toR3
+.type   getR1toR3, %function
+getR1toR3:
+    stmia r0, {r1-r3}
+    bx lr
+
 .thumb
 
 .global setR0toR3

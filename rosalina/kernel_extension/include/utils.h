@@ -30,4 +30,5 @@ bool enableIRQ(void);
 u32 safecpy(void *dst, const void *src, u32 len);
 
 Result setR0toR3(Result r0, ...);
+void getR1toR3(u32 *regs);
 void atomicStore32(s32 *dst, s32 value);

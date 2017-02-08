@@ -1,10 +1,13 @@
 #include "svc.h"
-#include "svc/Break.h"
+#include "svc/CloseHandle.h"
 #include "svc/GetProcessInfo.h"
 #include "svc/GetSystemInfo.h"
+#include "svc/ConnectToPort.h"
+#include "svc/Break.h"
 #include "svc/KernelSetState.h"
 
 void *officialSVCs[0x7E] = {NULL};
+KAutoObject *srvSessions[0x40] = {NULL};
 
 void *svcHook(u8 *pageEnd)
 {
@@ -18,10 +21,14 @@ void *svcHook(u8 *pageEnd)
     u32 svcId = *(u8 *)(pageEnd - 0xB5);
     switch(svcId)
     {
+        case 0x25:
+            return CloseHandleHook;
         case 0x2A:
             return GetSystemInfoHook;
         case 0x2B:
             return GetProcessInfoHook;
+        case 0x2D:
+            return ConnectToPortHook;
         case 0x3C:
             return BreakHook;
         case 0x7C:
