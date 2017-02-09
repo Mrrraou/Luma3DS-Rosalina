@@ -6,6 +6,7 @@ extern KProcess * (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, 
 extern KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, Handle handle);
 extern void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool isPulse);
 extern Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
+extern bool (*usrStrncpy)(char *dst, const char *src, u32 len);
 
 extern void (*svcFallbackHandler)(u8 svcId);
 extern u32 *officialSvcHandlerTail;
@@ -15,8 +16,8 @@ extern bool isN3DS;
 extern u32 *exceptionStackTop;
 extern void *kernelUsrCopyFuncsStart, *kernelUsrCopyFuncsEnd;
 
-bool *isDevUnit;
-bool *enableUserExceptionHandlersForCPUExc;
+extern bool *isDevUnit;
+extern bool *enableUserExceptionHandlersForCPUExc;
 
 extern InterruptManager *interruptManager;
 extern KBaseInterruptEvent *customInterruptEvent;
