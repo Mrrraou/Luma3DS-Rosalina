@@ -218,37 +218,18 @@ prefetchAbortHandler:
 dataAbortHandler:
     ldr sp, =exceptionStackTop
     ldr sp, [sp]
-    push {r0-r3}
+    push {r0-r12, lr}
     mrs r0, spsr
-    and r0, #0x1f
-    cmp r0, #0x10
-    beq _dataAbortHandler_jump_to_normal_handler
+    sub r1, lr, #8
+    blx isDataAbortExceptionRangeControlled
+    cmp r0, #0
+    pop {r0-r12, lr}
+    beq _dataAbortNormalHandler
 
-    sub r0, lr, #8
-    ldr r1, =kernelUsrCopyFuncsStart
-    ldr r2, =kernelUsrCopyFuncsEnd
-    cmp r0, r1
-    blo _dataAbortHandler_check_safecpy
-    cmp r0, r2
-    blo _dataAbortHandler_set_flags_and_return
-
-    _dataAbortHandler_check_safecpy:
-    sub r0, lr, #8
-    ldr r1, =safecpy
-    ldr r2, =_safecpy_end
-    cmp r0, r1
-    blo _dataAbortHandler_jump_to_normal_handler
-    cmp r0, r2
-    bhs _dataAbortHandler_jump_to_normal_handler
-
-    _dataAbortHandler_set_flags_and_return:
-    pop {r0-r3}
     msr spsr_f, #(1 << 30)
     mov r12, #0
-    sub pc, lr, #4
+    subs pc, lr, #4
 
-    _dataAbortHandler_jump_to_normal_handler:
-    pop {r0-r3}
     GEN_USUAL_HANDLER _dataAbortNormal, 3, 16
 
 .bss

@@ -3,14 +3,15 @@
 #include "svc/GetProcessInfo.h"
 #include "svc/GetSystemInfo.h"
 #include "svc/ConnectToPort.h"
+#include "svc/SendSyncRequest.h"
 #include "svc/Break.h"
 #include "svc/KernelSetState.h"
 
 void *officialSVCs[0x7E] = {NULL};
 KAutoObject *srvSessions[0x40] = {NULL};
-extern KAutoObject *fsREGSessions[2] = {NULL};
+KAutoObject *fsREGSessions[2] = {NULL};
 
-extern TracedService tracedServices[1] =
+TracedService tracedServices[1] =
 {
     {"fs:REG", fsREGSessions, 2}
 };
@@ -27,7 +28,7 @@ void *svcHook(u8 *pageEnd)
     u32 svcId = *(u8 *)(pageEnd - 0xB5);
     switch(svcId)
     {
-        case 0x25:
+        case 0x23:
             return CloseHandleHook;
         case 0x2A:
             return GetSystemInfoHook;
@@ -35,6 +36,8 @@ void *svcHook(u8 *pageEnd)
             return GetProcessInfoHook;
         case 0x2D:
             return ConnectToPortHook;
+        case 0x32:
+            return SendSyncRequestHook;
         case 0x3C:
             return BreakHook;
         case 0x7C:

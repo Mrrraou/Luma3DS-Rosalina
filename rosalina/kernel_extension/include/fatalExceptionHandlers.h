@@ -25,6 +25,8 @@
 #include "types.h"
 
 bool isExceptionFatal(u32 spsr);
+bool isDataAbortExceptionRangeControlled(u32 spsr, u32 addr);
+
 
 void FIQHandler(void);
 void undefinedInstructionHandler(void);

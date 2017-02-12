@@ -49,7 +49,7 @@ static inline Result createHandleForThisProcess(Handle *out, KAutoObject *obj)
         token = tok.flags;
     }
     else
-        token = (u8)(obj->vtable->GetClassName(obj));
+        token = (u8)(u32)(obj->vtable->GetClassName(obj));
 
     KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
     return KProcessHandleTable__CreateHandle(handleTable, out, obj, token);

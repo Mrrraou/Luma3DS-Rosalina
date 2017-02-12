@@ -1,4 +1,5 @@
 #include "svc/SendSyncRequest.h"
+#include "memory.h"
 
 Result SendSyncRequestHook(Handle handle)
 {
@@ -7,10 +8,11 @@ Result SendSyncRequestHook(Handle handle)
     KAutoObject *session = KProcessHandleTable__ToKAutoObject(handleTable, handle);
 
     TracedService *traced = NULL;
+    u32 *cmdbuf = (u32 *)((u8 *)currentCoreContext->objectContext.currentThread->threadLocalStorage + 0x80);
+
     if(session != NULL)
     {
         session->vtable->DecrementReferenceCount(session);
-        u32 *cmdbuf = (u32 *)((u8 *)currentCoreContext->objectContext.currentThread->threadLocalStorage + 0x80);
 
         switch (cmdbuf[0])
         {
@@ -22,7 +24,7 @@ Result SendSyncRequestHook(Handle handle)
                     const char *serviceName = (const char *)(cmdbuf + 1);
                     for(u32 i = 0; i < 1; i++)
                     {
-                        if(strncmp(serviceName, tracedServices[i]) == 0)
+                        if(strncmp(serviceName, tracedServices[i].name, 8) == 0)
                             traced = tracedServices + i;
                     }
                 }

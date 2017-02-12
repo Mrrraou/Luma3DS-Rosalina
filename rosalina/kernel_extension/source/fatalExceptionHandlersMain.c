@@ -24,6 +24,7 @@
 #include "utils.h"
 #include "kernel.h"
 #include "memory.h"
+#include "globals.h"
 
 #define REG_DUMP_SIZE   4 * 23
 #define CODE_DUMP_SIZE  48
@@ -50,6 +51,14 @@ bool isExceptionFatal(u32 spsr)
     return true;
 }
 
+extern u32 _safecpy_sz;
+bool isDataAbortExceptionRangeControlled(u32 spsr, u32 addr)
+{
+    return ((spsr & 0x1F) != 0x10) && (
+                ((u32)kernelUsrCopyFuncsStart <= addr && addr < (u32)kernelUsrCopyFuncsEnd) ||
+                ((u32)safecpy <= addr && addr < (u32)safecpy + _safecpy_sz)
+            );
+}
 void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
 {
     ExceptionDumpHeader dumpHeader;

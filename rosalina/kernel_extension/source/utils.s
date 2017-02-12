@@ -63,7 +63,6 @@ safecpy:
     mov r0, r3
     pop {r4, pc}
 
-.global _safecpy_end
 _safecpy_end:
 
 .global getR1toR3
@@ -78,6 +77,11 @@ getR1toR3:
 .type   setR0toR3, %function
 setR0toR3:
     bx lr
+
+.section rodata
+
+.global _safecpy_sz
+_safecpy_sz: .word _safecpy_end - safecpy
 
 .bss
 .balign 4

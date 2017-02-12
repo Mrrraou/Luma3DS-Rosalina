@@ -76,7 +76,7 @@ static void findUsefulSymbols(void)
     kernelUsrCopyFuncsStart = (void *)off[1];
     kernelUsrCopyFuncsEnd = (void *)off[2];
 
-    off = (u32)kernelUsrCopyFuncsStart;
+    off = (u32 *)kernelUsrCopyFuncsStart;
     while(off[0] != 0xE3520000 || off[1] != 0x03A00000) off++;
     usrStrncpy = (bool (*)(char *, const char *, u32))off;
 
