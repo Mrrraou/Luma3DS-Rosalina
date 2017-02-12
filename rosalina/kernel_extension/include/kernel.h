@@ -100,8 +100,8 @@ typedef struct ALIGN(4) Vtable__KAutoObject
   void *substractResource;
   KAutoObject *(*DecrementReferenceCount)(KAutoObject *this);
   union KProcess *(*GetParentProcess)(KAutoObject *this);
-  KClassToken *(*GetClassToken)(KClassToken *out, KAutoObject *this);
-  void *field_1C;
+  KClassToken *(*GetClassToken)(KClassToken *out, KAutoObject *this); // >= 9.0
+  const char *(*GetClassName)(KAutoObject *this); // < 9.0 only
   void *field_20;
   void *field_24;
 } Vtable__KAutoObject;

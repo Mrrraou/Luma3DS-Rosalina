@@ -65,7 +65,11 @@ static void findUsefulSymbols(void)
 
     off = (u32 *)officialSVCs[0x24];
     while(*off != 0xE59F004C) off++;
-    WaitSynchronization1 = (Result (*)(void *, KThread *, KSynchronizationObject *, s64))(off + 6);
+    WaitSynchronization1 = (Result (*)(void *, KThread *, KSynchronizationObject *, s64))decodeARMBranch(off + 6);
+
+    off = (u32 *)officialSVCs[0x33];
+    while(*off != 0xE20030FF) off++;
+    KProcessHandleTable__CreateHandle = (Result (*)(KProcessHandleTable *, Handle *, KAutoObject *, u8))decodeARMBranch(off + 2);
 
     off = (u32 *)originalHandlers[(u32) DATA_ABORT];
     while(*off != (u32)exceptionStackTop) off++;
@@ -75,7 +79,7 @@ static void findUsefulSymbols(void)
     off = (u32)kernelUsrCopyFuncsStart;
     while(off[0] != 0xE3520000 || off[1] != 0x03A00000) off++;
     usrStrncpy = (bool (*)(char *, const char *, u32))off;
-    
+
     off = (u32 *)0xFFFF0000;
     while(*off != 0x96007F9) off++;
     isDevUnit = *(bool **)(off - 1);

@@ -8,6 +8,12 @@
 
 void *officialSVCs[0x7E] = {NULL};
 KAutoObject *srvSessions[0x40] = {NULL};
+extern KAutoObject *fsREGSessions[2] = {NULL};
+
+extern TracedService tracedServices[1] =
+{
+    {"fs:REG", fsREGSessions, 2}
+};
 
 void *svcHook(u8 *pageEnd)
 {

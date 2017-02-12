@@ -6,6 +6,7 @@ extern KProcess * (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, 
 extern KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, Handle handle);
 extern void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool isPulse);
 extern Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
+extern Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
 extern bool (*usrStrncpy)(char *dst, const char *src, u32 len);
 
 extern void (*svcFallbackHandler)(u8 svcId);

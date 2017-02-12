@@ -26,9 +26,7 @@ Result ConnectToPortHook(const char *name)
         {
             session->vtable->DecrementReferenceCount(session);
 
-            u32 i;
-            for(i = 0; i < 0x40 && srvSessions[i] == NULL; i++);
-            if(i != 0x40) srvSessions[i] = session;
+            addToSessionArray(session, srvSessions, 0x40);
         }
     }
 

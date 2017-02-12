@@ -5,6 +5,8 @@ Result SendSyncRequestHook(Handle handle)
 
     KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
     KAutoObject *session = KProcessHandleTable__ToKAutoObject(handleTable, handle);
+
+    TracedService *traced = NULL;
     if(session != NULL)
     {
         session->vtable->DecrementReferenceCount(session);
@@ -13,15 +15,33 @@ Result SendSyncRequestHook(Handle handle)
         switch (cmdbuf[0])
         {
             case 0x50100:
-                u32 i;
-                for(i = 0; i < 0x40 && srvSessions[i] != session; i++);
-                if(i < 0x40)
+            {
+                u32 index = lookUpInSessionArray(session, srvSessions, 0x40);
+                if(index < 0x40)
                 {
-
+                    const char *serviceName = (const char *)(cmdbuf + 1);
+                    for(u32 i = 0; i < 1; i++)
+                    {
+                        if(strncmp(serviceName, tracedServices[i]) == 0)
+                            traced = tracedServices + i;
+                    }
                 }
+                break;
+            }
         }
 
     }
 
-    return ((Result (*)(Handle))officialSVCs[0x32])(handle);
+    Result res = ((Result (*)(Handle))officialSVCs[0x32])(handle);
+    if(traced != NULL)
+    {
+        session = KProcessHandleTable__ToKAutoObject(handleTable, (Handle)cmdbuf[3]);
+        if(session != NULL)
+        {
+            session->vtable->DecrementReferenceCount(session);
+            addToSessionArray(session, traced->sessions, traced->maxSessions);
+        }
+    }
+
+    return res;
 }

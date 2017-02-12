@@ -172,6 +172,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     }
 
     ret += reimplementSvcBackdoorAndImplementCustomBackdoor(arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
+    ret += patchK11Modules(arm11Section1, firm.section[1]->address, &freeK11Space, arm11ExceptionsPage, baseK11VA);
 
     //Apply UNITINFO patches
     if(devMode == 2)
