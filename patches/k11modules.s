@@ -47,12 +47,19 @@
     ldr r0, [r0, #0x24]  ; Load the size of the .rodata section
     add r0, r1, r0       ; Max bounds of the memory region
 
+    ldr r3, [r0, #0x200]
+    ldr r2, =0x00001002  ; sm
+    cmp r3, r2
+    beq out
+
     ldr r2, =0x3A767273 ; "srv:"
     loop:
         cmp r0, r1
-        blo die ; Check if we didn't go past the bounds of the memory region
+        blo out ; Check if we didn't go past the bounds of the memory region
         ldr r3, [r1]
         cmp r3, r2
+        ldreqb r3, [r1, #4]
+        cmpeq r3, #0
         addne r1, #4
         bne loop
 
