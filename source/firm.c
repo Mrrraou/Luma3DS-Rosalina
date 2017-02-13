@@ -144,6 +144,7 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
 
     installMMUHook(arm11Section1, firm->section[1].size, &freeK11Space);
     installK11MainHook(arm11Section1, firm->section[1].size, isSafeMode, baseK11VA, arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
+    installSvcConnectToPortInitHook(arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
 
     //Apply signature patches
     ret += patchSignatureChecks(process9Offset, process9Size);
@@ -172,7 +173,6 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     }
 
     ret += reimplementSvcBackdoorAndImplementCustomBackdoor(arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
-    //ret += patchK11Modules(arm11Section1, firm->section[1].size, &freeK11Space, arm11ExceptionsPage, baseK11VA);
 
     //Apply UNITINFO patches
     if(devMode == 2)

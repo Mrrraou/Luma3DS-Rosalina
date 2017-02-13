@@ -3,6 +3,7 @@
 #include "synchronization.h"
 #include "fatalExceptionHandlers.h"
 #include "svc.h"
+#include "svc/ConnectToPort.h"
 #include "svcHandler.h"
 #include "memory.h"
 
@@ -31,6 +32,8 @@ static inline void swapHandlerInVeneer(enum VECTORS vector, void *handler)
         *(void**)PA_FROM_VA_PTR(dst) = handler;
 }
 
+static u32 *trampo_;
+
 static void setupFatalExceptionHandlers(void)
 {
     swapHandlerInVeneer(FIQ, FIQHandler);
@@ -43,8 +46,12 @@ static void setupFatalExceptionHandlers(void)
     void **arm11SvcTable = (void**)originalHandlers[(u32)SVC];
     while(*arm11SvcTable != NULL) arm11SvcTable++; //Look for SVC0 (NULL)
     memcpy(officialSVCs, arm11SvcTable, 4 * 0x7E);
+    u32 *off = (u32 *)officialSVCs[0x2D];
+    while(*off != 0x6769726F) off++;
+    officialSVCs[0x2D] = (void *)*off;
+    trampo_ = (u32 *)PA_FROM_VA_PTR(off);
 
-    u32 *off = (u32 *)originalHandlers[(u32) SVC];
+    off = (u32 *)originalHandlers[(u32) SVC];
     while(*off++ != 0xE1A00009);
     svcFallbackHandler = (void (*)(u8))decodeARMBranch(off);
     for(;*off != 0xE8DD6F00; off++);
@@ -135,4 +142,6 @@ void main(volatile struct Parameters *p)
     setupFatalExceptionHandlers();
     findUsefulSymbols();
     enableDebugFeatures();
+
+    *trampo_ = (u32)ConnectToPortHook;
 }

@@ -183,6 +183,21 @@ void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
     (*freeK11Space) += k11MainHook_bin_size;
 }
 
+void installSvcConnectToPortInitHook(u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)
+{
+    u32 addr = 0xFFFF0000 + (u32)*freeK11Space - (u32)arm11ExceptionsPage;
+    u32 svcSleepThreadAddr = arm11ExceptionsPage[0x0A], svcConnectToPortAddr = arm11ExceptionsPage[0x2D];
+
+    arm11SvcTable[0x2D] = addr;
+    memcpy(*freeK11Space, svcConnectToPortInitHook_bin, svcConnectToPortInitHook_bin_size);
+
+    u32 *off = (u32 *)memsearch(*freeK11Space, "orig", svcConnectToPortInitHook_bin_size, 4);
+    off[0] = svcConnectToPortAddr;
+    off[1] = svcSleepThreadAddr;
+
+    (*freeK11Space) += svcConnectToPortInitHook_bin_size;
+}
+
 u32 patchSignatureChecks(u8 *pos, u32 size)
 {
     //Look for signature checks
@@ -521,35 +536,6 @@ u32 patchP9AccessChecks(u8 *pos, u32 size)
     u16 *off = (u16 *)(temp - 3);
     off[0] = 0x2001; //mov r0, #1
     off[1] = 0x4770; //bx lr
-
-    return 0;
-}
-
-u32 patchK11Modules(u8 *pos, u32 size, u8 **freeK11Space, u32 *arm11ExceptionsPage, u32 baseK11VA)
-{
-    /* We have to detour a function in the ARM11 kernel because builtin modules
-       are compressed in memory and are only decompressed at runtime */
-
-    //Check that we have enough free space
-    if(*(u32 *)(*freeK11Space + k11modules_bin_size - 4) != 0xFFFFFFFF) return 1;
-
-    //Look for the code that decompresses the .code section of the builtin modules
-    const u8 pattern[] = {0xE5, 0x48, 0x00, 0x9D};
-
-    u8 *temp = memsearch(pos, pattern, size, sizeof(pattern));
-
-    if(temp == NULL) return 1;
-
-    //Inject our code into the free space
-    memcpy(*freeK11Space, k11modules_bin, k11modules_bin_size);
-
-    u32 *off = (u32 *)(temp - 0xB);
-
-    u32 boff = (0xFFFF0000 + (u32)*freeK11Space - (u32)arm11ExceptionsPage) - (baseK11VA + (u32)off + 8 - (u32)pos);
-    //Inject a jump (BL) instruction to our code at the offset we found
-    *off = 0xEB000000 | ((boff >> 2) & 0xFFFFFF);
-
-    (*freeK11Space) += k11modules_bin_size;
 
     return 0;
 }
