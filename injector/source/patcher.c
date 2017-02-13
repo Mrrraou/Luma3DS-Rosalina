@@ -2,9 +2,8 @@
 #include "memory.h"
 #include "patcher.h"
 #include "ifile.h"
-#include "rosalina.h"
 
-static CFWInfo info;
+//static CFWInfo info;
 
 static int memcmp(const void *buf1, const void *buf2, u32 size)
 {
@@ -84,22 +83,6 @@ static int fileOpen(IFile *file, FS_ArchiveID archiveId, const char *path, int f
             archivePath = {PATH_EMPTY, 1, (u8 *)""};
 
     return IFile_Open(file, archiveId, archivePath, filePath, flags);
-}
-
-static void loadCFWInfo(void)
-{
-    static bool infoLoaded = false;
-
-    if(!infoLoaded)
-    {
-        Rosalina_GetCFWInfo(&info);
-
-        IFile file;
-        if(BOOTCONFIG(5, 1) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
-            IFile_Close(&file);
-
-        infoLoaded = true;
-    }
 }
 
 static bool secureInfoExists(void)

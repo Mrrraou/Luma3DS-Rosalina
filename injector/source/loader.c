@@ -7,7 +7,6 @@
 #include "fsreg.h"
 #include "pxipm.h"
 #include "srvsys.h"
-#include "rosalina.h"
 
 #define MAX_SESSIONS 2
 
@@ -27,7 +26,6 @@ typedef struct
 static Handle g_handles[MAX_SESSIONS+2];
 static int g_active_handles;
 static u64 g_cached_prog_handle;
-static u64 rosalina_3dsx_prog_handle;
 static exheader_header g_exheader;
 static char g_ret_buf[1024];
 
@@ -160,9 +158,6 @@ static Result load_code(u64 progid, prog_addrs_t *shared, u64 prog_handle, int i
 static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
 {
   Result res;
-
-  /*if(rosalina_3dsx_prog_handle == prog_handle)
-    return Rosalina_Get3DSXInfo(exheader);*/
 
   if (prog_handle >> 32 == 0xFFFF0000)
     return FSREG_GetProgramInfo(exheader, 1, prog_handle);
@@ -365,8 +360,6 @@ static void handle_commands(void)
       cmdbuf[1] = res;
       *(u64 *)&cmdbuf[2] = prog_handle;
 
-      /*if(title.programId == 0x000400000F006900)
-        rosalina_3dsx_prog_handle = prog_handle;*/
       break;
     }
     case 3: // UnregisterProgram
@@ -431,7 +424,6 @@ void __appInit()
 {
   srvSysInit();
   pxipmInit();
-  rosalinaInit();
   fsregInit();
   fsldrInit();
 }
@@ -440,7 +432,6 @@ void __appInit()
 void __appExit()
 {
   fsldrExit();
-  rosalinaExit();
   pxipmExit();
   srvSysExit();
 }

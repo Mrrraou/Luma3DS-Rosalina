@@ -2,7 +2,6 @@
 #include <string.h>
 #include "fsreg.h"
 #include "srvsys.h"
-#include "rosalina.h"
 
 static Handle fsregHandle;
 static int fsregRefCount;
@@ -14,8 +13,7 @@ Result fsregInit(void)
   if(AtomicPostIncrement(&fsregRefCount))
     return 0;
 
-  //ret = srvSysGetServiceHandle(&fsregHandle, "fs:REG");
-  fsregHandle = Rosalina_GiveFSREGHandleCopy();
+  ret = srvSysGetServiceHandle(&fsregHandle, "fs:REG");
 
   if(R_FAILED(ret))
     AtomicDecrement(&fsregRefCount);
