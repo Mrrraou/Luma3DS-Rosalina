@@ -186,7 +186,7 @@ void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
 void installSvcConnectToPortInitHook(u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space)
 {
     u32 addr = 0xFFFF0000 + (u32)*freeK11Space - (u32)arm11ExceptionsPage;
-    u32 svcSleepThreadAddr = arm11ExceptionsPage[0x0A], svcConnectToPortAddr = arm11ExceptionsPage[0x2D];
+    u32 svcSleepThreadAddr = arm11SvcTable[0x0A], svcConnectToPortAddr = arm11SvcTable[0x2D];
 
     arm11SvcTable[0x2D] = addr;
     memcpy(*freeK11Space, svcConnectToPortInitHook_bin, svcConnectToPortInitHook_bin_size);

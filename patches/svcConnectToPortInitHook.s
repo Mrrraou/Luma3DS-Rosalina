@@ -18,7 +18,6 @@
         b loop
 
     loop_end:
-    bkpt 1
     pop {r0-r4, lr}
     bx r12
 

@@ -144,5 +144,5 @@ void main(volatile struct Parameters *p)
     findUsefulSymbols();
     enableDebugFeatures();
 
-//    *trampo_ = (u32)ConnectToPortHook;
+    *trampo_ = (u32)ConnectToPortHook;
 }
