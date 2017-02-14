@@ -2,13 +2,10 @@
 
 .create "build/svcConnectToPortInitHook.bin", 0
 .arm
-
     push {r0-r4, lr}
-    mov r2, r0
     adr r0, jumpAddress
     bl convertVAToPA
     orr r4, r0, #(1 << 31)
-    mov r0, r2
 
     loop:
         ldr r12, [r4]
@@ -21,8 +18,8 @@
         b loop
 
     loop_end:
-
-    pop {r0, r1, lr}
+    bkpt 1
+    pop {r0-r4, lr}
     bx r12
 
 convertVAToPA:
@@ -39,7 +36,7 @@ convertVAToPA:
     bx lr
 
 .pool
-
+_base: .ascii "base"
 jumpAddressOrig: .ascii "orig"
 SleepThread: .ascii "SlpT"
 jumpAddress: .word 0
