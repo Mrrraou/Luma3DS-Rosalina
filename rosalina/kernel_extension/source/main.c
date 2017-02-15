@@ -85,12 +85,12 @@ static void findUsefulSymbols(void)
     kernelUsrCopyFuncsEnd = (void *)off[2];
 
     u32 n_cmp_0;
-    for(off = (u32 *)kernelUsrCopyFuncsStart, n_cmp_0 = 0; n_cmp_0 < 6; off++, n_cmp_0++)
+    for(off = (u32 *)kernelUsrCopyFuncsStart, n_cmp_0 = 1; n_cmp_0 <= 6; off++)
     {
         if(*off == 0xE3520000)
         {
             // We're missing some funcs
-            switch(n_cmp_0++)
+            switch(n_cmp_0)
             {
                 case 1:
                     usrToKernel8 = (bool (*)(void *, const void *, u32))off;
@@ -112,6 +112,7 @@ static void findUsefulSymbols(void)
                     break;
                 default: break;
             }
+            n_cmp_0++;
         }
     }
 
