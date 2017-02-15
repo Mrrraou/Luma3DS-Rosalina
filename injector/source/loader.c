@@ -8,7 +8,7 @@
 #include "pxipm.h"
 #include "srvsys.h"
 
-#define MAX_SESSIONS 2
+#define MAX_SESSIONS 1
 
 const char CODE_PATH[] = {0x01, 0x00, 0x00, 0x00, 0x2E, 0x63, 0x6F, 0x64, 0x65, 0x00, 0x00, 0x00};
 
@@ -123,7 +123,9 @@ static Result load_code(u64 progid, prog_addrs_t *shared, u64 prog_handle, int i
   filePath.data = CODE_PATH;
   filePath.size = sizeof(CODE_PATH);
   if (R_FAILED(IFile_Open(&file, ARCHIVE_SAVEDATA_AND_CONTENT2, archivePath, filePath, FS_OPEN_READ)))
+  {
     svcBreak(USERBREAK_ASSERT);
+  }
 
   // get file size
   if (R_FAILED(IFile_GetSize(&file, &size)))
@@ -143,14 +145,20 @@ static Result load_code(u64 progid, prog_addrs_t *shared, u64 prog_handle, int i
   res = IFile_Read(&file, &total, (void *)shared->text_addr, size);
   IFile_Close(&file); // done reading
   if (R_FAILED(res))
+  {
     svcBreak(USERBREAK_ASSERT);
+  }
 
   // decompress
   if (is_compressed)
+  {
     lzss_decompress((u8 *)shared->text_addr + size);
+  }
+
+  u16 progver = g_exheader.codesetinfo.flags.remasterversion[0] | (g_exheader.codesetinfo.flags.remasterversion[1] << 8);
 
   // patch
-  patchCode(progid, (u8 *)shared->text_addr, shared->total_size << 12);
+  patchCode(progid, progver, (u8 *)shared->text_addr, shared->total_size << 12);
 
   return 0;
 }
@@ -160,16 +168,22 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
   Result res;
 
   if (prog_handle >> 32 == 0xFFFF0000)
+  {
     return FSREG_GetProgramInfo(exheader, 1, prog_handle);
+  }
   else
   {
     res = FSREG_CheckHostLoadId(prog_handle);
     //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
     //so use PXIPM if FSREG fails OR returns "info", is the second condition a bug?
     if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
+    {
       return PXIPM_GetProgramInfo(exheader, prog_handle);
+    }
     else
+    {
       return FSREG_GetProgramInfo(exheader, 1, prog_handle);
+    }
   }
 }
 
@@ -224,7 +238,9 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   data_mem_size = (g_exheader.codesetinfo.data.codesize + g_exheader.codesetinfo.bsssize + 4095) >> 12;
   vaddr.total_size = vaddr.text_size + vaddr.ro_size + vaddr.data_size;
   if ((res = allocate_shared_mem(&shared_addr, &vaddr, flags)) < 0)
+  {
     return res;
+  }
 
   // load code
   progid = g_exheader.arm11systemlocalcaps.programid;
@@ -321,9 +337,13 @@ static Result loader_UnregisterProgram(u64 prog_handle)
     res = FSREG_CheckHostLoadId(prog_handle);
     //if ((res >= 0 && (unsigned)res >> 27) || (res < 0 && ((unsigned)res >> 27)-32))
     if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
+    {
       return PXIPM_UnregisterProgram(prog_handle);
+    }
     else
+    {
       return FSREG_UnloadProgram(prog_handle);
+    }
   }
 }
 
@@ -359,14 +379,14 @@ static void handle_commands(void)
       cmdbuf[0] = 0x200C0;
       cmdbuf[1] = res;
       *(u64 *)&cmdbuf[2] = prog_handle;
-
       break;
     }
     case 3: // UnregisterProgram
     {
       if (g_cached_prog_handle == prog_handle)
+      {
         g_cached_prog_handle = 0;
-
+      }
       cmdbuf[0] = 0x30040;
       cmdbuf[1] = loader_UnregisterProgram(*(u64 *)&cmdbuf[1]);
       break;
@@ -423,16 +443,17 @@ static Result should_terminate(int *term_request)
 void __appInit()
 {
   srvSysInit();
-  pxipmInit();
   fsregInit();
   fsldrInit();
+  pxipmInit();
 }
 
 // this is called after main exits
 void __appExit()
 {
-  fsldrExit();
   pxipmExit();
+  fsldrExit();
+  fsregExit();
   srvSysExit();
 }
 
@@ -440,14 +461,14 @@ void __appExit()
 void __sync_init();
 void __sync_fini();
 void __system_initSyscalls();
-
+ 
 void __ctru_exit()
 {
   __appExit();
   __sync_fini();
   svcExitProcess();
 }
-
+ 
 void initSystem()
 {
   __sync_init();
@@ -473,10 +494,14 @@ int main()
   notification_handle = &g_handles[0];
 
   if (R_FAILED(srvSysRegisterService(srv_handle, "Loader", MAX_SESSIONS)))
+  {
     svcBreak(USERBREAK_ASSERT);
+  }
 
   if (R_FAILED(srvSysEnableNotification(notification_handle)))
+  {
     svcBreak(USERBREAK_ASSERT);
+  }
 
   g_active_handles = 2;
   g_cached_prog_handle = 0;
@@ -500,7 +525,7 @@ int main()
       {
         if (index == -1)
         {
-          for (i = 2; i < MAX_SESSIONS + 2; i++)
+          for (i = 2; i < MAX_SESSIONS+2; i++)
           {
             if (g_handles[i] == reply_target)
             {
@@ -514,8 +539,10 @@ int main()
         g_active_handles--;
         reply_target = 0;
       }
-      else
+      else 
+      {
         svcBreak(USERBREAK_ASSERT);
+      }
     }
     else
     {
@@ -526,22 +553,26 @@ int main()
         case 0: // notification
         {
           if (R_FAILED(should_terminate(&term_request)))
+          {
             svcBreak(USERBREAK_ASSERT);
+          }
           break;
         }
         case 1: // new session
         {
           if (R_FAILED(svcAcceptSession(&handle, *srv_handle)))
+          {
             svcBreak(USERBREAK_ASSERT);
-
-          if(g_active_handles < MAX_SESSIONS + 2)
+          }
+          if (g_active_handles < MAX_SESSIONS+2)
           {
             g_handles[g_active_handles] = handle;
             g_active_handles++;
           }
           else
+          {
             svcCloseHandle(handle);
-
+          }
           break;
         }
         default: // session
@@ -552,8 +583,7 @@ int main()
         }
       }
     }
-  }
-  while(!term_request || g_active_handles != 2);
+  } while (!term_request || g_active_handles != 2);
 
   srvSysUnregisterService("Loader");
   svcCloseHandle(*srv_handle);

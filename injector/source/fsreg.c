@@ -10,33 +10,25 @@ Result fsregInit(void)
 {
   Result ret = 0;
 
-  if(AtomicPostIncrement(&fsregRefCount))
-    return 0;
+  if (AtomicPostIncrement(&fsregRefCount)) return 0;
 
   ret = srvSysGetServiceHandle(&fsregHandle, "fs:REG");
 
-  if(R_FAILED(ret))
-    AtomicDecrement(&fsregRefCount);
+  if (R_FAILED(ret)) AtomicDecrement(&fsregRefCount);
   return ret;
 }
 
 void fsregExit(void)
 {
-  if(AtomicDecrement(&fsregRefCount))
-    return;
+  if (AtomicDecrement(&fsregRefCount)) return;
   svcCloseHandle(fsregHandle);
-}
-
-void fsregUseHandle(Handle handle)
-{
-  fsregHandle = handle;
 }
 
 Result FSREG_CheckHostLoadId(u64 prog_handle)
 {
   u32 *cmdbuf = getThreadCommandBuffer();
 
-  cmdbuf[0] = IPC_MakeHeader(0x406, 2, 0); // 0x4060080
+  cmdbuf[0] = IPC_MakeHeader(0x406,2,0); // 0x4060080
   cmdbuf[1] = (u32) (prog_handle);
   cmdbuf[2] = (u32) (prog_handle >> 32);
 

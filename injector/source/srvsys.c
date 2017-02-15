@@ -27,8 +27,8 @@ Result srvSysInit()
   while (1)
   {
     rc = svcConnectToPort(&srvHandle, "srv:");
-    if (R_LEVEL(rc) != RL_PERMANENT ||
-        R_SUMMARY(rc) != RS_NOTFOUND ||
+    if (R_LEVEL(rc) != RL_PERMANENT || 
+        R_SUMMARY(rc) != RS_NOTFOUND || 
         R_DESCRIPTION(rc) != RD_NOT_FOUND
        ) break;
     svcSleepThread(500000);
@@ -38,8 +38,6 @@ Result srvSysInit()
     rc = srvSysRegisterClient();
     srvRefCount++;
   }
-
-  *(srvGetSessionHandle()) = srvHandle;
 
   RecursiveLock_Unlock(&initLock);
   return rc;
