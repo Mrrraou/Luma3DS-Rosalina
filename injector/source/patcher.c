@@ -3,10 +3,10 @@
 #include "memory.h"
 #include "strings.h"
 #include "ifile.h"
-#include "CFWInfo.h"
 #include "../build/bundled.h"
 
-static CFWInfo info;
+static u32 config;
+static bool isN3DS, isSafeMode;
 
 static u32 patchMemory(u8 *start, u32 size, const void *pattern, u32 patSize, int offset, const void *replace, u32 repSize, u32 count)
 {
@@ -55,10 +55,12 @@ static inline void loadCFWInfo(void)
 
     if(infoLoaded) return;
 
-    svcGetCFWInfo(&info);
+    if(R_FAILED(svcGetSystemInfo((s64 *)&config, 0x10000, 2))) svcBreak(USERBREAK_ASSERT);
+    if(R_FAILED(svcGetSystemInfo((s64 *)&isN3DS, 0x10000, 4))) svcBreak(USERBREAK_ASSERT);
+    if(R_FAILED(svcGetSystemInfo((s64 *)&isSafeMode, 0x10000, 5))) svcBreak(USERBREAK_ASSERT);
 
     IFile file;
-    if(LOADERFLAG(ISSAFEMODE) && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
+    if(isSafeMode && R_SUCCEEDED(fileOpen(&file, ARCHIVE_SDMC, "/", FS_OPEN_READ))) //Init SD card if SAFE_MODE is being booted
         IFile_Close(&file);
 
     infoLoaded = true;
@@ -546,7 +548,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
              progId == 0x0004001000026000LL || //CHN MSET
              progId == 0x0004001000027000LL || //KOR MSET
              progId == 0x0004001000028000LL) //TWN MSET
-            && CONFIG(PATCHVERSTRING)) 
+            && CONFIG(PATCHVERSTRING))
     {
         static const u16 pattern[] = u"Ve";
         static u16 *patch;
@@ -613,7 +615,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             if(ret == 0 || (ret == 1 && progVer > 0xB)) goto error;
         }
 
-        if(LOADERFLAG(ISN3DS))
+        if(isN3DS)
         {
             u32 cpuSetting = MULTICONFIG(NEWCPU);
 
@@ -706,7 +708,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
 
     else if(progId == 0x0004003000008A02LL && MULTICONFIG(DEVOPTIONS) == 1) //ErrDisp
     {
-        static const u8 pattern[] = { 
+        static const u8 pattern[] = {
             0x00, 0xD0, 0xE5, 0xDB
         },
                         pattern2[] = {
@@ -748,7 +750,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
                 sizeof(patch), 1
             )) goto error;
     }
-   
+
     if(CONFIG(PATCHGAMES) && (u32)((progId >> 0x20) & 0xFFFFFFEDULL) == 0x00040000)
     {
         u8 regionId = 0xFF,

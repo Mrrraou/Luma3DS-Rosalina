@@ -18,11 +18,20 @@ Result GetSystemInfoHook(u32 dummy, u32 type, s32 param)
                 case 1:
                     out = cfwInfo.commitHash;
                     break;
-                case 2: // isRelease
+                case 2:
+                    out = cfwInfo.config;
+                    break;
+                case 3: // isRelease
                     out = cfwInfo.flags & 1;
                     break;
-                case 3: // isK9LH
-                    out = (cfwInfo.flags >> 1) & 1;
+                case 4: // isN3DS
+                    out = (cfwInfo.flags >> 4) & 1;
+                    break;
+                case 5: // isSafeMode
+                    out = (cfwInfo.flags >> 5) & 1;
+                    break;
+                case 6: // isK9LH
+                    out = (cfwInfo.flags >> 6) & 1;
                     break;
                 default:
                     res = 0xF8C007F4; // not implemented

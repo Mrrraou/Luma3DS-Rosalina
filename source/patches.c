@@ -179,6 +179,7 @@ void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
     if(isRelease) info->flags = 1;
     if(ISN3DS) info->flags |= 1 << 4;
     if(isSafeMode) info->flags |= 1 << 5;
+    if(ISA9LH) info->flags |= 1 << 6;
 
     (*freeK11Space) += k11MainHook_bin_size;
 }
