@@ -7,6 +7,13 @@ Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizat
 Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
 bool (*usrStrncpy)(char *dst, const char *src, u32 len);
 
+bool (*usrToKernel8)(u8 *dst, const u8 *src, u32 len);
+bool (*usrToKernel32)(u32 *dst, const u32 *src, u32 len);
+bool (*usrToKernelStrncpy)(char *dst, const char *src, u32 len);
+bool (*kernelToUser8)(u8 *dst, const u8 *src, u32 len);
+bool (*kernelToUser32)(u32 *dst, const u32 *src, u32 len);
+bool (*kernelToUserStrncpy)(char *dst, const char *src, u32 len);
+
 void (*svcFallbackHandler)(u8 svcId);
 u32 *officialSvcHandlerTail;
 
