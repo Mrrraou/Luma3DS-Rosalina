@@ -8,12 +8,12 @@ extern void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool
 extern Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
 extern Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
 
-extern bool (*usrToKernel8)(u8 *dst, const u8 *src, u32 len);
+extern bool (*usrToKernel8)(void *dst, const void *src, u32 len);
 extern bool (*usrToKernel32)(u32 *dst, const u32 *src, u32 len);
 extern bool (*usrToKernelStrncpy)(char *dst, const char *src, u32 len);
-extern bool (*kernelToUser8)(u8 *dst, const u8 *src, u32 len);
-extern bool (*kernelToUser32)(u32 *dst, const u32 *src, u32 len);
-extern bool (*kernelToUserStrncpy)(char *dst, const char *src, u32 len);
+extern bool (*kernelToUsr8)(void *dst, const void *src, u32 len);
+extern bool (*kernelToUsr32)(u32 *dst, const u32 *src, u32 len);
+extern bool (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 
 extern void (*svcFallbackHandler)(u8 svcId);
 extern u32 *officialSvcHandlerTail;

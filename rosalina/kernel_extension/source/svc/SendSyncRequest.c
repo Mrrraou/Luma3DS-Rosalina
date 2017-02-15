@@ -3,7 +3,6 @@
 
 Result SendSyncRequestHook(Handle handle)
 {
-
     KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
     KAutoObject *session = KProcessHandleTable__ToKAutoObject(handleTable, handle);
 

@@ -93,7 +93,7 @@ static void findUsefulSymbols(void)
             switch(n_cmp_0++)
             {
                 case 1:
-                    usrToKernel8 = (bool (*)(u8 *, const u8 *, u32))off;
+                    usrToKernel8 = (bool (*)(void *, const void *, u32))off;
                     break;
                 case 2:
                     usrToKernel32 = (bool (*)(u32 *, const u32 *, u32))off;
@@ -102,7 +102,7 @@ static void findUsefulSymbols(void)
                     usrToKernelStrncpy = (bool (*)(char *, const char *, u32))off;
                     break;
                 case 4:
-                    kernelToUsr8 = (bool (*)(u8 *, const u8 *, u32))off;
+                    kernelToUsr8 = (bool (*)(void *, const void *, u32))off;
                     break;
                 case 5:
                     kernelToUsr32 = (bool (*)(u32 *, const u32 *, u32))off;
@@ -114,10 +114,8 @@ static void findUsefulSymbols(void)
             }
         }
     }
-    usrMemcpy8
 
     while(off[0] != 0xE3520000 || off[1] != 0x03A00000) off++;
-    usrStrncpy = (bool (*)(char *, const char *, u32))off;
 
     off = (u32 *)0xFFFF0000;
     while(*off != 0x96007F9) off++;

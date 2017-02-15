@@ -2,6 +2,7 @@
 #include "svc/CloseHandle.h"
 #include "svc/GetProcessInfo.h"
 #include "svc/GetSystemInfo.h"
+#include "svc/GetCFWInfo.h"
 #include "svc/ConnectToPort.h"
 #include "svc/SendSyncRequest.h"
 #include "svc/Break.h"
@@ -36,6 +37,8 @@ void *svcHook(u8 *pageEnd)
             return GetProcessInfoHook;
         case 0x2D:
             return ConnectToPortHook;
+        case 0x2E:
+            return GetCFWInfo; // DEPRECATED
         case 0x32:
             return SendSyncRequestHook;
         case 0x3C:
