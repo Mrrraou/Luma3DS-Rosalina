@@ -48,8 +48,13 @@ Result GetSystemInfoHook(u32 dummy, u32 type, s32 param)
                 {
                     case 0:
                         out = (((PDN_MPCORE_CLKCNT >> 1) & 3) + 1) * 268;
+                        break;
                     case 1:
                         out = L2C_CTRL & 1;
+                        break;
+                    default:
+                        res = 0xF8C007F4;
+                        break;
                 }
             }
             else res = 0xF8C007F4;
@@ -66,6 +71,7 @@ Result GetSystemInfoHook(u32 dummy, u32 type, s32 param)
                     res = createHandleForThisProcess((Handle *)&out, fsREGSessions[0]);
                     break;
                 default:
+                    res = 0xF8C007F4;
                     break;
             }
             break;
