@@ -11,13 +11,21 @@ typedef struct TracedService
     u32 maxSessions;
 } TracedService;
 
+typedef struct LangemuAttributes
+{
+    u64 titleId;
+    u8 region, language;
+} LangemuAttributes;
+
 extern void *officialSVCs[0x7E];
 
 extern KAutoObject *srvSessions[0x40];
 
-extern TracedService tracedServices[1];
+extern TracedService tracedServices[4];
 extern KAutoObject *fsREGSessions[2];
+extern KAutoObject *cfgUSessions[25], *cfgSSessions[25], *cfgISessions[25];
 
+extern LangemuAttributes processLangemuAttributes[0x40];
 
 static inline u32 lookUpInSessionArray(KAutoObject *session, KAutoObject **sessions, u32 len)
 {

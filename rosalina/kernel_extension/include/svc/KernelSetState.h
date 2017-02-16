@@ -6,5 +6,4 @@
 
 // Result svcKernelSetState(u32 type, ...) <= official SVC
 extern s32 rosalinaState;
-// extern KSynchronizationObject *rosalinaSyncObj;
-Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3, u32 varg4);
+Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3);

@@ -10,12 +10,19 @@
 
 void *officialSVCs[0x7E] = {NULL};
 KAutoObject *srvSessions[0x40] = {NULL};
-KAutoObject *fsREGSessions[2] = {NULL};
 
-TracedService tracedServices[1] =
+KAutoObject *fsREGSessions[2] = {NULL};
+KAutoObject *cfgUSessions[25] = {NULL}, *cfgSSessions[25] = {NULL}, *cfgISessions[25] = {NULL};
+
+TracedService tracedServices[4] =
 {
-    {"fs:REG", fsREGSessions, 2}
+    {"fs:REG", fsREGSessions, 2},
+    {"cfg:u", cfgUSessions, 25},
+    {"cfg:s", cfgSSessions, 25},
+    {"cfg:i", cfgISessions, 25}
 };
+
+LangemuAttributes processLangemuAttributes[0x40] = {{0ULL}};
 
 void *svcHook(u8 *pageEnd)
 {
