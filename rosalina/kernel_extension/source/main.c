@@ -80,12 +80,11 @@ static void findUsefulSymbols(void)
     KProcessHandleTable__CreateHandle = (Result (*)(KProcessHandleTable *, Handle *, KAutoObject *, u8))decodeARMBranch(off + 2);
 
     off = (u32 *)officialSVCs[0x7C];
-    while(*off != 0x1B001D89) off++;
-    off++;
-    KObjectMutex__TryAcquire = (void (*)(KObjectMutex *))decodeARMBranch(off);
+    while(*off != 0x03530000) off++;
+    KObjectMutex__WaitAndAcquire = (void (*)(KObjectMutex *))decodeARMBranch(++off);
     while(*off != 0xE320F000) off++;
     KObjectMutex__ErrorOccured = (void (*)(void))decodeARMBranch(off + 1);
-    
+
     off = (u32 *)originalHandlers[(u32) DATA_ABORT];
     while(*off != (u32)exceptionStackTop) off++;
     kernelUsrCopyFuncsStart = (void *)off[1];

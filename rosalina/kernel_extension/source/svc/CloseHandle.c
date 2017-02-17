@@ -9,11 +9,9 @@ Result CloseHandleHook(Handle handle)
     if(session != NULL)
     {
         session->vtable->DecrementReferenceCount(session);
+
         if(session->refCount == 1)
-        {
-            u32 i = lookUpInSessionArray(session, srvSessions, 0x40);
-            if(i != 0x40) srvSessions[i] = NULL;
-        }
+            TracedService_Remove(&srvPort, session);
     }
 
     return ((Result (*)(Handle))officialSVCs[0x23])(handle);

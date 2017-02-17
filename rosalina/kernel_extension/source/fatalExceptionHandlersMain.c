@@ -51,12 +51,12 @@ bool isExceptionFatal(u32 spsr)
     return true;
 }
 
-extern u32 _safecpy_sz;
+extern u32 safecpy_sz;
 bool isDataAbortExceptionRangeControlled(u32 spsr, u32 addr)
 {
     return ((spsr & 0x1F) != 0x10) && (
                 ((u32)kernelUsrCopyFuncsStart <= addr && addr < (u32)kernelUsrCopyFuncsEnd) ||
-                ((u32)safecpy <= addr && addr < (u32)safecpy + _safecpy_sz)
+                ((u32)safecpy <= addr && addr < (u32)safecpy + safecpy_sz)
             );
 }
 void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)

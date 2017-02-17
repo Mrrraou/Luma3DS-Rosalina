@@ -18,9 +18,8 @@ Result ConnectToPortHook(u32 dummy, const char *name)
         KAutoObject *session = KProcessHandleTable__ToKAutoObject(handleTable, (Handle) regs[0]);
         if(session != NULL)
         {
+            TracedService_Add(&srvPort, session);
             session->vtable->DecrementReferenceCount(session);
-
-            addToSessionArray(session, srvSessions, 0x40);
         }
     }
 

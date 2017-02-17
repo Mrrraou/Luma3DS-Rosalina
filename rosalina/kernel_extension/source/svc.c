@@ -10,18 +10,26 @@
 
 void *officialSVCs[0x7E] = {NULL};
 KAutoObject *srvSessions[0x40] = {NULL};
+TracedService srvPort = {"srv:", srvSessions, 0x40, {NULL}};
+
 
 KAutoObject *fsREGSessions[2] = {NULL};
 KAutoObject *cfgUSessions[25] = {NULL}, *cfgSSessions[25] = {NULL}, *cfgISessions[25] = {NULL};
 
-TracedService tracedServices[4] =
+TracedService   fsREGService = {"fs:REG", fsREGSessions, 2, {NULL}},
+                cfgUService  = {"cfg:u", cfgUSessions,  25, {NULL}},
+                cfgSService  = {"cfg:s", cfgSSessions,  25, {NULL}},
+                cfgIService  = {"cfg:i", cfgISessions,  25, {NULL}};
+
+TracedService *tracedServices[4] =
 {
-    {"fs:REG", fsREGSessions, 2},
-    {"cfg:u", cfgUSessions, 25},
-    {"cfg:s", cfgSSessions, 25},
-    {"cfg:i", cfgISessions, 25}
+    &fsREGService,
+    &cfgUService,
+    &cfgSService,
+    &cfgIService
 };
 
+KObjectMutex processLangemuObjectMutex;
 LangemuAttributes processLangemuAttributes[0x40] = {{0ULL}};
 
 void *svcHook(u8 *pageEnd)
@@ -36,8 +44,8 @@ void *svcHook(u8 *pageEnd)
     u32 svcId = *(u8 *)(pageEnd - 0xB5);
     switch(svcId)
     {
-        case 0x23:
-            return CloseHandleHook;
+    /*    case 0x23:
+            return CloseHandleHook;*/
         case 0x2A:
             return GetSystemInfoHook;
         case 0x2B:

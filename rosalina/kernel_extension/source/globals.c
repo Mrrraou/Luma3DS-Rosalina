@@ -5,7 +5,7 @@ KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, H
 void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool isPulse);
 Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
 Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
-void (*KObjectMutex__TryAcquire)(KObjectMutex *this);
+void (*KObjectMutex__WaitAndAcquire)(KObjectMutex *this);
 void (*KObjectMutex__ErrorOccured)(void);
 
 bool (*usrToKernel8)(void *dst, const void *src, u32 len);

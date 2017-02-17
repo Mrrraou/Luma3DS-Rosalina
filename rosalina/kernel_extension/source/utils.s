@@ -43,6 +43,37 @@ atomicStore32:
     bne atomicStore32
     bx lr
 
+.global KObjectMutex__Acquire
+.type   KObjectMutex__Acquire, %function
+KObjectMutex__Acquire:
+    ldr r1, =0xFFFF9000     @ current thread addr
+
+    ldr r1, [r1]
+    ldrex r2, [r0]
+    cmp r2, #0
+    strexeq r3, r1, [r0]    @ store current thread
+    strexne r3, r2, [r0]    @ stored thread != NULL, no change
+    cmpeq r3, #0
+    bxeq lr
+
+    ldr r12, =KObjectMutex__WaitAndAcquire
+    ldr r12, [r12]
+    bx r12
+
+.global KObjectMutex__Release
+.type   KObjectMutex__Release, %function
+KObjectMutex__Release:
+    mov r1, #0
+    str r1, [r0]
+    ldrh r1, [r0, #4]
+    cmp r1, #0
+    bxle lr
+
+    ldr r12, =KObjectMutex__ErrorOccured
+    ldr r12, [r12]
+    blx r12
+    bx lr
+
 .global safecpy
 .type   safecpy, %function
 safecpy:
@@ -78,10 +109,10 @@ getR1toR3:
 setR0toR3:
     bx lr
 
-.section rodata
+.section .rodata
 
-.global _safecpy_sz
-_safecpy_sz: .word _safecpy_end - safecpy
+.global safecpy_sz
+safecpy_sz: .word _safecpy_end - safecpy
 
 .bss
 .balign 4

@@ -8,7 +8,7 @@ extern void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool
 extern Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
 extern Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
 
-extern void (*KObjectMutex__TryAcquire)(KObjectMutex *this);
+extern void (*KObjectMutex__WaitAndAcquire)(KObjectMutex *this);
 extern void (*KObjectMutex__ErrorOccured)(void);
 
 extern bool (*usrToKernel8)(void *dst, const void *src, u32 len);

@@ -40,17 +40,15 @@ Result SendSyncRequestHook(Handle handle)
 
     if(session != NULL)
     {
-        session->vtable->DecrementReferenceCount(session);
-
         switch (cmdbuf[0])
         {
             case 0x10082:
             {
                 if(cmdbuf[1] != 1 || cmdbuf[2] != 0xA0002 || cmdbuf[3] != 0x1C) break;
 
-                u32 index = lookUpInSessionArray(session, cfgUSessions, 25); // GetConfigInfoBlk2
-                if(index >= 25) index = lookUpInSessionArray(session, cfgSSessions, 25);
-                if(index >= 25) index = lookUpInSessionArray(session, cfgISessions, 25);
+                u32 index = TracedService_Lookup(&cfgUService, session); // GetConfigInfoBlk2
+                if(index >= 25) index = TracedService_Lookup(&cfgSService, session);
+                if(index >= 25) index = TracedService_Lookup(&cfgIService, session);
                 if(index < 25)
                     skip = doLangEmu(false, cmdbuf);
 
@@ -59,9 +57,9 @@ Result SendSyncRequestHook(Handle handle)
 
             case 0x20000:
             {
-                u32 index = lookUpInSessionArray(session, cfgUSessions, 25); // SecureInfoGetRegion
-                if(index >= 25) index = lookUpInSessionArray(session, cfgSSessions, 25);
-                if(index >= 25) index = lookUpInSessionArray(session, cfgISessions, 25);
+                u32 index = TracedService_Lookup(&cfgUService, session); // SecureInfoGetRegion
+                if(index >= 25) index = TracedService_Lookup(&cfgSService, session);
+                if(index >= 25) index = TracedService_Lookup(&cfgIService, session);
                 if(index < 25)
                     skip = doLangEmu(true, cmdbuf);
 
@@ -70,14 +68,14 @@ Result SendSyncRequestHook(Handle handle)
 
             case 0x50100:
             {
-                u32 index = lookUpInSessionArray(session, srvSessions, 0x40); // GetServiceHandle
+                u32 index = TracedService_Lookup(&srvPort, session); // GetServiceHandle
                 if(index < 0x40)
                 {
                     const char *serviceName = (const char *)(cmdbuf + 1);
-                    for(u32 i = 0; i < sizeof(tracedServices) / sizeof(TracedService); i++)
+                    for(u32 i = 0; i < sizeof(tracedServices) / sizeof(TracedService *); i++)
                     {
-                        if(strncmp(serviceName, tracedServices[i].name, 8) == 0)
-                            traced = tracedServices + i;
+                        if(strncmp(serviceName, tracedServices[i]->name, 8) == 0)
+                            traced = tracedServices[i];
                     }
                 }
                 break;
@@ -85,7 +83,7 @@ Result SendSyncRequestHook(Handle handle)
 
             case 0x4060000:
             {
-                u32 index = lookUpInSessionArray(session, cfgSSessions, 25); // SecureInfoGetRegion
+                u32 index = TracedService_Lookup(&cfgSService, session); // SecureInfoGetRegion
                 if(index < 25)
                     skip = doLangEmu(true, cmdbuf);
 
@@ -94,15 +92,15 @@ Result SendSyncRequestHook(Handle handle)
 
             case 0x8160000:
             {
-                u32 index = lookUpInSessionArray(session, cfgISessions, 25); // SecureInfoGetRegion
+                u32 index = TracedService_Lookup(&cfgIService, session); // SecureInfoGetRegion
                 if(index < 25)
                     skip = doLangEmu(true, cmdbuf);
 
                 break;
             }
-
         }
 
+        session->vtable->DecrementReferenceCount(session);
     }
 
     Result res = skip ? 0 : ((Result (*)(Handle))officialSVCs[0x32])(handle);
@@ -111,8 +109,8 @@ Result SendSyncRequestHook(Handle handle)
         session = KProcessHandleTable__ToKAutoObject(handleTable, (Handle)cmdbuf[3]);
         if(session != NULL)
         {
+            TracedService_Add(traced, session);
             session->vtable->DecrementReferenceCount(session);
-            addToSessionArray(session, traced->sessions, traced->maxSessions);
         }
     }
 

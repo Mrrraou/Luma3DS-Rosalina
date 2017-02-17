@@ -28,6 +28,9 @@ void *convertVAToPA(const void *addr);
 u32 getCurrentCoreID(void);
 bool enableIRQ(void);
 u32 safecpy(void *dst, const void *src, u32 len);
+void KObjectMutex__Acquire(KObjectMutex *this);
+void KObjectMutex__Release(KObjectMutex *this);
+
 
 Result setR0toR3(Result r0, ...);
 void getR1toR3(u32 *regs);

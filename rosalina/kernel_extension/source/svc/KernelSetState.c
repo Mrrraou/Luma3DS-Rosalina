@@ -16,7 +16,8 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
         }
         case 0x10001:
         {
-            //TODO: fix concurrency
+            KObjectMutex__Acquire(&processLangemuObjectMutex);
+
             u32 i;
             for(i = 0; i < 0x40 && processLangemuAttributes[i].titleId != 0ULL; i++);
             if(i < 0x40)
@@ -27,6 +28,9 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
             }
             else
                 res = 0xD8609013;
+
+            KObjectMutex__Release(&processLangemuObjectMutex);
+
             break;
         }
         /*
