@@ -1,5 +1,6 @@
 #include "svc/GetSystemInfo.h"
 #include "utils.h"
+#include "ipc.h"
 
 Result GetSystemInfoHook(u32 dummy, u32 type, s32 param)
 {
@@ -67,8 +68,8 @@ Result GetSystemInfoHook(u32 dummy, u32 type, s32 param)
             switch(param)
             {
                 case 0:
-                    while(fsREGSessions[0] == NULL) yield();
-                    res = createHandleForThisProcess((Handle *)&out, fsREGSessions[0]);
+                    while(fsREGSessions[0] == NULL && fsREGSessions[1] == NULL) yield();
+                    res = createHandleForThisProcess((Handle *)&out, fsREGSessions[0] == NULL ? fsREGSessions[1] : fsREGSessions[0]);
                     break;
                 default:
                     res = 0xF8C007F4;

@@ -1,5 +1,6 @@
 #include "svc/ConnectToPort.h"
 #include "memory.h"
+#include "ipc.h"
 
 Result ConnectToPortHook(u32 dummy, const char *name)
 {

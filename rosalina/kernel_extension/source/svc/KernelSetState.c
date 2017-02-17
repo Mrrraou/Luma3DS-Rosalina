@@ -1,5 +1,6 @@
 #include "svc/KernelSetState.h"
 #include "synchronization.h"
+#include "ipc.h"
 
 s32 rosalinaState;
 
@@ -33,19 +34,6 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
 
             break;
         }
-        /*
-        case 0x10002:
-        {
-            //TODO: fix concurrency
-            u32 i;
-            u64 titleId = ((u64)varg3 << 32) | (u32)varg2;
-            for(i = 0; i < 0x40 && processLangemuAttributes[i].titleId != titleId; i++);
-            if(i < 0x40)
-                processLangemuAttributes[i].titleId = 0ULL;
-            else
-                res =  0xD88007FA;
-            break;
-        }*/
 
         default:
         {

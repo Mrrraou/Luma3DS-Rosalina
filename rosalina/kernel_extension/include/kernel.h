@@ -1051,7 +1051,7 @@ typedef union InterruptManager
 
 
 extern bool isN3DS;
-extern void *officialSVCs[0x7E]; //defined in main.c, will be used everywhere
+extern void *officialSVCs[0x7E];
 
 extern u32 kernelVersion;
 #define KPROCESS_OFFSETOF(field) (isN3DS ? offsetof(KProcessN3DS, field) :\
@@ -1063,28 +1063,14 @@ offsetof(KProcessO3DSPre8x, field)))
 &(obj)->O3DSPre8x.field ))
 
 #define KPROCESS_GET_RVALUE(obj, field) *(KPROCESS_GET_PTR(obj, field))
-//#define KPROCESS_GET_RVALUE(obj, field)  (isN3DS ? (obj)->N3DS.field : ((*(vu32*)0x1FF80000 >= SYSTEM_VERSION(2, 44, 6)) ? (obj)->O3DS8x.field : (obj)->O3DSPre8x.field))
-/*
-static inline void *KProcess__ConvertHandle(KProcess *process, Handle handle)
-{
-    switch(handle)
-    {
-        case 0xFFFF8000: return (void *)*(KThread**)0xFFFF9000;
-        case 0xFFFF8001: return (void *)*(KProcess**)0xFFFF9004;
-        default:
-            return KPROCESS_GET_RVALUE(process, handleTable.handleTable[handle & 0x7fff].pointer);
-    }
-}*/
 
 static inline KCodeSet *codeSetOfProcess(KProcess *process)
 {
     KCodeSet **codeSetPtr = KPROCESS_GET_PTR(process, codeSet);
     return *codeSetPtr;
-    //return KPROCESS_GET_RVALUE(process, codeSet);
 }
 
 static inline KProcessHandleTable *handleTableOfProcess(KProcess *process)
 {
     return KPROCESS_GET_PTR(process, handleTable);
-    //return KPROCESS_GET_RVALUE(process, codeSet);
 }

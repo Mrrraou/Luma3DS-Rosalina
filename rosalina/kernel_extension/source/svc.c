@@ -1,5 +1,4 @@
 #include "svc.h"
-#include "svc/CloseHandle.h"
 #include "svc/GetProcessInfo.h"
 #include "svc/GetSystemInfo.h"
 #include "svc/GetCFWInfo.h"
@@ -9,28 +8,6 @@
 #include "svc/KernelSetState.h"
 
 void *officialSVCs[0x7E] = {NULL};
-KAutoObject *srvSessions[0x40] = {NULL};
-TracedService srvPort = {"srv:", srvSessions, 0x40, {NULL}};
-
-
-KAutoObject *fsREGSessions[2] = {NULL};
-KAutoObject *cfgUSessions[25] = {NULL}, *cfgSSessions[25] = {NULL}, *cfgISessions[25] = {NULL};
-
-TracedService   fsREGService = {"fs:REG", fsREGSessions, 2, {NULL}},
-                cfgUService  = {"cfg:u", cfgUSessions,  25, {NULL}},
-                cfgSService  = {"cfg:s", cfgSSessions,  25, {NULL}},
-                cfgIService  = {"cfg:i", cfgISessions,  25, {NULL}};
-
-TracedService *tracedServices[4] =
-{
-    &fsREGService,
-    &cfgUService,
-    &cfgSService,
-    &cfgIService
-};
-
-KObjectMutex processLangemuObjectMutex;
-LangemuAttributes processLangemuAttributes[0x40] = {{0ULL}};
 
 void *svcHook(u8 *pageEnd)
 {
@@ -39,13 +16,11 @@ void *svcHook(u8 *pageEnd)
     u32 highTitleId = (u32)(titleId >> 32), lowTitleId = (u32)titleId;
     while(rosalinaState != 0 && *KPROCESS_GET_PTR(currentProcess, processId) >= 6 &&
       (highTitleId != 0x00040130 || (highTitleId == 0x00040130 && (lowTitleId == 0x1A02 || lowTitleId == 0x1C02))))
-        yield();//WaitSynchronization1(rosalinaSyncObj, currentCoreContext->objectContext.currentThread, rosalinaSyncObj, -1LL);
+        yield();
 
     u32 svcId = *(u8 *)(pageEnd - 0xB5);
     switch(svcId)
     {
-    /*    case 0x23:
-            return CloseHandleHook;*/
         case 0x2A:
             return GetSystemInfoHook;
         case 0x2B:

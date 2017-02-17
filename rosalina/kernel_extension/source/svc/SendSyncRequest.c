@@ -1,33 +1,6 @@
 #include "svc/SendSyncRequest.h"
 #include "memory.h"
-
-static inline bool doLangEmu(bool region, u32 *cmdbuf)
-{
-    u8 res = 0; // none
-    u64 titleId = codeSetOfProcess(currentCoreContext->objectContext.currentProcess)->titleId;
-    for(u32 i = 0; i < 0x40; i++)
-    {
-        if(processLangemuAttributes[i].titleId == titleId)
-            res = region ? processLangemuAttributes[i].region : processLangemuAttributes[i].language;
-    }
-
-    if(res == 0) return false;
-
-    cmdbuf[1] = 0;
-    if(region)
-    {
-        cmdbuf[0] = (cmdbuf[0] & 0xFFFF0000) | 0x80;
-        cmdbuf[2] = res - 1;
-    }
-    else
-    {
-        cmdbuf[0] = (cmdbuf[0] & 0xFFFF0000) | 0x40;
-        *(u8 *)cmdbuf[4] = res - 1;
-        cmdbuf[2] = cmdbuf[3] = cmdbuf[4] = 0; // just in case
-    }
-
-    return true;
-}
+#include "ipc.h"
 
 Result SendSyncRequestHook(Handle handle)
 {
