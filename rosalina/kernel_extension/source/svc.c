@@ -5,6 +5,8 @@
 #include "svc/ConnectToPort.h"
 #include "svc/SendSyncRequest.h"
 #include "svc/Break.h"
+#include "svc/RestrictGpuDma.h"
+#include "svc/Backdoor.h"
 #include "svc/KernelSetState.h"
 
 void *officialSVCs[0x7E] = {NULL};
@@ -32,7 +34,11 @@ void *svcHook(u8 *pageEnd)
         case 0x32:
             return SendSyncRequestHook;
         case 0x3C:
-            return BreakHook;
+            return (debugOfProcess(currentProcess) != NULL) ? officialSVCs[0x3C] : (void *)Break;
+        case 0x59:
+            return RestrictGpuDma;
+        case 0x7B:
+            return Backdoor;
         case 0x7C:
             return KernelSetStateHook;
         case 0x80:

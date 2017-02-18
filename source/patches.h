@@ -39,6 +39,7 @@ u32 *getKernel11Info(u8 *pos, u32 size, u32 *baseK11VA, u8 **freeK11Space, u32 *
 void installMMUHook(u8 *pos, u32 size, u8 **freeK11Space);
 void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space);
 void installSvcConnectToPortInitHook(u32 *arm11SvcTable, u32 *arm11ExceptionsPage, u8 **freeK11Space);
+void installSvcCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage);
 u32 patchSignatureChecks(u8 *pos, u32 size);
 u32 patchOldSignatureChecks(u8 *pos, u32 size);
 u32 patchFirmlaunches(u8 *pos, u32 size, u32 process9MemAddr);
@@ -48,8 +49,7 @@ u32 patchTitleInstallMinVersionChecks(u8 *pos, u32 size, u32 firmVersion);
 u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size);
 u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size);
 u32 patchCheckForDevCommonKey(u8 *pos, u32 size);
-u32 reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage);
-u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size); // Rosalina
+u32 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size); // Rosalina
 void patchMPUTable(u8 *pos, u32 size, u8 *arm9SectionDst); // Starbit
 void injectPxiHook(u8 *pos, u32 size); // Starbit
 u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);

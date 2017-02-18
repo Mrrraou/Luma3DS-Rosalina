@@ -27,7 +27,7 @@ objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
           $(call rwildcard, $(dir_source), *.s *.c)))
 
-bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/mmuHook.bin.o $(dir_build)/k11MainHook.bin.o $(dir_build)/svcConnectToPortInitHook.bin.o $(dir_build)/svcBackdoors.bin.o\
+bundled = $(dir_build)/reboot.bin.o $(dir_build)/emunand.bin.o $(dir_build)/mmuHook.bin.o $(dir_build)/k11MainHook.bin.o $(dir_build)/svcConnectToPortInitHook.bin.o $(dir_build)/svcCustomBackdoor.bin.o\
           $(dir_build)/injector.bin.o $(dir_build)/loader.bin.o $(dir_build)/arm9_exceptions.bin.o
 
 define bin2o

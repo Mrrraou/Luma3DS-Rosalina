@@ -34,16 +34,19 @@ bool isExceptionFatal(u32 spsr)
     if((spsr & 0x1f) != 0x10) return true;
 
     KThread *thread = currentCoreContext->objectContext.currentThread;
-    KProcess *curProcess = currentCoreContext->objectContext.currentProcess;
+    KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
 
-    if(thread != NULL && thread->threadLocalStorage != NULL
+    if(*enableUserExceptionHandlersForCPUExc && thread != NULL && thread->threadLocalStorage != NULL
        && *((vu32 *)thread->threadLocalStorage + 0x10) != 0)
        return false;
 
-    if(curProcess != NULL)
+    if(currentProcess != NULL)
     {
-        thread = KPROCESS_GET_RVALUE(curProcess, mainThread);
-        if(thread != NULL && thread->threadLocalStorage != NULL
+        if(debugOfProcess(currentProcess) != NULL)
+            return false;
+
+        thread = KPROCESS_GET_RVALUE(currentProcess, mainThread);
+        if(*enableUserExceptionHandlersForCPUExc && thread != NULL && thread->threadLocalStorage != NULL
            && *((vu32 *)thread->threadLocalStorage + 0x10) != 0)
            return false;
     }

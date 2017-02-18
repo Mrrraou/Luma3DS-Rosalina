@@ -100,7 +100,7 @@ typedef struct ALIGN(4) Vtable__KAutoObject
   void *substractResource;
   KAutoObject *(*DecrementReferenceCount)(KAutoObject *this);
   union KProcess *(*GetParentProcess)(KAutoObject *this);
-  KClassToken *(*GetClassToken)(KClassToken *out, KAutoObject *this); // >= 9.0
+  KClassToken *(*GetClassToken)(KClassToken *out, KAutoObject *this); // >= 9.0 only
   const char *(*GetClassName)(KAutoObject *this); // < 9.0 only
   void *field_20;
   void *field_24;
@@ -1073,4 +1073,10 @@ static inline KCodeSet *codeSetOfProcess(KProcess *process)
 static inline KProcessHandleTable *handleTableOfProcess(KProcess *process)
 {
     return KPROCESS_GET_PTR(process, handleTable);
+}
+
+static inline KDebug *debugOfProcess(KProcess *process)
+{
+    KDebug **debugPtr = KPROCESS_GET_PTR(process, debug);
+    return *debugPtr;
 }

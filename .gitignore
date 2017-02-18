@@ -12,3 +12,4 @@ exceptions/arm11/build
 *.d
 *.elf
 *.cxi
+*.bmp

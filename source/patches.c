@@ -199,6 +199,15 @@ void installSvcConnectToPortInitHook(u32 *arm11SvcTable, u32 *arm11ExceptionsPag
     (*freeK11Space) += svcConnectToPortInitHook_bin_size;
 }
 
+
+void installSvcCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage)
+{
+    memcpy(*freeK11Space, svcCustomBackdoor_bin, svcCustomBackdoor_bin_size);
+    *((u32 *)*freeK11Space + 1) = arm11SvcTable[0x2F]; // temporary location
+    arm11SvcTable[0x2F] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
+    (*freeK11Space) += svcCustomBackdoor_bin_size;
+}
+
 u32 patchSignatureChecks(u8 *pos, u32 size)
 {
     //Look for signature checks
@@ -356,29 +365,7 @@ u32 patchCheckForDevCommonKey(u8 *pos, u32 size)
     return 0;
 }
 
-u32 reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **freeK11Space, u32 *arm11ExceptionsPage)
-{
-    if(!arm11SvcTable[0x7B])
-    {
-        if(*(u32 *)(*freeK11Space + 40 - 4) != 0xFFFFFFFF) return 1;
-
-        memcpy(*freeK11Space, svcBackdoors_bin, 40);
-
-        arm11SvcTable[0x7B] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
-        (*freeK11Space) += 40;
-    }
-
-    if(*(u32 *)(*freeK11Space + (svcBackdoors_bin_size - 40) - 4) != 0xFFFFFFFF) return 1;
-
-    memcpy(*freeK11Space, svcBackdoors_bin + 40, svcBackdoors_bin_size - 40);
-    *((u32 *)*freeK11Space + 1) = arm11SvcTable[0x2F];
-    arm11SvcTable[0x2F] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
-    (*freeK11Space) += (svcBackdoors_bin_size - 40);
-
-    return 0;
-}
-
-u8 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size)
+u32 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size)
 {
     const u8 moduleAmountPattern[]  = {0x05, 0x00, 0x57, 0xE3}; // cmp r7, #5
 
