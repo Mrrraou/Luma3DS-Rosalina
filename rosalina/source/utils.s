@@ -2,10 +2,17 @@
 .arm
 .balign 4
 
-.global svc_7b
-.type svc_7b, %function
-svc_7b:
-    svc 0x2f
+.global svc0x2F
+.type svc0x2F, %function
+svc0x2F:
+    @ custom backdoor before kernel ext. is installed
+    svc 0x2F
+    bx lr
+
+.global svcCustomBackdoor
+.type svcCustomBackdoor, %function
+svcCustomBackdoor:
+    svc 0x80
     bx lr
 
 .global convertVAToPA

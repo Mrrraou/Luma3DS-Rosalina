@@ -18,6 +18,8 @@ extern bool (*kernelToUsr8)(void *dst, const void *src, u32 len);
 extern bool (*kernelToUsr32)(u32 *dst, const u32 *src, u32 len);
 extern bool (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 
+extern Result (*CustomBackdoor)(void *function, ...);
+
 extern void (*svcFallbackHandler)(u8 svcId);
 extern u32 *officialSvcHandlerTail;
 

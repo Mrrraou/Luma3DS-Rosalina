@@ -19,6 +19,9 @@ svcBackdoor:
 
 ; Result svcCustomBackdoor(void *func, ... <up to 3 args>)
 svcCustomBackdoor:
+    b skip_orig
+orig: .word 0
+skip_orig:
     push {r4, lr}
     mov r4, r0
     mov r0, r1

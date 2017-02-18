@@ -371,6 +371,7 @@ u32 reimplementSvcBackdoorAndImplementCustomBackdoor(u32 *arm11SvcTable, u8 **fr
     if(*(u32 *)(*freeK11Space + (svcBackdoors_bin_size - 40) - 4) != 0xFFFFFFFF) return 1;
 
     memcpy(*freeK11Space, svcBackdoors_bin + 40, svcBackdoors_bin_size - 40);
+    *((u32 *)*freeK11Space + 1) = arm11SvcTable[0x2F];
     arm11SvcTable[0x2F] = 0xFFFF0000 + *freeK11Space - (u8 *)arm11ExceptionsPage;
     (*freeK11Space) += (svcBackdoors_bin_size - 40);
 

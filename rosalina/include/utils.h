@@ -18,7 +18,8 @@ static inline void *decodeARMBranch(const void *src)
     return (void *)((const u8 *)src + 8 + off);
 }
 
-Result svc_7b(void* entry_fn, ...);
+Result svc0x2F(void *function, ...); // custom backdoor before kernel ext. is installed (and only before!)
+Result svcCustomBackdoor(void *function, ...);
 
 void *convertVAToPA(const void *VA);
 

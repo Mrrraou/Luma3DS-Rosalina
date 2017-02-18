@@ -35,6 +35,8 @@ void *svcHook(u8 *pageEnd)
             return BreakHook;
         case 0x7C:
             return KernelSetStateHook;
+        case 0x80:
+            return CustomBackdoor;
         default:
             return (svcId <= 0x7D) ? officialSVCs[svcId] : NULL;
     }

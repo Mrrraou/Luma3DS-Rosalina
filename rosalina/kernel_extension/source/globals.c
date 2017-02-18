@@ -15,6 +15,8 @@ bool (*kernelToUsr8)(void *dst, const void *src, u32 len);
 bool (*kernelToUsr32)(u32 *dst, const u32 *src, u32 len);
 bool (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 
+Result (*CustomBackdoor)(void *function, ...);
+
 void (*svcFallbackHandler)(u8 svcId);
 u32 *officialSvcHandlerTail;
 

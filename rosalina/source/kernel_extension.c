@@ -107,5 +107,5 @@ static void K_ConfigureAndSendSGI0ToAllCores(void)
 
 void installKernelExtension(void)
 {
-    svc_7b(K_ConfigureAndSendSGI0ToAllCores);
+    svc0x2F(K_ConfigureAndSendSGI0ToAllCores);
 }

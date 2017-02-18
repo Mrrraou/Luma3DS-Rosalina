@@ -34,7 +34,7 @@ static inline void swapHandlerInVeneer(enum VECTORS vector, void *handler)
 
 static u32 *trampo_;
 
-static void setupFatalExceptionHandlers(void)
+static void setupExceptionHandlers(void)
 {
     swapHandlerInVeneer(FIQ, FIQHandler);
     swapHandlerInVeneer(UNDEFINED_INSTRUCTION, undefinedInstructionHandler);
@@ -51,6 +51,9 @@ static void setupFatalExceptionHandlers(void)
     for(off = (u32 *)officialSVCs[0x2D]; *off != 0x65736162; off++);
     *(void **)PA_FROM_VA_PTR(arm11SvcTable + 0x2D) = officialSVCs[0x2D] = (void *)off[1];
     trampo_ = (u32 *)PA_FROM_VA_PTR(off + 3);
+
+    CustomBackdoor = (Result (*)(void *, ...))*((u32 *)officialSVCs[0x2F] + 2);
+    *(void **)PA_FROM_VA_PTR(arm11SvcTable + 0x2F) = officialSVCs[0x2F] = (void *)*((u32 *)officialSVCs[0x2F] + 2);
 
     off = (u32 *)originalHandlers[(u32) SVC];
     while(*off++ != 0xE1A00009);
@@ -176,7 +179,7 @@ void main(volatile struct Parameters *p)
     cfwInfo = p->cfwInfo;
 
     setupSGI0Handler();
-    setupFatalExceptionHandlers();
+    setupExceptionHandlers();
     findUsefulSymbols();
     enableDebugFeatures();
 
