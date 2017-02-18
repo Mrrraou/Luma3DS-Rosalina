@@ -125,7 +125,13 @@ static void findUsefulSymbols(void)
         }
     }
 
-    while(off[0] != 0xE3520000 || off[1] != 0x03A00000) off++;
+    ConnectToPort = (Result (*)(Handle *, const char*))decodeARMBranch((u32 *)officialSVCs[0x2D] + 3);
+    DebugActiveProcess = (Result (*)(Handle *, u32))decodeARMBranch((u32 *)officialSVCs[0x60] + 3);
+
+    off = (u32 *)svcFallbackHandler;
+    while(*off != 0xE8BD4010) off++;
+
+    kernelpanic = (void (*)(void))off;
 
     off = (u32 *)0xFFFF0000;
     while(*off != 0x96007F9) off++;
@@ -156,11 +162,18 @@ u32 kernelVersion;
 
 void enableDebugFeatures(void)
 {
+    // Also patch kernelpanic with bkpt 0xFFFE
     *isDevUnit = true; // for debug SVCs and user exc. handlers, etc.
 
     u32 *off = (u32 *)officialSVCs[0x7C];
     while(off[0] != 0xE5D00001 || off[1] != 0xE3500000) off++;
     *(u32 *)PA_FROM_VA_PTR(off + 2) = 0xE1A00000; // in case 6: beq -> nop
+
+    off = (u32 *)DebugActiveProcess;
+    while(*off != 0xE3110001) off++;
+    *(u32 *)PA_FROM_VA_PTR(off) = 0xE3B01001; // tst r1, #1 -> movs r1, #1
+
+    *(u32 *)PA_FROM_VA_PTR((u32 *)kernelpanic) = 0xE12FFF7E; // bkpt 0xFFFE
 }
 
 void main(volatile struct Parameters *p)

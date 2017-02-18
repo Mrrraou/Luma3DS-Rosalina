@@ -6,6 +6,8 @@ extern KProcess * (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, 
 extern KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, Handle handle);
 extern void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool isPulse);
 extern Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
+extern Result (*ConnectToPort)(Handle *out, const char *name);
+extern Result (*DebugActiveProcess)(Handle *out, u32 processId);
 extern Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
 
 extern void (*KObjectMutex__WaitAndAcquire)(KObjectMutex *this);
@@ -21,6 +23,7 @@ extern bool (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 extern Result (*CustomBackdoor)(void *function, ...);
 
 extern void (*svcFallbackHandler)(u8 svcId);
+extern void (*kernelpanic)(void);
 extern u32 *officialSvcHandlerTail;
 
 extern bool isN3DS;
