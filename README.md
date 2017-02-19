@@ -7,7 +7,7 @@ N.B.: `rosalina` needs to be built separately (then put `rosalina.cxi` in the `l
 
 ## Rosalina features
 
-* A menu which can be opened at any time (combo: **L+Down+B**), featuring:
+* A menu which can be opened at any time (combo: **L+Down+Select**), featuring:
     * A process list submenu
     * A FS/SM patch submenu
     * A N3DS Clock+L2 submenu (hidden on O3DS)
