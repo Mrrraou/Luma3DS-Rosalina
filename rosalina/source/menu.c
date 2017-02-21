@@ -17,7 +17,7 @@ u32 waitInput(void)
     do
     {
         //Wait for a key to be pressed
-        while(!HID_PAD);
+        while(!HID_PAD) svcSleepThread(25 * 1000 * 1000);
 
         key = HID_PAD;
 
@@ -58,10 +58,10 @@ static MyThread menuThread;
 static u8 ALIGN(8) menuThreadStack[THREAD_STACK_SIZE];
 static u8 batteryLevel = 255;
 
-MyThread menuCreateThread(void)
+MyThread *menuCreateThread(void)
 {
-    MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, THREAD_STACK_SIZE, 0, CORE_SYSTEM);
-    return menuThread;
+    MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, THREAD_STACK_SIZE, 4, CORE_SYSTEM);
+    return &menuThread;
 }
 
 void menuThreadMain(void)
