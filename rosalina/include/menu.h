@@ -45,6 +45,6 @@ typedef struct Menu {
 
 u32 waitInput(void);
 
-MyThread menuCreateThread(void);
+MyThread *menuCreateThread(void);
 void menuThreadMain(void);
 void menuShow(void);

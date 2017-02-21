@@ -49,7 +49,7 @@ int main(void)
     Handle notificationHandle;
     bool terminationRequest = false;
 
-    menuCreateThread();
+    MyThread *t = menuCreateThread();
 
     if(R_FAILED(srvEnableNotification(&notificationHandle)))
         svcBreak(USERBREAK_ASSERT);
@@ -68,6 +68,7 @@ int main(void)
     }
     while(!terminationRequest);
 
-  svcCloseHandle(notificationHandle);
-  return 0;
+    MyThread_Join(t, -1LL);
+    svcCloseHandle(notificationHandle);
+    return 0;
 }
