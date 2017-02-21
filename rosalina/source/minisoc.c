@@ -144,7 +144,7 @@ Result socSocket(Handle *out, int domain, int type, int protocol)
 Result socBind(Handle sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
 	Result ret = 0;
-	int tmp_addrlen = 0;
+	socklen_t tmp_addrlen = 0;
 	u32 *cmdbuf = getThreadCommandBuffer();
 	u8 tmpaddr[0x1c];
 

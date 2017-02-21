@@ -22,7 +22,7 @@ static u8 ALIGN(8) debuggerThreadStack[THREAD_STACK_SIZE];
 void debuggerThreadMain(void);
 MyThread debuggerCreateThread(void)
 {
-    Result res = MyThread_Create(&debuggerThread, debuggerThreadMain, debuggerThreadStack, THREAD_STACK_SIZE, 1, CORE_SYSTEM);
+    Result res = MyThread_Create(&debuggerThread, debuggerThreadMain, debuggerThreadStack, THREAD_STACK_SIZE, 0x20, CORE_SYSTEM);
     char msg2[] = "00000000 threadCreate";
     hexItoa(res, msg2, 8, false);
     draw_string(msg2, 10, 30, COLOR_WHITE);
@@ -59,10 +59,9 @@ void Debugger_Enable(void)
         }
         else
         {
-            draw_string("SOC init success", 10, 10, COLOR_TITLE);
+            draw_string("Debugger thread started successfully.", 10, 10, COLOR_TITLE);
             //debuggerThreadMain();
             debuggerCreateThread();
-            MyThread_Join(&debuggerThread, 0);
         }
     }
 
@@ -79,11 +78,11 @@ void Debugger_Disable(void)
     draw_clearFramebuffer();
     draw_flushFramebuffer();
 
-    miniSocExit();
-    draw_string("SOC status: asdasdas", 10, 10, COLOR_TITLE);
-
     debugger_enabled = false;
+    MyThread_Join(&debuggerThread, 0);
 
+    miniSocExit();
+    draw_string("Debugger disabled.", 10, 10, COLOR_TITLE);
     draw_flushFramebuffer();
 
     while(!(waitInput() & BUTTON_B));
@@ -91,13 +90,6 @@ void Debugger_Disable(void)
 
 void debuggerThreadMain(void)
 {
-    draw_clearFramebuffer();
-    draw_flushFramebuffer();
-    draw_string("THREAD", 10, 10, COLOR_TITLE);
-    draw_flushFramebuffer();
-
-    bool stop = false;
-
     Result res = 0;
     Handle sock = 0;
 
@@ -128,9 +120,11 @@ void debuggerThreadMain(void)
                 fds[0].fd = sock;
                 fds[0].events = POLLIN;
 
-                while(!stop)
+                while(debugger_enabled)
                 {
-                    int res = socPoll(fds, nfds, -1);
+                    int res = socPoll(fds, nfds, 50); // 50ms
+                    if(res == 0) continue; // timeout reached, no activity.
+
                     for(unsigned int i = 0; i < nfds; i++)
                     {
                         if((fds[i].revents & POLLIN) == POLLIN)
@@ -154,18 +148,17 @@ void debuggerThreadMain(void)
                                 res = soc_recvfrom(fds[i].fd, buf, 5, 0, NULL, 0);
                                 if(R_SUCCEEDED(res))
                                 {
-                                    draw_string(buf, 10, 30, COLOR_TITLE);
                                     soc_sendto(fds[i].fd, buf, 5, 0, NULL, 0);
                                     if(memcmp(buf, "stop", 4) == 0)
                                     {
-                                        stop = true;
+                                        debugger_enabled = false;
                                     }
                                 }
-                                else
-                                {
-                                    //draw_string("recv fail :(", 10, 30, COLOR_WHITE);
-                                }
                             }
+                        }
+                        else if((fds[i].revents & POLLHUP) == POLLHUP)
+                        {
+                            fds[i].fd = -1;
                         }
                     }
                 }
@@ -175,14 +168,6 @@ void debuggerThreadMain(void)
                     socClose(fds[i].fd);
                 }
             }
-            else
-            {
-                //draw_string("listen fail :(", 10, 20, COLOR_WHITE);
-            }
-        }
-        else
-        {
-            //draw_string("bind fail :(", 10, 20, COLOR_WHITE);
         }
     }
 }
