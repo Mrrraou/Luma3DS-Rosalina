@@ -5,6 +5,7 @@
 #include "menus/process_list.h"
 #include "menus/process_patches.h"
 #include "menus/n3ds.h"
+#include "menus/debugger.h"
 #include "ifile.h"
 #include "utils.h"
 #include "memory.h"
@@ -12,12 +13,13 @@
 
 Menu menu_rosalina = {
     "Rosalina menu",
-    .items = 5,
+    .items = 6,
     {
         {"Process list", METHOD, .method = &RosalinaMenu_ProcessList},
         {"Process patches menu...", MENU, .menu = &menu_process_patches},
         {"Take screenshot (slow!)", METHOD, .method = &RosalinaMenu_TakeScreenShot},
         {"New 3DS menu...", MENU, .menu = &menu_n3ds},
+        {"Debugger options...", MENU, .menu = &menu_debugger},
         {"Credits", METHOD, .method = &RosalinaMenu_ShowCredits}
     }
 };
