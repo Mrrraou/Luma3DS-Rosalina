@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "draw.h"
 #include "minisoc.h"
+#include "gdb/client_ctx.h"
 #include <sys/socket.h>
 
 Menu menu_debugger = {
@@ -16,18 +17,27 @@ Menu menu_debugger = {
 #define MAX_CLIENTS 8
 
 static bool debugger_enabled;
-static MyThread debuggerThread;
-static u8 ALIGN(8) debuggerThreadStack[THREAD_STACK_SIZE];
+static MyThread debuggerSocketThread;
+static MyThread debuggerDebugThread;
+static u8 ALIGN(8) debuggerSocketThreadStack[THREAD_STACK_SIZE];
+static u8 ALIGN(8) debuggerDebugThreadStack[THREAD_STACK_SIZE];
 
-void debuggerThreadMain(void);
-MyThread *debuggerCreateThread(void)
+
+struct gdb_client_ctx real_client_ctxs[MAX_CLIENTS];
+struct gdb_client_ctx *client_ctxs[MAX_CLIENTS];
+
+void debuggerSocketThreadMain(void);
+MyThread *debuggerCreateSocketThread(void)
 {
-    Result res = MyThread_Create(&debuggerThread, debuggerThreadMain, debuggerThreadStack, THREAD_STACK_SIZE, 0x20, CORE_SYSTEM);
-    char msg2[] = "00000000 threadCreate";
-    hexItoa(res, msg2, 8, false);
-    draw_string(msg2, 10, 30, COLOR_WHITE);
+    MyThread_Create(&debuggerSocketThread, debuggerSocketThreadMain, debuggerSocketThreadStack, THREAD_STACK_SIZE, 0x20, CORE_SYSTEM);
+    return &debuggerSocketThread;
+}
 
-    return &debuggerThread;
+void debuggerDebugThreadMain(void);
+MyThread *debuggerCreateDebugThread(void)
+{
+    MyThread_Create(&debuggerDebugThread, debuggerDebugThreadMain, debuggerDebugThreadStack, THREAD_STACK_SIZE, 0x20, CORE_SYSTEM);
+    return &debuggerDebugThread;
 }
 
 void Debugger_Enable(void)
@@ -59,9 +69,15 @@ void Debugger_Enable(void)
         }
         else
         {
-            draw_string("Debugger thread started successfully.", 10, 10, COLOR_TITLE);
+            for(int i = 0; i < MAX_CLIENTS; i++)
+            {
+                real_client_ctxs[i].flags = 0;
+                client_ctxs[i] = NULL;
+            }
 
-            debuggerCreateThread();
+            debuggerCreateSocketThread();
+            debuggerCreateDebugThread();
+            draw_string("Debugger thread started successfully.", 10, 10, COLOR_TITLE);
         }
     }
 
@@ -78,7 +94,8 @@ void Debugger_Disable(void)
     draw_flushFramebuffer();
 
     debugger_enabled = false;
-    MyThread_Join(&debuggerThread, -1);
+    MyThread_Join(&debuggerSocketThread, -1);
+    MyThread_Join(&debuggerDebugThread, -1);
 
     miniSocExit();
     draw_string("Debugger disabled.", 10, 10, COLOR_TITLE);
@@ -88,7 +105,6 @@ void Debugger_Disable(void)
 }
 
 void compact(struct pollfd *fds, nfds_t *nfds);
-
 void close_then_compact(struct pollfd *fds, nfds_t *nfds, int i)
 {
     socClose(fds[i].fd);
@@ -96,10 +112,16 @@ void close_then_compact(struct pollfd *fds, nfds_t *nfds, int i)
     fds[i].events = 0;
     fds[i].revents = 0;
 
+    if(client_ctxs[i] != NULL)
+    {
+        gdb_destroy_client(client_ctxs[i]);
+        client_ctxs[i] = NULL;
+    }
+
     compact(fds, nfds);
 }
 
-void debuggerThreadMain(void)
+void debuggerSocketThreadMain(void)
 {
     Result res = 0;
     Handle sock = 0;
@@ -154,25 +176,32 @@ void debuggerThreadMain(void)
                                     fds[nfds].events = POLLIN | POLLHUP;
                                     nfds++;
 
-                                    soc_sendto(client_sock, "testing 1234\n", 13, 0, NULL, 0);
+                                    bool found = false;
+                                    for(int j = 0; j < MAX_CLIENTS; j++) // Find an empty GDB context.
+                                    {
+                                        if(!(real_client_ctxs[j].flags & GDB_FLAG_USED))
+                                        {
+                                            client_ctxs[nfds-1] = &real_client_ctxs[j];
+                                            gdb_setup_client(client_ctxs[nfds-1]);
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if(!found) // just in case
+                                    {
+                                        close_then_compact(fds, &nfds, nfds-1);
+                                    }
                                 }
                             }
                             else
                             {
-                                char buf[6];
-                                buf[5] = 0;
-                                res = soc_recvfrom(fds[i].fd, buf, 5, 0, NULL, 0);
-                                if(R_SUCCEEDED(res))
+                                if(client_ctxs[i] != NULL)
                                 {
-                                    soc_sendto(fds[i].fd, buf, 5, 0, NULL, 0);
-                                    if(memcmp(buf, "stop", 4) == 0)
+                                    if(gdb_do_packet(fds[i].fd, client_ctxs[i]) == -1)
                                     {
-                                        debugger_enabled = false;
+                                        close_then_compact(fds, &nfds, i);
                                     }
-                                }
-                                else
-                                {
-                                    close_then_compact(fds, &nfds, i);
                                 }
                             }
                         }
@@ -199,7 +228,7 @@ void debuggerThreadMain(void)
 void compact(struct pollfd *fds, nfds_t *nfds)
 {
     int new_fds[MAX_CLIENTS];
-
+    struct gdb_client_ctx *new_gdb_ctxs[MAX_CLIENTS];
     nfds_t n = 0;
 
     for(nfds_t i = 0; i < *nfds; i++)
@@ -207,6 +236,7 @@ void compact(struct pollfd *fds, nfds_t *nfds)
         if(fds[i].fd != -1)
         {
             new_fds[n] = fds[i].fd;
+            new_gdb_ctxs[n] = client_ctxs[i];
             n++;
         }
     }
@@ -214,6 +244,11 @@ void compact(struct pollfd *fds, nfds_t *nfds)
     for(nfds_t i = 0; i < n; i++)
     {
         fds[i].fd = new_fds[i];
+        client_ctxs[i] = new_gdb_ctxs[i];
     }
     *nfds = n;
+}
+
+void debuggerDebugThreadMain(void)
+{
 }
