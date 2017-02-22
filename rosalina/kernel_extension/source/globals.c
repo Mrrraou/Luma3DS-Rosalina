@@ -10,6 +10,11 @@ Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *o
 void (*KObjectMutex__WaitAndAcquire)(KObjectMutex *this);
 void (*KObjectMutex__ErrorOccured)(void);
 
+void (*KTimerAndWDTManager__Sanitize)(KTimerAndWDTManager *this);
+
+void (*flushDataCacheRange)(void *addr, u32 len);
+void (*flushInstructionCacheRange)(void *addr, u32 len);
+
 bool (*usrToKernel8)(void *dst, const void *src, u32 len);
 bool (*usrToKernel32)(u32 *dst, const u32 *src, u32 len);
 bool (*usrToKernelStrncpy)(char *dst, const char *src, u32 len);
