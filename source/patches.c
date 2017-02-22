@@ -129,7 +129,7 @@ void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
 
     signed int offset = (*off & 0xFFFFFF) << 2;
     offset = offset << 6 >> 6; // sign extend
-    offset += 6;
+    offset += 8;
 
     u32 InterruptManager_mapInterrupt = baseK11VA + ((u8 *)off - pos) + offset;
     u32 interruptManager = *(u32 *)(off - 4 + (*(off - 6) & 0xFFF) / 4);
@@ -144,7 +144,7 @@ void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
     off++;
     *off++ = interruptManager;
 
-    off += 8;
+    off += 6;
 
     struct CfwInfo
     {
