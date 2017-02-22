@@ -11,9 +11,6 @@ struct Parameters
     void *interruptManager;
     u32 *L2MMUTable; // bit31 mapping
 
-    void (*flushEntireICache)(void);
-
-    void (*flushEntireDCacheAndL2C)(void);
     void (*initFPU)(void);
     void (*mcuReboot)(void);
     void (*coreBarrier)(void);
@@ -44,7 +41,6 @@ static void K_SGI0HandlerCallback(volatile struct Parameters *p)
     __asm__ volatile("cpsid aif"); // disable interrupts
 
     p->coreBarrier();
-    p->flushEntireDCacheAndL2C();
 
     __asm__ volatile("mrc p15, 0, %0, c2, c0, 1" : "=r"(L1MMUTable));
     L1MMUTable = (vu32 *)(((u32)L1MMUTable & ~0x3FFF) | (1 << 31));
@@ -53,20 +49,18 @@ static void K_SGI0HandlerCallback(volatile struct Parameters *p)
     u32 L2MMUTableAddr = (u32)(p->L2MMUTable) & ~(1 << 31);
     L1MMUTable[0x40000000 >> 20] = L2MMUTableAddr | 1;
 
-    p->flushEntireICache(); // this does a DSB too
+    __asm__ __volatile__("mcr p15, 0, %[val], c7, c10, 4" :: [val] "r" (0) : "memory");
     ((void (*)(volatile struct Parameters *))0x40000000)(p);
 
-    p->flushEntireDCacheAndL2C();
-    p->flushEntireICache();
     p->coreBarrier();
 }
 
 u32 ALIGN(0x400) L2MMUTableFor0x40000000[256] = {0};
-static void K_ConfigureAndSendSGI0ToAllCores(void)
+static void K_ConfigureSGI0(void)
 {
     // see /patches/k11MainHook.s
     u32 *off;
-    u32 *flushEntireDCacheAndL2C, *initFPU, *mcuReboot, *coreBarrier;
+    u32 *initFPU, *mcuReboot, *coreBarrier;
 
     // Search for stuff in the 0xFFFF0000 page
     for(initFPU = (u32 *)0xFFFF0000; initFPU < (u32 *)0xFFFF1000 && *initFPU != 0xE1A0D002; initFPU++);
@@ -74,7 +68,6 @@ static void K_ConfigureAndSendSGI0ToAllCores(void)
 
     for(mcuReboot = initFPU; mcuReboot < (u32 *)0xFFFF1000 && *mcuReboot != 0xE3A0A0C2; mcuReboot++);
     mcuReboot--;
-    flushEntireDCacheAndL2C = (u32 *)decodeARMBranch(mcuReboot - 5);
     coreBarrier = (u32 *)decodeARMBranch(mcuReboot - 4);
 
     for(off = mcuReboot; off < (u32 *)0xFFFF1000 && *off != 0x726C6468; off++); // "hdlr"
@@ -82,8 +75,6 @@ static void K_ConfigureAndSendSGI0ToAllCores(void)
     volatile struct Parameters *p = (struct Parameters *)PA_FROM_VA_PTR(off); // Caches? What are caches?
     p->SGI0HandlerCallback = (void (*)(struct Parameters *, u32 *))PA_FROM_VA_PTR(K_SGI0HandlerCallback);
     p->L2MMUTable = (u32 *)PA_FROM_VA_PTR(L2MMUTableFor0x40000000);
-    p->flushEntireICache = (void (*) (void))PA_FROM_VA_PTR(flushEntireICache);
-    p->flushEntireDCacheAndL2C = (void (*) (void))flushEntireDCacheAndL2C;
     p->initFPU = (void (*) (void))initFPU;
     p->mcuReboot = (void (*) (void))mcuReboot;
     p->coreBarrier = (void (*) (void))coreBarrier;
@@ -101,11 +92,22 @@ static void K_ConfigureAndSendSGI0ToAllCores(void)
     //4KB extended small pages: [SYS:RW USR:-- X  TYP:NORMAL SHARED OUTER NOCACHE, INNER CACHED WB WA]
     for(u32 offset = 0; offset < kernel_extension_size; offset += 0x1000)
         L2MMUTableFor0x40000000[offset >> 12] = (u32)convertVAToPA(kernel_extension + offset) | 0x516;
+}
 
+static void K_SendSGI0ToAllCores(void)
+{
     MPCORE_GID_SGI = 0xF0000; // http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0360f/CACGDJJC.html
+}
+
+static inline void flushAllCaches(void)
+{
+    svcUnmapProcessMemory(CUR_PROCESS_HANDLE, 0, 0); // this SVC flush both caches entirely (and properly) even when returns an error
 }
 
 void installKernelExtension(void)
 {
-    svc0x2F(K_ConfigureAndSendSGI0ToAllCores);
+    svc0x2F(K_ConfigureSGI0);
+    flushAllCaches();
+    svc0x2F(K_SendSGI0ToAllCores);
+    flushAllCaches();
 }

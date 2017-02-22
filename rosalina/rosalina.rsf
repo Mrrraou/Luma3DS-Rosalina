@@ -49,6 +49,7 @@ AccessControlInfo:
   SystemCallAccess:
   # The kernel extension removes svc perms checks, so...
     SendSyncRequest2: 47    # CustomBackdoor
+    UnmapProcessMemory: 114
 
   InterruptNumbers:
   ServiceAccessControl:

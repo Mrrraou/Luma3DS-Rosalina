@@ -145,9 +145,6 @@ struct Parameters
     InterruptManager *interruptManager;
     u32 *L2MMUTable; // bit31 mapping
 
-    void (*flushEntireICache)(void);
-
-    void (*flushEntireDCacheAndL2C)(void);
     void (*initFPU)(void);
     void (*mcuReboot)(void);
     void (*coreBarrier)(void);
@@ -181,8 +178,6 @@ void main(volatile struct Parameters *p)
     isN3DS = getNumberOfCores() == 4;
     interruptManager = p->interruptManager;
 
-    flushEntireICache = p->flushEntireICache;
-    flushEntireDCacheAndL2C = p->flushEntireDCacheAndL2C;
     initFPU = p->initFPU;
     mcuReboot = p->mcuReboot;
     coreBarrier = p->coreBarrier;

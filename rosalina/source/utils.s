@@ -31,15 +31,6 @@ convertVAToPA:
     movne r0, #0
     bx lr
 
-.global flushEntireICache
-.type   flushEntireICache, %function
-flushEntireICache:
-    mov r0, #0
-    mcr p15, 0, r0, c7, c10, 5
-    mcr p15, 0, r0, c7, c5,  0  @ invalidate the entire ICache & branch target cache
-    mcr p15, 0, r0, c7, c10, 4  @ data synchronization barrier
-    bx lr
-
 .section .data
 
 .p2align 12
