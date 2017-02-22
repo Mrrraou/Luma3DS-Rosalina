@@ -106,6 +106,18 @@ s32 strncmp(const char *str1, const char *str2, u32 size)
         return *(u8*)str1 - *(u8*)str2;
 }
 
+const char *strchr(const char *string, int c)
+{
+    char *stringEnd = (char *)string;
+    while(*stringEnd != 0)
+    {
+        if(*stringEnd == c) return stringEnd;
+        stringEnd++;
+    }
+
+    return NULL;
+}
+
 void hexItoa(u64 number, char *out, u32 digits, bool uppercase)
 {
     const char hexDigits[] = "0123456789ABCDEF";

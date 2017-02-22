@@ -324,3 +324,13 @@ int socClose(Handle sockfd)
 
 	return ret;
 }
+
+ssize_t soc_recv(Handle sockfd, void *buf, size_t len, int flags)
+{
+	return soc_recvfrom(sockfd, buf, len, flags, NULL, 0);
+}
+
+ssize_t soc_send(Handle sockfd, void *buf, size_t len, int flags)
+{
+	return soc_sendto(sockfd, buf, len, flags, NULL, 0);
+}

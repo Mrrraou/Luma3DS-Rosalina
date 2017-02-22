@@ -149,3 +149,32 @@ void server_run(struct sock_server *serv)
         socClose(fds[i].fd);
     }
 }
+
+#define PEEK_SIZE 512
+char peek_buffer[PEEK_SIZE];
+
+int soc_recv_until(Handle fd, char *buf, size_t buf_len, char *sig, size_t sig_len)
+{
+    int r = soc_recvfrom(fd, peek_buffer, PEEK_SIZE, MSG_PEEK, NULL, 0);
+    if(r == 0 || r == -1)
+    {
+        return r;
+    }
+
+    char *ptr = (char*) memsearch((u8*)peek_buffer, sig, PEEK_SIZE, sig_len);
+    if(ptr == NULL)
+    {
+        return -1; // Line too long!
+    }
+    size_t len = ptr - peek_buffer;
+    len += sig_len;
+
+    if(len > buf_len)
+    {
+        return -1;
+    }
+    memset_(peek_buffer, 0, len);
+
+    r = soc_recvfrom(fd, buf, len, 0, NULL, 0);
+    return r;
+}
