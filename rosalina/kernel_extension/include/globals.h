@@ -37,8 +37,6 @@ extern bool *enableUserExceptionHandlersForCPUExc;
 extern InterruptManager *interruptManager;
 extern KBaseInterruptEvent *customInterruptEvent;
 
-extern void (*flushEntireICache)(void);
-extern void (*flushEntireDCacheAndL2C)(void); // reentrant, but unsafe in fatal exception contexts in case the kernel is f*cked up
 extern void (*initFPU)(void);
 extern void (*mcuReboot)(void);
 extern void (*coreBarrier)(void);

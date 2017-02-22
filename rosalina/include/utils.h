@@ -25,7 +25,5 @@ void *convertVAToPA(const void *VA);
 
 u32 getNumberOfCores(void);
 
-void flushEntireICache(void);
-
 extern u8 kernel_extension[];
 extern u32 kernel_extension_size;

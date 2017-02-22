@@ -34,8 +34,6 @@ bool *enableUserExceptionHandlersForCPUExc;
 InterruptManager *interruptManager;
 KBaseInterruptEvent *customInterruptEvent;
 
-void (*flushEntireICache)(void);
-void (*flushEntireDCacheAndL2C)(void); // reentrant, but unsafe in fatal exception contexts in case the kernel is f*cked up
 void (*initFPU)(void);
 void (*mcuReboot)(void);
 void (*coreBarrier)(void);
