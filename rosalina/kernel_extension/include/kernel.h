@@ -1049,6 +1049,49 @@ typedef union InterruptManager
     InterruptManagerO3DS O3DS;
 } InterruptManager;
 
+typedef struct AddressRange
+{
+  void *begin;
+  void *end;
+} AddressRange;
+
+typedef struct KAsyncCacheMaintenanceInterruptEvent
+{
+  KSchedulableInterruptEvent schedulableInterruptEvent;
+  const KThread *handlingThread;
+} KAsyncCacheMaintenanceInterruptEvent;
+
+typedef struct KCacheMaintenanceInterruptEventN3DS
+{
+  KBaseInterruptEvent baseInterruptEvent;
+  u8 cacheMaintenanceOperation;
+  bool async;
+  s8 remaining;
+  KThread *operatingThread;
+  AddressRange addrRange;
+  KThreadLinkedListNode *threadListNode;
+  KThreadLinkedList *threadList;
+  KAsyncCacheMaintenanceInterruptEvent asyncInterruptEventsPerCore[4];
+} KCacheMaintenanceInterruptEventN3DS;
+
+typedef struct KCacheMaintenanceInterruptEventO3DS
+{
+  KBaseInterruptEvent baseInterruptEvent;
+  u8 cacheMaintenanceOperation;
+  bool async;
+  s8 remaining;
+  KThread *operatingThread;
+  AddressRange addrRange;
+  KThreadLinkedListNode *threadListNode;
+  KThreadLinkedList *threadList;
+  KAsyncCacheMaintenanceInterruptEvent asyncInterruptEventsPerCore[2];
+} KCacheMaintenanceInterruptEventO3DS;
+
+typedef union KCacheMaintenanceInterruptEvent
+{
+    KCacheMaintenanceInterruptEventN3DS N3DS;
+    KCacheMaintenanceInterruptEventO3DS O3DS;
+} KCacheMaintenanceInterruptEvent;
 
 extern bool isN3DS;
 extern void *officialSVCs[0x7E];
