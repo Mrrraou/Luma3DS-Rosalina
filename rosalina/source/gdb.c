@@ -110,7 +110,7 @@ int gdb_do_packet(Handle socket, void *c)
 					if(ctx->state == GDB_STATE_NOACK_SENT)
 					{
 						ctx->state = GDB_STATE_NOACK;
-						return;
+						return 0;
 					}
 				}
 			}
