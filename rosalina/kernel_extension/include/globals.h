@@ -13,6 +13,11 @@ extern Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Ha
 extern void (*KObjectMutex__WaitAndAcquire)(KObjectMutex *this);
 extern void (*KObjectMutex__ErrorOccured)(void);
 
+extern void (*KTimerAndWDTManager__Sanitize)(KTimerAndWDTManager *this);
+
+extern void (*flushDataCacheRange)(void *addr, u32 len);
+extern void (*flushInstructionCacheRange)(void *addr, u32 len);
+
 extern bool (*usrToKernel8)(void *dst, const void *src, u32 len);
 extern bool (*usrToKernel32)(u32 *dst, const u32 *src, u32 len);
 extern bool (*usrToKernelStrncpy)(char *dst, const char *src, u32 len);

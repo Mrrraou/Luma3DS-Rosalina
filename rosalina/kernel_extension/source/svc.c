@@ -41,8 +41,20 @@ void *svcHook(u8 *pageEnd)
             return Backdoor;
         case 0x7C:
             return KernelSetStateHook;
+
         case 0x80:
             return CustomBackdoor;
+        case 0x81:
+            return convertVAToPA;
+        case 0x82:
+            return flushDataCacheRange;
+        case 0x83:
+            return flushEntireDataCache;
+        case 0x84:
+            return flushInstructionCacheRange;
+        case 0x85:
+            return flushEntireInstructionCache;
+        
         default:
             return (svcId <= 0x7D) ? officialSVCs[svcId] : NULL;
     }

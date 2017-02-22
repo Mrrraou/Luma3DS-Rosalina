@@ -34,3 +34,6 @@ void KObjectMutex__Release(KObjectMutex *this);
 
 Result setR0toR3(Result r0, ...);
 void atomicStore32(s32 *dst, s32 value);
+
+void flushEntireDataCache(void);
+void flushEntireInstructionCache(void);

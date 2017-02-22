@@ -66,30 +66,26 @@ static void findUsefulSymbols(void)
 {
     KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
 
-    u32 *off = (u32 *)KProcessHandleTable__ToKProcess;
-    while(*off != 0xE8BD80F0) off++;
+    u32 *off;
+
+    for(off = (u32 *)KProcessHandleTable__ToKProcess; *off != 0xE8BD80F0; off++);
     KProcessHandleTable__ToKAutoObject = (KAutoObject * (*)(KProcessHandleTable *, Handle))decodeARMBranch(off + 2);
 
-    off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[9]); // KThread::Terminate
-    while(*off != 0xE5C4007D) off++;
+    for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[9]); /* KThread::Terminate */ *off != 0xE5C4007D; off++);
     KSynchronizationObject__Signal = (void (*)(KSynchronizationObject *, bool))decodeARMBranch(off + 3);
 
-    off = (u32 *)officialSVCs[0x24];
-    while(*off != 0xE59F004C) off++;
+    for(off = (u32 *)officialSVCs[0x24]; *off != 0xE59F004C; off++);
     WaitSynchronization1 = (Result (*)(void *, KThread *, KSynchronizationObject *, s64))decodeARMBranch(off + 6);
 
-    off = (u32 *)officialSVCs[0x33];
-    while(*off != 0xE20030FF) off++;
+    for(off = (u32 *)officialSVCs[0x33]; *off != 0xE20030FF; off++);
     KProcessHandleTable__CreateHandle = (Result (*)(KProcessHandleTable *, Handle *, KAutoObject *, u8))decodeARMBranch(off + 2);
 
-    off = (u32 *)officialSVCs[0x7C];
-    while(*off != 0x03530000) off++;
+    for(off = (u32 *)officialSVCs[0x7C]; *off != 0x03530000; off++);
     KObjectMutex__WaitAndAcquire = (void (*)(KObjectMutex *))decodeARMBranch(++off);
-    while(*off != 0xE320F000) off++;
+    for(; *off != 0xE320F000; off++);
     KObjectMutex__ErrorOccured = (void (*)(void))decodeARMBranch(off + 1);
 
-    off = (u32 *)originalHandlers[(u32) DATA_ABORT];
-    while(*off != (u32)exceptionStackTop) off++;
+    for(off = (u32 *)originalHandlers[(u32) DATA_ABORT]; *off != (u32)exceptionStackTop; off++);
     kernelUsrCopyFuncsStart = (void *)off[1];
     kernelUsrCopyFuncsEnd = (void *)off[2];
 
@@ -128,15 +124,41 @@ static void findUsefulSymbols(void)
     ConnectToPort = (Result (*)(Handle *, const char*))decodeARMBranch((u32 *)officialSVCs[0x2D] + 3);
     DebugActiveProcess = (Result (*)(Handle *, u32))decodeARMBranch((u32 *)officialSVCs[0x60] + 3);
 
-    off = (u32 *)svcFallbackHandler;
-    while(*off != 0xE8BD4010) off++;
 
+    for(off = (u32 *)svcFallbackHandler; *off != 0xE8BD4010; off++);
     kernelpanic = (void (*)(void))off;
 
-    off = (u32 *)0xFFFF0000;
-    while(*off != 0x96007F9) off++;
+    for(off = (u32 *)0xFFFF0000; *off != 0x96007F9; off++);
     isDevUnit = *(bool **)(off - 1);
     enableUserExceptionHandlersForCPUExc = *(bool **)(off + 1);
+
+    for(off = (u32 *)officialSVCs[0x54]; *off != 0xE8BD8008; off++);
+    flushDataCacheRange = (void (*)(void *, u32))(*((u32 *)off[1]) + 3);
+
+
+    ///////////////////////////////////////////
+
+    // Shitty/lazy heuristic but it works on even 4.5, so...
+    u32 textStart = ((u32)originalHandlers[(u32) SVC]) & ~0xFFFF;
+    u32 rodataStart = (u32)(interruptManager->N3DS.privateInterrupts[0][6].interruptEvent->vtable) & ~0xFFF;
+
+    u32 textSize = rodataStart - textStart;
+    for(off = (u32 *)textStart; off < (u32 *)(textStart + textSize) - 3; off++)
+    {
+        if(off[0] == 0xE3510B1A && off[1] == 0xE3A06000)
+        {
+            u32 *off2;
+            for(u32 *off2 = off; *off2 != 0xE92D40F8; off2--);
+            flushInstructionCacheRange = (void (*)(void *, u32))off2;
+        }
+
+        if(kernelVersion >= SYSTEM_VERSION(2, 53, 0) && off[0] == 0xE92D41F0 && off[1] == 0xE1A06000
+            && off[2] == 0xE3A07000 && off[3] == 0xE2860020)
+            KTimerAndWDTManager__Sanitize = (void (*)(KTimerAndWDTManager *))off;
+
+    }
+
+    if(kernelVersion < SYSTEM_VERSION(2, 53, 0)) KTimerAndWDTManager__Sanitize = NULL;
 }
 
 struct Parameters
@@ -157,7 +179,7 @@ struct Parameters
 
 u32 kernelVersion;
 
-void enableDebugFeatures(void)
+static void enableDebugFeatures(void)
 {
     // Also patch kernelpanic with bkpt 0xFFFE
     *isDevUnit = true; // for debug SVCs and user exc. handlers, etc.
@@ -169,8 +191,15 @@ void enableDebugFeatures(void)
     off = (u32 *)DebugActiveProcess;
     while(*off != 0xE3110001) off++;
     *(u32 *)PA_FROM_VA_PTR(off) = 0xE3B01001; // tst r1, #1 -> movs r1, #1
+}
 
-    *(u32 *)PA_FROM_VA_PTR((u32 *)kernelpanic) = 0xE12FFF7E; // bkpt 0xFFFE
+static void doOtherPatches(void)
+{
+    u32 *kpanic = (u32 *)kernelpanic;
+    u32 *sanitize = (u32 *)(u32 *)KTimerAndWDTManager__Sanitize;
+    *(u32 *)PA_FROM_VA_PTR(kpanic) = 0xE12FFF7E; // bkpt 0xFFFE
+    if(sanitize != NULL)
+        *(u32 *)PA_FROM_VA_PTR(sanitize) = 0xE12FFF1E; // bx lr
 }
 
 void main(volatile struct Parameters *p)
@@ -190,6 +219,7 @@ void main(volatile struct Parameters *p)
     setupExceptionHandlers();
     findUsefulSymbols();
     enableDebugFeatures();
+    doOtherPatches();
 
     *trampo_ = (u32)ConnectToPortHook;
 }

@@ -43,6 +43,22 @@ atomicStore32:
     bne atomicStore32
     bx lr
 
+.global flushEntireDataCache
+.type   flushEntireDataCache, %function
+flushEntireDataCache:
+    mvn r1, #0              @ this is translated to a full cache flush
+    ldr r12, =flushDataCacheRange
+    ldr r12, [r12]
+    bx r12
+
+.global flushEntireInstructionCache
+.type   flushEntireInstructionCache, %function
+flushEntireInstructionCache:
+    mvn r1, #0              @ this is translated to a full cache flush
+    ldr r12, =flushInstructionCacheRange
+    ldr r12, [r12]
+    bx r12
+
 .global KObjectMutex__Acquire
 .type   KObjectMutex__Acquire, %function
 KObjectMutex__Acquire:

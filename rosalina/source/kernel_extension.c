@@ -101,7 +101,7 @@ static void K_SendSGI0ToAllCores(void)
 
 static inline void flushAllCaches(void)
 {
-    svcUnmapProcessMemory(CUR_PROCESS_HANDLE, 0, 0); // this SVC flush both caches entirely (and properly) even when returns an error
+    svcUnmapProcessMemory(CUR_PROCESS_HANDLE, 0, 0); // this SVC flush both caches entirely (and properly) even when returing an error
 }
 
 void installKernelExtension(void)
