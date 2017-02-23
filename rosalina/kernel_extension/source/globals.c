@@ -1,14 +1,19 @@
 #include "kernel.h"
 
 KProcess * (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, Handle processHandle);
+KThread * (*KProcessHandleTable__ToKThread)(KProcessHandleTable *this, Handle threadHandle);
 KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, Handle handle);
 void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool isPulse);
 Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
-Result (*ConnectToPort)(Handle *out, const char *name);
-Result (*DebugActiveProcess)(Handle *out, u32 processId);
 Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
 void (*KObjectMutex__WaitAndAcquire)(KObjectMutex *this);
 void (*KObjectMutex__ErrorOccured)(void);
+
+Result (*GetSystemInfo)(s64 *out, s32 type, s32 param);
+Result (*GetProcessInfo)(s64 *out, Handle processHandle, u32 type);
+Result (*GetThreadInfo)(s64 *out, Handle threadHandle, u32 type);
+Result (*ConnectToPort)(Handle *out, const char *name);
+Result (*DebugActiveProcess)(Handle *out, u32 processId);
 
 void (*KTimerAndWDTManager__Sanitize)(KTimerAndWDTManager *this);
 

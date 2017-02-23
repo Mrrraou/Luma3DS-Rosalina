@@ -80,6 +80,11 @@ static void findUsefulSymbols(void)
     for(off = (u32 *)officialSVCs[0x33]; *off != 0xE20030FF; off++);
     KProcessHandleTable__CreateHandle = (Result (*)(KProcessHandleTable *, Handle *, KAutoObject *, u8))decodeARMBranch(off + 2);
 
+    KProcessHandleTable__ToKThread = (KThread * (*)(KProcessHandleTable *, Handle))decodeARMBranch((u32 *)decodeARMBranch((u32 *)officialSVCs[0x37] + 3) /* GetThreadId */ + 5);
+
+    for(off = (u32 *)officialSVCs[0x54]; *off != 0xE8BD8008; off++);
+    flushDataCacheRange = (void (*)(void *, u32))(*((u32 *)off[1]) + 3);
+
     for(off = (u32 *)officialSVCs[0x7C]; *off != 0x03530000; off++);
     KObjectMutex__WaitAndAcquire = (void (*)(KObjectMutex *))decodeARMBranch(++off);
     for(; *off != 0xE320F000; off++);
@@ -121,6 +126,9 @@ static void findUsefulSymbols(void)
         }
     }
 
+    GetSystemInfo = (Result (*)(s64 *, s32, s32))decodeARMBranch((u32 *)officialSVCs[0x2A] + 3);
+    GetProcessInfo = (Result (*)(s64 *, Handle, u32))decodeARMBranch((u32 *)officialSVCs[0x2B] + 3);
+    GetThreadInfo = (Result (*)(s64 *, Handle, u32))decodeARMBranch((u32 *)officialSVCs[0x2C] + 3);
     ConnectToPort = (Result (*)(Handle *, const char*))decodeARMBranch((u32 *)officialSVCs[0x2D] + 3);
     DebugActiveProcess = (Result (*)(Handle *, u32))decodeARMBranch((u32 *)officialSVCs[0x60] + 3);
 
@@ -131,10 +139,6 @@ static void findUsefulSymbols(void)
     for(off = (u32 *)0xFFFF0000; *off != 0x96007F9; off++);
     isDevUnit = *(bool **)(off - 1);
     enableUserExceptionHandlersForCPUExc = *(bool **)(off + 1);
-
-    for(off = (u32 *)officialSVCs[0x54]; *off != 0xE8BD8008; off++);
-    flushDataCacheRange = (void (*)(void *, u32))(*((u32 *)off[1]) + 3);
-
 
     ///////////////////////////////////////////
 
