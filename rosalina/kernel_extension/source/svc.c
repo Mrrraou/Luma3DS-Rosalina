@@ -1,5 +1,6 @@
 #include "svc.h"
 #include "svc/GetProcessInfo.h"
+#include "svc/GetThreadInfo.h"
 #include "svc/GetSystemInfo.h"
 #include "svc/GetCFWInfo.h"
 #include "svc/ConnectToPort.h"
@@ -27,6 +28,8 @@ void *svcHook(u8 *pageEnd)
             return GetSystemInfoHook;
         case 0x2B:
             return GetProcessInfoHook;
+        case 0x2C:
+            return GetThreadInfoHook;
         case 0x2D:
             return ConnectToPortHook;
         case 0x2E:
@@ -54,7 +57,7 @@ void *svcHook(u8 *pageEnd)
             return flushInstructionCacheRange;
         case 0x85:
             return flushEntireInstructionCache;
-        
+
         default:
             return (svcId <= 0x7D) ? officialSVCs[svcId] : NULL;
     }

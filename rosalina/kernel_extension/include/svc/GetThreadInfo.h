@@ -4,4 +4,4 @@
 #include "kernel.h"
 #include "svc.h"
 
-Result GetSystemInfoHook(u32 dummy, s32 type, s32 param);
+Result GetThreadInfoHook(u32 dummy, Handle threadHandle, u32 type);

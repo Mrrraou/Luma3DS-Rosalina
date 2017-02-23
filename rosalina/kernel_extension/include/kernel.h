@@ -189,7 +189,7 @@ typedef struct PACKED ALIGN(4) KThread
   void *endOfThreadContext;
   s32 idealProcessor;
   void *threadLocalStorage;
-  void *threadLocalStorageVmem;
+  void *threadLocalStorageKernel;
   void *unknown_5;
   KThreadLinkedListNode threadListNode;
   struct KThreadLinkedList *stolenThreadList;
@@ -827,7 +827,7 @@ typedef struct KUserBreakExceptionDebugEventInfo
 /* 107 */
 typedef struct KDebuggerBreakDebugEventInfo
 {
-  KThread *currentThreads[4];
+  s32 threadIds[4];
 } KDebuggerBreakDebugEventInfo;
 
 /* 109 */

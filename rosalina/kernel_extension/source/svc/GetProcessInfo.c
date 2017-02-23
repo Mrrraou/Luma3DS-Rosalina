@@ -1,9 +1,9 @@
 #include "svc/GetProcessInfo.h"
 #include "memory.h"
 
-Result GetProcessInfoHook(u32 dummy, Handle processHandle, u32 type)
+Result GetProcessInfoHook(u32 dummy UNUSED, Handle processHandle, u32 type)
 {
-    u64 out = 0;
+    u64 out = 0; // should be s64 but who cares
     Result res = 0;
 
     if(type == 0x10000 || type == 0x10001)
@@ -23,9 +23,10 @@ Result GetProcessInfoHook(u32 dummy, Handle processHandle, u32 type)
         KAutoObject *obj = (KAutoObject *)process;
         if(process != NULL)
             obj->vtable->DecrementReferenceCount(obj);
-        return setR0toR3(res, (u32)out, (u32)(out >> 32));
     }
 
     else
-        return ((Result (*) (u32, Handle, u32))officialSVCs[0x2B])(dummy, processHandle, type);
+        res = GetProcessInfo((s64 *)&out, processHandle, type);
+
+    return setR0toR3(res, (u32)out, (u32)(out >> 32));
 }

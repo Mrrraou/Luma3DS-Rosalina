@@ -2,9 +2,9 @@
 #include "utils.h"
 #include "ipc.h"
 
-Result GetSystemInfoHook(u32 dummy, u32 type, s32 param)
+Result GetSystemInfoHook(u32 dummy UNUSED, s32 type, s32 param)
 {
-    u32 out = 0;
+    u64 out = 0; // should be s64 but who cares
     Result res = 0;
 
     switch(type)
@@ -79,8 +79,9 @@ Result GetSystemInfoHook(u32 dummy, u32 type, s32 param)
         }
 
         default:
-            return ((Result (*) (s32, u32, s32))officialSVCs[0x2A])(dummy, type, param);
+            GetSystemInfo((s64 *)&out, type, param);
+            break;
     }
 
-    return setR0toR3(res, out, 0);
+    return setR0toR3(res, (u32)out, (u32)(out >> 32));
 }
