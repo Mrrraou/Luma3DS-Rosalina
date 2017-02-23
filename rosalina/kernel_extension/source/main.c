@@ -148,7 +148,7 @@ static void findUsefulSymbols(void)
         if(off[0] == 0xE3510B1A && off[1] == 0xE3A06000)
         {
             u32 *off2;
-            for(u32 *off2 = off; *off2 != 0xE92D40F8; off2--);
+            for(off2 = off; *off2 != 0xE92D40F8; off2--);
             flushInstructionCacheRange = (void (*)(void *, u32))off2;
         }
 
