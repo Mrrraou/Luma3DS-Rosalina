@@ -8,7 +8,7 @@
 #include "memory.h"
 
 static const u32 *const exceptionsPage = (const u32 *)0xFFFF0000;
-void *originalHandlers[7] = {NULL};
+void *originalHandlers[8] = {NULL};
 
 enum VECTORS { RESET = 0, UNDEFINED_INSTRUCTION, SVC, PREFETCH_ABORT, DATA_ABORT, RESERVED, IRQ, FIQ };
 
