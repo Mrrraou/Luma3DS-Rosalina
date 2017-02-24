@@ -47,10 +47,11 @@ static DestructuredPatch fsArchiveCheckPatch = {
     }
 };
 
-u8 *PatchProcessByName(char *name, DestructuredPatch *patch, u32 addr, u32 size, bool isThumb)
+u8 *PatchProcessByName(char *name, DestructuredPatch *patch, u32 addr, bool isThumb)
 {
     u32 pidList[0x40];
     s32 processCount;
+    s64 textTotalRoundedSize = 0;
     svcGetProcessList(&processCount, pidList, 0x40);
     Handle dstProcessHandle = 0;
 
@@ -75,12 +76,13 @@ u8 *PatchProcessByName(char *name, DestructuredPatch *patch, u32 addr, u32 size,
     Result res;
     Handle processHandle = dstProcessHandle;
 
-    if(R_FAILED(res = svcMapProcessMemory(processHandle, addr, addr + size)))
+    svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002); // only patch .text
+    if(R_FAILED(res = svcMapProcessMemory(processHandle, addr, addr + textTotalRoundedSize)))
     return NULL;
 
-    u8 *ret = DestructuredPatch_FindAndApply(patch, (u8*)addr, size, isThumb);
+    u8 *ret = DestructuredPatch_FindAndApply(patch, (u8*)addr, textTotalRoundedSize, isThumb);
 
-    svcUnmapProcessMemory(processHandle, addr, addr + size);
+    svcUnmapProcessMemory(processHandle, addr, addr + textTotalRoundedSize);
     return ret;
 }
 
@@ -89,7 +91,7 @@ void ProcessPatches_PatchSM(void)
     draw_clearFramebuffer();
     draw_flushFramebuffer();
 
-    if(PatchProcessByName("sm", &smServiceCheckPatch, 0x100000, 0x5000, false))
+    if(PatchProcessByName("sm", &smServiceCheckPatch, 0x100000, false))
     draw_string("Successfully patched SM for the service checks.", 10, 10, COLOR_TITLE);
     else
     draw_string("Couldn't patch SM.", 10, 10, COLOR_TITLE);
@@ -104,7 +106,7 @@ void ProcessPatches_PatchFS(void)
     draw_clearFramebuffer();
     draw_flushFramebuffer();
 
-    if(PatchProcessByName("fs", &fsArchiveCheckPatch, 0x100000, 0x134000, true))
+    if(PatchProcessByName("fs", &fsArchiveCheckPatch, 0x100000, true))
     draw_string("Successfully patched FS for the archive checks.", 10, 10, COLOR_TITLE);
     else
     draw_string("Couldn't patch FS.", 10, 10, COLOR_TITLE);
