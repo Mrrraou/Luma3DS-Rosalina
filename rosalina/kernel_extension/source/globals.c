@@ -33,6 +33,8 @@ void (*svcFallbackHandler)(u8 svcId);
 void (*kernelpanic)(void);
 u32 *officialSvcHandlerTail;
 
+Result (*SignalDebugEvent)(DebugEventType type, u32 info, ...);
+
 bool isN3DS;
 
 u32 *exceptionStackTop;

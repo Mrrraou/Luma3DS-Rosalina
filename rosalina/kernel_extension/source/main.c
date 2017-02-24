@@ -136,7 +136,10 @@ static void findUsefulSymbols(void)
     for(off = (u32 *)svcFallbackHandler; *off != 0xE8BD4010; off++);
     kernelpanic = (void (*)(void))off;
 
-    for(off = (u32 *)0xFFFF0000; *off != 0x96007F9; off++);
+    for(off = (u32 *)0xFFFF0000; off[0] != 0xE3A01002 || off[1] != 0xE3A00004; off++);
+    SignalDebugEvent = (Result (*)(DebugEventType type, u32 info, ...))decodeARMBranch(off + 2);
+
+    for(; *off != 0x96007F9; off++);
     isDevUnit = *(bool **)(off - 1);
     enableUserExceptionHandlersForCPUExc = *(bool **)(off + 1);
 
