@@ -38,6 +38,8 @@ clean:
 $(dir_build)/$(name).elf: $(objects)
 	$(CC) $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
 
+$(dir_build)/memory.o : CFLAGS += -O3 -marm
+
 $(dir_build)/%.o: $(dir_source)/%.c
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
