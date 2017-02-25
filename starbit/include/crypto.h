@@ -22,6 +22,9 @@
 
 /*
 *   Crypto libs from http://github.com/b1l1s/ctr
+*   kernel9Loader code originally adapted from https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
+*   decryptNusFirm code adapted from https://github.com/mid-kid/CakesForeveryWan/blob/master/source/firm.c
+*   ctrNandWrite logic adapted from https://github.com/d0k3/GodMode9/blob/master/source/nand/nand.c
 */
 
 #pragma once
@@ -40,6 +43,8 @@
 #define REG_AESKEYFIFO      ((vu32 *)0x10009100)
 #define REG_AESKEYXFIFO     ((vu32 *)0x10009104)
 #define REG_AESKEYYFIFO     ((vu32 *)0x10009108)
+
+#define REGs_AESTWLKEYS     (*((vu32 (*)[4][3][4])0x10009040))
 
 #define AES_CCM_DECRYPT_MODE    (0u << 27)
 #define AES_CCM_ENCRYPT_MODE    (1u << 27)
@@ -71,36 +76,9 @@
 #define AES_KEYX        1
 #define AES_KEYY        2
 
-/**************************SHA****************************/
-#define REG_SHA_CNT         ((vu32 *)0x1000A000)
-#define REG_SHA_BLKCNT      ((vu32 *)0x1000A004)
-#define REG_SHA_HASH        ((vu32 *)0x1000A040)
-#define REG_SHA_INFIFO      ((vu32 *)0x1000A080)
+extern void (*AES__Acquire)(void);
+extern void (*AES__Release)(void);
 
-#define SHA_CNT_STATE           0x00000003
-#define SHA_CNT_UNK2            0x00000004
-#define SHA_CNT_OUTPUT_ENDIAN   0x00000008
-#define SHA_CNT_MODE            0x00000030
-#define SHA_CNT_ENABLE          0x00010000
-#define SHA_CNT_ACTIVE          0x00020000
-
-#define SHA_HASH_READY      0x00000000
-#define SHA_NORMAL_ROUND    0x00000001
-#define SHA_FINAL_ROUND     0x00000002
-
-#define SHA_OUTPUT_BE       SHA_CNT_OUTPUT_ENDIAN
-#define SHA_OUTPUT_LE       0
-
-#define SHA_256_MODE        0
-#define SHA_224_MODE        0x00000010
-#define SHA_1_MODE          0x00000020
-
-#define SHA_256_HASH_SIZE   (256 / 8)
-#define SHA_224_HASH_SIZE   (224 / 8)
-#define SHA_1_HASH_SIZE     (160 / 8)
-
-
-
-void sha(void *res, void *src, u32 size, u32 mode);
-void aes(void *dst, void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode);
-void aes_advctr(void *ctr, u32 val, u32 mode);
+void aes_setkey(u8 keyslot, const void *key, u32 keyType, u32 mode);
+void aes_use_keyslot(u8 keyslot);
+void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode);

@@ -4,6 +4,10 @@
 
 
 Result svcExitThread(void);
-Result svcSleepThread(u64 nanoseconds);
+Result svcSleepThread(s64 nanoseconds);
 Result svcBreak(u32 breakType);
-u32 svcBackdoor(void *func, ...);
+Result svcInvalidateProcessDataCache(Handle process, void *addr, u32 size);
+Result svcFlushProcessDataCache(Handle process, void *addr, u32 size);
+void svcBackdoor(void *func);
+
+void invalidateInstructionCacheRange(void *addr, u32 size);

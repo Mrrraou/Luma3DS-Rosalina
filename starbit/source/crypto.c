@@ -22,10 +22,16 @@
 
 /*
 *   Crypto libs from http://github.com/b1l1s/ctr
+*   kernel9Loader code originally adapted from https://github.com/Reisyukaku/ReiNand/blob/228c378255ba693133dec6f3368e14d386f2cde7/source/crypto.c#L233
+*   decryptNusFirm code adapted from https://github.com/mid-kid/CakesForeveryWan/blob/master/source/firm.c
+*   ctrNandWrite logic adapted from https://github.com/d0k3/GodMode9/blob/master/source/nand/nand.c
 */
 
 #include "crypto.h"
 #include "memory.h"
+#include "strings.h"
+#include "utils.h"
+#include "fatfs/sdmmc/sdmmc.h"
 
 /****************************************************************
 *                  Crypto libs
@@ -79,15 +85,36 @@ __asm__\
 
 void aes_setkey(u8 keyslot, const void *key, u32 keyType, u32 mode)
 {
-    if(keyslot <= 0x03) return; // Ignore TWL keys for now
     u32 *key32 = (u32 *)key;
     *REG_AESCNT = (*REG_AESCNT & ~(AES_CNT_INPUT_ENDIAN | AES_CNT_INPUT_ORDER)) | mode;
-    *REG_AESKEYCNT = (*REG_AESKEYCNT >> 6 << 6) | keyslot | AES_KEYCNT_WRITE;
 
-    REG_AESKEYFIFO[keyType] = key32[0];
-    REG_AESKEYFIFO[keyType] = key32[1];
-    REG_AESKEYFIFO[keyType] = key32[2];
-    REG_AESKEYFIFO[keyType] = key32[3];
+    if(keyslot <= 3)
+    {
+        if((mode & AES_CNT_INPUT_ORDER) == AES_INPUT_REVERSED)
+        {
+            REGs_AESTWLKEYS[keyslot][keyType][0] = key32[3];
+            REGs_AESTWLKEYS[keyslot][keyType][1] = key32[2];
+            REGs_AESTWLKEYS[keyslot][keyType][2] = key32[1];
+            REGs_AESTWLKEYS[keyslot][keyType][3] = key32[0];
+        }
+        else
+        {
+            REGs_AESTWLKEYS[keyslot][keyType][0] = key32[0];
+            REGs_AESTWLKEYS[keyslot][keyType][1] = key32[1];
+            REGs_AESTWLKEYS[keyslot][keyType][2] = key32[2];
+            REGs_AESTWLKEYS[keyslot][keyType][3] = key32[3];
+        }
+    }
+
+    else if(keyslot < 0x40)
+    {
+        *REG_AESKEYCNT = (*REG_AESKEYCNT >> 6 << 6) | keyslot | AES_KEYCNT_WRITE;
+
+        REG_AESKEYFIFO[keyType] = key32[0];
+        REG_AESKEYFIFO[keyType] = key32[1];
+        REG_AESKEYFIFO[keyType] = key32[2];
+        REG_AESKEYFIFO[keyType] = key32[3];
+    }
 }
 
 void aes_use_keyslot(u8 keyslot)
@@ -99,12 +126,12 @@ void aes_use_keyslot(u8 keyslot)
     *REG_AESCNT = *REG_AESCNT | 0x04000000; /* mystery bit */
 }
 
-void aes_setiv(const void *iv, u32 mode)
+static void aes_setiv(const void *iv, u32 mode)
 {
     const u32 *iv32 = (const u32 *)iv;
     *REG_AESCNT = (*REG_AESCNT & ~(AES_CNT_INPUT_ENDIAN | AES_CNT_INPUT_ORDER)) | mode;
 
-    // Word order for IV can't be changed in REG_AESCNT and always default to reversed
+    //Word order for IV can't be changed in REG_AESCNT and always default to reversed
     if(mode & AES_INPUT_NORMAL)
     {
         REG_AESCTR[0] = iv32[3];
@@ -121,14 +148,14 @@ void aes_setiv(const void *iv, u32 mode)
     }
 }
 
-void aes_advctr(void *ctr, u32 val, u32 mode)
+static void aes_advctr(void *ctr, u32 val, u32 mode)
 {
     u32 *ctr32 = (u32 *)ctr;
 
     int i;
     if(mode & AES_INPUT_BE)
     {
-        for(i = 0; i < 4; ++i) // Endian swap
+        for(i = 0; i < 4; ++i) //Endian swap
             BSWAP32(ctr32[i]);
     }
 
@@ -143,7 +170,7 @@ void aes_advctr(void *ctr, u32 val, u32 mode)
 
     if(mode & AES_INPUT_BE)
     {
-        for(i = 0; i < 4; ++i) // Endian swap
+        for(i = 0; i < 4; ++i) //Endian swap
             BSWAP32(ctr32[i]);
     }
 }
@@ -183,7 +210,7 @@ static void aes_batch(void *dst, const void *src, u32 blockCount)
 
     while(rbc)
     {
-        if(wbc && ((*REG_AESCNT & 0x1F) <= 0xC)) // There's space for at least 4 ints
+        if(wbc && ((*REG_AESCNT & 0x1F) <= 0xC)) //There's space for at least 4 ints
         {
             *REG_AESWRFIFO = *src32++;
             *REG_AESWRFIFO = *src32++;
@@ -192,7 +219,7 @@ static void aes_batch(void *dst, const void *src, u32 blockCount)
             wbc--;
         }
 
-        if(rbc && ((*REG_AESCNT & (0x1F << 0x5)) >= (0x4 << 0x5))) // At least 4 ints available for read
+        if(rbc && ((*REG_AESCNT & (0x1F << 0x5)) >= (0x4 << 0x5))) //At least 4 ints available for read
         {
             *dst32++ = *REG_AESRDFIFO;
             *dst32++ = *REG_AESRDFIFO;
@@ -203,7 +230,7 @@ static void aes_batch(void *dst, const void *src, u32 blockCount)
     }
 }
 
-void aes(void *dst, void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
+void aes(void *dst, const void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
 {
     *REG_AESCNT =   mode |
                     AES_CNT_INPUT_ORDER | AES_CNT_OUTPUT_ORDER |
@@ -219,24 +246,24 @@ void aes(void *dst, void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
 
         blocks = (blockCount >= 0xFFFF) ? 0xFFFF : blockCount;
 
-        // Save the last block for the next decryption CBC batch's iv
+        //Save the last block for the next decryption CBC batch's iv
         if((mode & AES_ALL_MODES) == AES_CBC_DECRYPT_MODE)
         {
             memcpy(iv, src + (blocks - 1) * AES_BLOCK_SIZE, AES_BLOCK_SIZE);
             aes_change_ctrmode(iv, AES_INPUT_BE | AES_INPUT_NORMAL, ivMode);
         }
 
-        // Process the current batch
+        //Process the current batch
         aes_batch(dst, src, blocks);
 
-        // Save the last block for the next encryption CBC batch's iv
+        //Save the last block for the next encryption CBC batch's iv
         if((mode & AES_ALL_MODES) == AES_CBC_ENCRYPT_MODE)
         {
             memcpy(iv, dst + (blocks - 1) * AES_BLOCK_SIZE, AES_BLOCK_SIZE);
             aes_change_ctrmode(iv, AES_INPUT_BE | AES_INPUT_NORMAL, ivMode);
         }
 
-        // Advance counter for CTR mode
+        //Advance counter for CTR mode
         else if((mode & AES_ALL_MODES) == AES_CTR_MODE)
             aes_advctr(iv, blocks, ivMode);
 
@@ -244,47 +271,4 @@ void aes(void *dst, void *src, u32 blockCount, void *iv, u32 mode, u32 ivMode)
         dst += blocks * AES_BLOCK_SIZE;
         blockCount -= blocks;
     }
-}
-
-static void sha_wait_idle()
-{
-    while(*REG_SHA_CNT & 1);
-}
-
-void sha(void *res, void *src, u32 size, u32 mode)
-{
-    sha_wait_idle();
-    *REG_SHA_CNT = mode | SHA_CNT_OUTPUT_ENDIAN | SHA_NORMAL_ROUND;
-
-    u32 *src32 = (u32 *)src;
-    int i;
-    while(size >= 0x40)
-    {
-        sha_wait_idle();
-        for(i = 0; i < 4; ++i)
-        {
-            *REG_SHA_INFIFO = *src32++;
-            *REG_SHA_INFIFO = *src32++;
-            *REG_SHA_INFIFO = *src32++;
-            *REG_SHA_INFIFO = *src32++;
-        }
-
-        size -= 0x40;
-    }
-
-    sha_wait_idle();
-    memcpy((void *)REG_SHA_INFIFO, src32, size);
-
-    *REG_SHA_CNT = (*REG_SHA_CNT & ~SHA_NORMAL_ROUND) | SHA_FINAL_ROUND;
-
-    while(*REG_SHA_CNT & SHA_FINAL_ROUND);
-    sha_wait_idle();
-
-    u32 hashSize = SHA_256_HASH_SIZE;
-    if(mode == SHA_224_MODE)
-        hashSize = SHA_224_HASH_SIZE;
-    else if(mode == SHA_1_MODE)
-        hashSize = SHA_1_HASH_SIZE;
-
-    memcpy(res, (void *)REG_SHA_HASH, hashSize);
 }
