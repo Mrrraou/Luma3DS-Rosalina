@@ -29,9 +29,6 @@
 
 #include "crypto.h"
 #include "memory.h"
-#include "strings.h"
-#include "utils.h"
-#include "fatfs/sdmmc/sdmmc.h"
 
 /****************************************************************
 *                  Crypto libs

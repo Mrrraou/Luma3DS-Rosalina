@@ -23,8 +23,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
-#include <string.h>
 
 // Common data types
 typedef uint8_t u8;
@@ -43,3 +43,6 @@ typedef int64_t s64;
 
 typedef u32 Result;
 typedef u32 Handle;
+
+#define USED __attribute__((used))
+#define ALIGN(m)   __attribute__((aligned(m)))

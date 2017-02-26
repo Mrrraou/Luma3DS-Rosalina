@@ -147,6 +147,9 @@ u32 patchNativeFirm(u32 firmVersion, FirmwareSource nandType, u32 emuHeader, boo
     installSvcConnectToPortInitHook(arm11SvcTable, arm11ExceptionsPage, &freeK11Space);
     installSvcCustomBackdoor(arm11SvcTable, &freeK11Space, arm11ExceptionsPage);
 
+    if(installPxiDevHook(process9Offset, process9Size, process9MemAddr) == 0) // Starbit
+        patchMPUTable(arm9Section, firm->section[2].size, (u32)firm->section[2].address);
+
     //Apply signature patches
     ret += patchSignatureChecks(process9Offset, process9Size);
 

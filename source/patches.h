@@ -50,8 +50,8 @@ u32 patchZeroKeyNcchEncryptionCheck(u8 *pos, u32 size);
 u32 patchNandNcchEncryptionCheck(u8 *pos, u32 size);
 u32 patchCheckForDevCommonKey(u8 *pos, u32 size);
 u32 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 size); // Rosalina
-void patchMPUTable(u8 *pos, u32 size, u8 *arm9SectionDst); // Starbit
-void injectPxiHook(u8 *pos, u32 size); // Starbit
+void patchMPUTable(u8 *pos, u32 size, u32 arm9MemAddress); // Starbit
+u32 installPxiDevHook(u8 *pos, u32 size, u32 process9MemAddr); // Starbit
 u32 patchArm9ExceptionHandlersInstall(u8 *pos, u32 size);
 u32 patchSvcBreak9(u8 *pos, u32 size, u32 kernel9Address);
 u32 patchKernel9Panic(u8 *pos, u32 size);

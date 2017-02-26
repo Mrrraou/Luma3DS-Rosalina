@@ -17,9 +17,9 @@ dir_source := source
 dir_include := include
 dir_build := build
 
-ASFLAGS := -mcpu=arm946e-s -mthumb-interwork -march=armv5te
-CFLAGS := -Wall -Wextra -MMD -MP -mthumb $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -Os -flto -ffast-math -I$(dir_include)
-LDFLAGS := -T bootrom.ld -nostartfiles
+ASFLAGS := -mcpu=arm946e-s
+CFLAGS := -Wall -Wextra $(ASFLAGS) -fno-builtin -mthumb -mthumb-interwork -std=c11 -Wno-main -O2 -flto -ffast-math -I$(dir_include)
+LDFLAGS := -nostartfiles
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
           $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
@@ -40,6 +40,9 @@ $(dir_build)/main.bin: $(dir_build)/main.elf
 
 $(dir_build)/main.elf: $(objects)
 	$(LINK.o) -T linker.ld $(OUTPUT_OPTION) $^
+
+$(dir_build)/memory.o : CFLAGS += -O3 -marm
+$(dir_build)/crypto.o : CFLAGS += -O3 -marm
 
 $(dir_build)/%.o: $(dir_source)/%.c $(bundled)
 	@mkdir -p "$(@D)"

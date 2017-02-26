@@ -399,7 +399,7 @@ u32 patchK11ModuleLoading(u32 section0size, u32 moduleSize, u8 *startPos, u32 si
     return 0;
 }
 
-void patchMPUTable(u8 *pos, u32 size, u8 *arm9SectionDst)
+void patchMPUTable(u8 *pos, u32 size, u32 arm9MemAddress)
 {
     const u8 mpuTablePattern[] = {
         0x10, 0xCF, 0x12, 0xEE, // mrc p15, 0, r12, c2, c0, 0
@@ -411,21 +411,38 @@ void patchMPUTable(u8 *pos, u32 size, u8 *arm9SectionDst)
     void *off = memsearch(pos, mpuTablePattern, size, sizeof(mpuTablePattern));
     off += sizeof(mpuTablePattern);
 
-    u32 *ldr = (u32*)off;
+    u32 *ldr = (u32 *)off;
 
-    u32 ldrLiteralOffset = (*ldr & 0xFFF);
-    u8 **ldrLiteral = (u8**)((u8*)(ldr + 2) + ldrLiteralOffset);
+    u32 ldrLiteralOffset = *ldr & 0xFFF;
+    u32 *ldrLiteral = (u32 *)((u8 *)(ldr + 2) + ldrLiteralOffset);
 
-    u8 *mpuTable = *ldrLiteral - arm9SectionDst + pos;
+    struct MPUTableEntry
+    {
+        bool enabled;
+        bool dataCacheable, instructionCacheable, writeBufferable;
+        u8 dataPermissions, instructionPermissons;
+        u8 encodedSize;
+        u32 address;
+    };
 
+    struct MPUTableEntry *mpuTable = (struct MPUTableEntry *)(*ldrLiteral - arm9MemAddress + pos);
+
+    // Make everything rwx
     for(u32 i = 0; i < 8; i++)
     {
-        mpuTable[3 * sizeof(u32) * i + 4] = 3; // Write data access: rw / rw
-        mpuTable[3 * sizeof(u32) * i + 5] = 3; // Write instruction access: rw / rw
+        mpuTable[i].dataPermissions = 3;
+        mpuTable[i].instructionPermissons = 6;
+
+        if(mpuTable[i].address == 0x20000000) // FCRAM
+            mpuTable[i].dataCacheable = mpuTable[i].instructionCacheable = mpuTable[i].writeBufferable = true;
     }
+
+    // Region 7 has become useless
+    struct MPUTableEntry axiwramEntry = {true, false, false, false, 3, 6, 0x36, 0x1FF80000};
+    mpuTable[7] = axiwramEntry;
 }
 
-void injectPxiHook(u8 *pos, u32 size)
+u32 installPxiDevHook(u8 *pos, u32 size, u32 process9MemAddr)
 {
     const u8 pxiDevDefaultCasePattern[] = {
         0x84, 0xD0, 0x8D, 0xE2, // add sp, sp, #0x84
@@ -438,15 +455,32 @@ void injectPxiHook(u8 *pos, u32 size)
         0x04, 0xF0, 0x1F, 0xE5, // ldr pc, [pc, -#4]
     };
 
+    const u8 AESPattern[] = {
+        0x22, 0x00,
+        0x05, 0x21,
+        0x28, 0x00
+    };
+
+    u16 *off16 = (u16 *)memsearch(pos, AESPattern, size, sizeof(AESPattern));
+    if(off16 == 0) return 1;
+    off16 -= 2;
+    u32 AES__Acquire = process9MemAddr + (u32)((u8 *)off16 - pos) + 4 + ((off16[0] & 0x7FF) << 12) + ((off16[1] & 0x7FF) << 1);
+    off16 += 9;
+    u32 AES__Release = process9MemAddr + (u32)((u8 *)off16 - pos) + 4 + ((off16[0] & 0x7FF) << 12) + ((off16[1] & 0x7FF) << 1);
+
     // The arm9 section starts at 0x08006000 on New3DS... available space is
     // fairly limited.
-	fileRead((void*)0x08001000, "/luma/starbit.bin", 0x5000);
+    if(fileRead((void*)0x08001000, "/luma/starbit.bin", 0x5000) == 0)
+        return 1;
 
-	void *off = memsearch(pos, pxiDevDefaultCasePattern, size, sizeof(pxiDevDefaultCasePattern));
-    off += 2 * sizeof(u32);
+    *(u32 *)0x08001004 = AES__Acquire;
+    *(u32 *)0x08001008 = AES__Release;
 
+	u32 *off = (u32 *)memsearch(pos, pxiDevDefaultCasePattern, size, sizeof(pxiDevDefaultCasePattern)) + 2;
 	memcpy(off, pxiDevDefaultCasePatch, sizeof(pxiDevDefaultCasePatch));
-	*(u32*)(off + sizeof(pxiDevDefaultCasePatch)) = 0x08001000;
+	*(u32 *)(off + sizeof(pxiDevDefaultCasePatch)) = 0x08001000;
+
+    return 0;
 }
 
 

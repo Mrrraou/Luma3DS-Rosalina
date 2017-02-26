@@ -35,6 +35,7 @@ SVC_BEGIN svcBackdoor
 
 .global invalidateInstructionCacheRange
 .type   invalidateInstructionCacheRange, %function
+invalidateInstructionCacheRange:
     push {r4, r5}
     mov r3, r0
     mov r4, r1

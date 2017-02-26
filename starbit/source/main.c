@@ -1,6 +1,7 @@
 #include "types.h"
 #include "svc.h"
 #include "memory.h"
+#include "crypto.h"
 #include "ipc.h"
 
 #define CUR_PROCESS_HANDLE ((Handle)0xFFFF8001)
@@ -12,7 +13,7 @@ Result starbitHandler(u32 *buffer)
 		// Starbit Backdoor
 		case 0x1000:
 			buffer[0] = IPC_MakeHeader(0x1000, 0x1, 0x0);
-            invalidateInstructionCacheRange(buffer[1], 0x4000); // invalidate entire instruction cache
+            invalidateInstructionCacheRange((void *)buffer[1], 0x4000); // invalidate entire instruction cache
 			return ((Result (*)(u32 *))buffer[1])(buffer);
 
 		// Starbit memcpy
@@ -82,8 +83,11 @@ Result starbitHandler(u32 *buffer)
                 aes_setkey(keyslot, keyY, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
             }
 
+            u8 ALIGN(4) ivTmp[16];
+            memcpy(ivTmp, iv, 16);
             aes_use_keyslot(keyslot);
 			aes(dst, src, blockCount, iv, mode, ivMode);
+            memcpy(iv, ivTmp, 16);
 
             svcFlushProcessDataCache(CUR_PROCESS_HANDLE, dst, blockCount << 4);
             svcFlushProcessDataCache(CUR_PROCESS_HANDLE, iv, 16);
