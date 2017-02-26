@@ -1,8 +1,8 @@
 #include <sys/socket.h>
-#include "draw.h"
 #include "memory.h"
 #include "minisoc.h"
 #include "sock_util.h"
+#include "menu.h"
 
 // soc's poll function is odd, and doesn't like -1 as fd.
 // so this compacts everything together
@@ -87,7 +87,7 @@ void server_run(struct sock_server *serv)
 {
     struct pollfd *fds = serv->poll_fds;
 
-    while(serv->running)
+    while(serv->running && !terminationRequest)
     {
         int res = socPoll(fds, serv->nfds, 50); // 50ms
         if(res == 0) continue; // timeout reached, no activity.
