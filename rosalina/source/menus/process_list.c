@@ -39,7 +39,7 @@ void RosalinaMenu_ProcessList(void)
     }
     s32 selected = 0, page = 0, pagePrev = 0;
 
-    while(true)
+    while(!terminationRequest)
     {
         if(page != pagePrev)
             draw_clearFramebuffer();

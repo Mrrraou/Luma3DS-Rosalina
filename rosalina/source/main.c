@@ -42,12 +42,12 @@ void initSystem()
   __appInit();
 }
 
+bool terminationRequest = false;
 
 int main(void)
 {
     Result ret = 0;
     Handle notificationHandle;
-    bool terminationRequest = false;
 
     MyThread *t = menuCreateThread();
 

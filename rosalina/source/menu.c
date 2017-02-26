@@ -9,15 +9,16 @@
 u32 waitInput(void)
 {
     bool pressedKey = false;
-    u32 key;
+    u32 key = 0;
 
     //Wait for no keys to be pressed
-    while(HID_PAD);
+    while(HID_PAD && !terminationRequest) svcSleepThread(25 * 1000 * 1000);
 
     do
     {
         //Wait for a key to be pressed
-        while(!HID_PAD) svcSleepThread(25 * 1000 * 1000);
+        while(!HID_PAD && !terminationRequest) svcSleepThread(25 * 1000 * 1000);
+        if(terminationRequest) return 0;
 
         key = HID_PAD;
 
@@ -76,7 +77,7 @@ void menuThreadMain(void)
             menu_rosalina.item[i] = menu_rosalina.item[i+1];
     }
 
-    while(true)
+    while(!terminationRequest)
     {
         if((HID_PAD & (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT)) == (BUTTON_L1 | BUTTON_DOWN | BUTTON_SELECT))
         {
@@ -136,7 +137,7 @@ void menuShow(void)
 
     menuDraw(current_menu, selected_item);
 
-    while(true)
+    while(!terminationRequest)
     {
         u32 pressed = waitInput();
 
@@ -150,7 +151,7 @@ void menuShow(void)
                 case METHOD:
                     if(current_menu->item[selected_item].method != NULL)
                         current_menu->item[selected_item].method();
-                    else while(!(waitInput() & BUTTON_B));
+                    else while(!(waitInput() & BUTTON_B) && !terminationRequest);
                     break;
                 case MENU:
                     previous_menu[previous_menus++] = current_menu;
