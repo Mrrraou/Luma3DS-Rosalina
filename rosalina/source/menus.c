@@ -38,7 +38,7 @@ void RosalinaMenu_ShowCredits(void)
 
     draw_flushFramebuffer();
 
-    while(!(waitInput() & BUTTON_B));
+    while(!(waitInput() & BUTTON_B) && !terminationRequest);
 }
 
 void RosalinaMenu_TakeScreenShot(void)
@@ -90,7 +90,7 @@ end:
     draw_string("Finished without any error", 10, 30, COLOR_WHITE);
 
     draw_flushFramebuffer();
-    while(!(waitInput() & BUTTON_B));
+    while(!(waitInput() & BUTTON_B) && !terminationRequest);
 
 #undef TRY
 }

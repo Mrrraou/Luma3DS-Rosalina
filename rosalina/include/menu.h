@@ -43,6 +43,8 @@ typedef struct Menu {
     MenuItem item[0x40];
 } Menu;
 
+extern bool terminationRequest;
+
 u32 waitInput(void);
 
 MyThread *menuCreateThread(void);
