@@ -3,13 +3,19 @@
 #include "gdb_ctx.h"
 #include "draw.h"
 #include "memory.h"
+#include "macros.h"
+
+char gdb_buffer[GDB_BUF_LEN];
 
 gdb_command_handler gdb_command_handlers[GDB_NUM_COMMANDS] = 
 {
 	gdb_handle_unk,   // GDB_COMMAND_UNK
 	gdb_handle_read_query, // GDB_COMMAND_QUERY_READ
 	gdb_handle_write_query, // GDB_COMMAND_QUERY_WRITE
-	gdb_handle_long // GDB_COMMAND_LONG 
+	gdb_handle_long, // GDB_COMMAND_LONG
+	gdb_handle_stopped, // GDB_COMMAND_STOP_REASON
+	gdb_handle_read_regs, // GDB_COMMAND_READ_REGS
+	gdb_handle_read_mem // GDB_COMMAND_READ_MEM
 };
 
 enum gdb_command gdb_get_cmd(char c)
@@ -28,16 +34,27 @@ enum gdb_command gdb_get_cmd(char c)
 			return GDB_COMMAND_LONG;
 		break;
 
+		case '?':
+			return GDB_COMMAND_STOP_REASON;
+		break;
+
+		case 'g':
+			return GDB_COMMAND_READ_REGS;
+		break;
+
+		case 'm':
+			return GDB_COMMAND_READ_MEM;
+		break;
+
+
 		default:
 			return GDB_COMMAND_UNK;
 		break;
 	}
 }
 
-void* gdb_get_client(struct sock_server *serv, Handle sock)
+void* gdb_get_client(struct sock_server *serv, Handle sock UNUSED)
 {
-	(void)sock; // unused
-
 	struct gdb_client_ctx *ctxs = (struct gdb_client_ctx *)serv->userdata;
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
@@ -54,34 +71,10 @@ void* gdb_get_client(struct sock_server *serv, Handle sock)
 	return NULL;
 }
 
-void gdb_release_client(struct sock_server *serv, void *c)
+void gdb_release_client(struct sock_server *serv UNUSED, void *c)
 {
-	(void)serv; // unused
-
 	struct gdb_client_ctx *ctx = (struct gdb_client_ctx *)c;
 	ctx->flags &= ~GDB_FLAG_USED;
-}
-
-#define GDB_BUF_LEN 512
-char gdb_buffer[GDB_BUF_LEN];
-
-int gdb_send_packet(Handle socket, char *pkt_data, size_t len)
-{
-	gdb_buffer[0] = '$';
-	memcpy(gdb_buffer + 1, pkt_data, len);
-
-	uint8_t cksum = 0;
-	for(size_t i = 0; i < len; i++)
-	{
-		cksum += (uint8_t)pkt_data[i];
-	}
-
-	char *cksum_loc = gdb_buffer + len + 1;
-	*cksum_loc++ = '#';
-
-	hexItoa(cksum, cksum_loc, 2, false);
-
-	return soc_send(socket, gdb_buffer, len+4, 0);
 }
 
 int gdb_do_packet(Handle socket, void *c)
@@ -128,7 +121,7 @@ int gdb_do_packet(Handle socket, void *c)
 			int r = soc_recv_until(socket, gdb_buffer, GDB_BUF_LEN, "#", 1);
 			soc_recv(socket, cksum, 2, 0);
 
-			if(r == -1) { return -1; }
+			if(r == 0 || r == -1) { return -1; } // Bubbling -1 up to server will close the connection.
 			else
 			{
 				gdb_buffer[r-1] = 0; // replace trailing '#' with 0
@@ -170,10 +163,13 @@ int gdb_reply_ok(Handle sock)
 	return soc_send(sock, "$OK#9a", 6, 0);
 }
 
-int gdb_handle_unk(Handle sock, struct gdb_client_ctx *c, char *buffer)
+int gdb_handle_unk(Handle sock, struct gdb_client_ctx *c UNUSED, char *buffer UNUSED)
 {
-	(void)c; // unused
-	(void)buffer; // unused
-
 	return gdb_reply_empty(sock);
+}
+
+// TODO: stub
+int gdb_handle_stopped(Handle sock, struct gdb_client_ctx *c UNUSED, char *buffer UNUSED)
+{
+	return gdb_send_packet(sock, "S01", 3);
 }

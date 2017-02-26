@@ -132,3 +132,29 @@ void hexItoa(u64 number, char *out, u32 digits, bool uppercase)
 
     while(i < digits) out[digits - 1 - i++] = '0';
 }
+
+int atoi_(const char *str, int base)
+{
+    const char *end = str + strlen(str);
+    int res = 0;
+    int place = 1;
+    int n = 0;
+
+    while(end-- != str)
+    {
+        char c = *end;
+
+        if(base == 16 && c >= 'a')
+        {
+            n = (c - 'a') + 10;
+        }
+        else
+        {
+            n = c - '0';
+        }
+        res += n * place;
+        place *= base;
+    }
+
+    return res;
+}

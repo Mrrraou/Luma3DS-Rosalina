@@ -13,3 +13,4 @@ s32 strlen(const char *string);
 s32 strncmp(const char *str1, const char *str2, u32 size);
 const char *strchr(const char *string, int c);
 void hexItoa(u64 number, char *out, u32 digits, bool uppercase);
+int atoi_(const char *str, int base);
