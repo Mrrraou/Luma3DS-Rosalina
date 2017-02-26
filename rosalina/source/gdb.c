@@ -1,7 +1,6 @@
 #include <3ds.h>
 #include "minisoc.h"
 #include "gdb_ctx.h"
-#include "draw.h"
 #include "memory.h"
 #include "macros.h"
 
@@ -132,17 +131,12 @@ int gdb_do_packet(Handle socket, void *c)
 					int res = gdb_command_handlers[cmd](socket, ctx, gdb_buffer + 1);
 					if(res == -1)
 					{
-						char s[] = "  wtf";
-						s[0] = gdb_buffer[1];
-						draw_string(s, 10, 40, COLOR_WHITE);
 						return gdb_reply_empty(socket); // Handler failed!
 					}
 					return res;
 				}
 				else
 				{
-					draw_string(gdb_buffer, 10, 30, COLOR_WHITE);
-					draw_string("WTFF", 10, 50, COLOR_WHITE);
 					return gdb_reply_empty(socket); // We don't have a handler!
 				}
 			}
