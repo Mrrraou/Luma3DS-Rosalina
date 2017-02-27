@@ -47,7 +47,7 @@ static DestructuredPatch fsArchiveCheckPatch = {
     }
 };
 
-u8 *PatchProcessByName(char *name, DestructuredPatch *patch, u32 addr, bool isThumb)
+static u8 *PatchProcessByName(const char *name, DestructuredPatch *patch, u32 addr, bool isThumb)
 {
     u32 pidList[0x40];
     s32 processCount;
@@ -86,32 +86,31 @@ u8 *PatchProcessByName(char *name, DestructuredPatch *patch, u32 addr, bool isTh
     return ret;
 }
 
-void ProcessPatches_PatchSM(void)
+void ProcessPatches_PatchProcess(const char *processName, DestructuredPatch *patch, bool isThumb, const char *success, const char *failure)
 {
+    draw_lock();
     draw_clearFramebuffer();
     draw_flushFramebuffer();
+    draw_unlock();
 
-    if(PatchProcessByName("sm", &smServiceCheckPatch, 0x100000, false))
-    draw_string("Successfully patched SM for the service checks.", 10, 10, COLOR_TITLE);
-    else
-    draw_string("Couldn't patch SM.", 10, 10, COLOR_TITLE);
+    u8 *res = PatchProcessByName(processName, patch, 0x100000, isThumb);
 
-    draw_flushFramebuffer();
-
+    do
+    {
+        draw_lock();
+        draw_string(res != NULL ? success : failure, 10, 10, COLOR_WHITE);
+        draw_flushFramebuffer();
+        draw_unlock();
+    }
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
+}
+
+void ProcessPatches_PatchSM(void)
+{
+    ProcessPatches_PatchProcess("sm", &smServiceCheckPatch, false, "Successfully patched SM for the service checks.", "Couldn't patch SM.");
 }
 
 void ProcessPatches_PatchFS(void)
 {
-    draw_clearFramebuffer();
-    draw_flushFramebuffer();
-
-    if(PatchProcessByName("fs", &fsArchiveCheckPatch, 0x100000, true))
-    draw_string("Successfully patched FS for the archive checks.", 10, 10, COLOR_TITLE);
-    else
-    draw_string("Couldn't patch FS.", 10, 10, COLOR_TITLE);
-
-    draw_flushFramebuffer();
-
-    while(!(waitInput() & BUTTON_B) && !terminationRequest);
+    ProcessPatches_PatchProcess("fs", &fsArchiveCheckPatch, true, "Successfully patched FS for the archive checks.", "Couldn't patch FS.");
 }

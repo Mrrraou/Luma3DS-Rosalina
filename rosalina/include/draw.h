@@ -29,6 +29,9 @@
 #define COLOR_RED   MAKE_COLOR_RGB565(0x1F, 0x00, 0x00)
 #define COLOR_BLACK MAKE_COLOR_RGB565(0x00, 0x00, 0x00)
 
+void draw_lock(void);
+void draw_unlock(void);
+
 void draw_copyFramebuffer(void *dst);
 void draw_copyToFramebuffer(const void *src);
 void draw_fillFramebuffer(u32 value);

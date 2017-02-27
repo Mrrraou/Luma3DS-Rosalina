@@ -9,6 +9,24 @@ u8 framebuffer_cache[FB_BOTTOM_SIZE]; // 'top' because screenshots
 
 static u32 gpu_cache_fb, gpu_cache_sel, gpu_cache_fmt, gpu_cache_stride;
 
+static RecursiveLock lock;
+
+void draw_lock(void)
+{
+    static bool lockInitialized = false;
+    if(!lockInitialized)
+    {
+        RecursiveLock_Init(&lock);
+        lockInitialized = true;
+    }
+
+    RecursiveLock_Lock(&lock);
+}
+
+void draw_unlock(void)
+{
+    RecursiveLock_Unlock(&lock);
+}
 
 void draw_copyFramebuffer(void *dst)
 {

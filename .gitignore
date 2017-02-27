@@ -5,6 +5,7 @@ injector/build
 rosalina/build
 exceptions/arm9/build
 exceptions/arm11/build
+.vscode
 *.bin
 *.3dsx
 *.smdh
