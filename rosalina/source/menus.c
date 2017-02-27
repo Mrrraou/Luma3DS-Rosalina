@@ -24,18 +24,22 @@ Menu menu_rosalina = {
 
 void RosalinaMenu_ShowCredits(void)
 {
-    draw_string("Rosalina -- Luma3DS", 10, 10, COLOR_TITLE);
+    do
+    {
+        draw_lock();
+        draw_string("Rosalina -- Luma3DS", 10, 10, COLOR_TITLE);
 
-    draw_string("Luma3DS (c) 2016-2017 AuroraWright, TuxSH", 10, 30, COLOR_WHITE);
-    draw_string(
-        (
-            "Special thanks for Rosalina to:\n"
-            "  Dazzozo (and SALT), Bond697, yifanlu,\n"
-            "  #CTRDev, motezazer, other people\n"
-        ), 10, 50, COLOR_WHITE);
+        draw_string("Luma3DS (c) 2016-2017 AuroraWright, TuxSH", 10, 30, COLOR_WHITE);
+        draw_string(
+            (
+                "Special thanks for Rosalina to:\n"
+                "  Dazzozo (and SALT), Bond697, yifanlu,\n"
+                "  #CTRDev, motezazer, other people\n"
+            ), 10, 50, COLOR_WHITE);
 
-    draw_flushFramebuffer();
-
+        draw_flushFramebuffer();
+        draw_unlock();
+    }
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
 }
 
@@ -43,6 +47,7 @@ void RosalinaMenu_TakeScreenShot(void)
 {
 #define TRY(expr) if(R_FAILED(res = (expr))) goto end;
 
+    draw_lock();
     draw_restoreFramebuffer();
     draw_flushFramebuffer();
 
@@ -74,20 +79,26 @@ void RosalinaMenu_TakeScreenShot(void)
 
 end:
     IFile_Close(&file);
-
     draw_setupFramebuffer();
     draw_clearFramebuffer();
-
-    draw_string("Rosalina - Development build", 10, 10, COLOR_TITLE);
-    if(R_FAILED(res))
-    {
-        char msg[] = "Failed (0x00000000)";
-        hexItoa(res, msg, 8, false);
-        draw_string(msg, 10, 30, COLOR_WHITE);
-    }
-    draw_string("Finished without any error", 10, 30, COLOR_WHITE);
-
     draw_flushFramebuffer();
+    draw_unlock();
+
+    do
+    {
+        draw_lock();
+        draw_string("Rosalina - Development build", 10, 10, COLOR_TITLE);
+        if(R_FAILED(res))
+        {
+            char msg[] = "Failed (0x00000000)";
+            hexItoa(res, msg, 8, false);
+            draw_string(msg, 10, 30, COLOR_WHITE);
+        }
+        draw_string("Finished without any error", 10, 30, COLOR_WHITE);
+
+        draw_flushFramebuffer();
+        draw_unlock();
+    }
     while(!(waitInput() & BUTTON_B) && !terminationRequest);
 
 #undef TRY

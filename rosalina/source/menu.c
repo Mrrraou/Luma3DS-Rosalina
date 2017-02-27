@@ -131,27 +131,31 @@ void menuShow(void)
     u32 previous_menus = 0;
     Menu *previous_menu[0x80];
 
+    draw_lock();
     draw_setupFramebuffer();
-
     draw_clearFramebuffer();
 
     menuDraw(current_menu, selected_item);
+    draw_unlock();
 
-    while(!terminationRequest)
+    do
     {
         u32 pressed = waitInput();
+
+        draw_lock();
 
         if(pressed & BUTTON_A)
         {
             draw_clearFramebuffer();
             draw_flushFramebuffer();
 
+            draw_unlock();
+
             switch(current_menu->item[selected_item].action_type)
             {
                 case METHOD:
                     if(current_menu->item[selected_item].method != NULL)
                         current_menu->item[selected_item].method();
-                    else while(!(waitInput() & BUTTON_B) && !terminationRequest);
                     break;
                 case MENU:
                     previous_menu[previous_menus++] = current_menu;
@@ -160,13 +164,17 @@ void menuShow(void)
                     break;
             }
 
+            draw_lock();
             draw_clearFramebuffer();
             draw_flushFramebuffer();
+            draw_unlock();
         }
         else if(pressed & BUTTON_B)
         {
+            draw_lock();
             draw_clearFramebuffer();
             draw_flushFramebuffer();
+            draw_unlock();
 
             if(previous_menus > 0)
                 current_menu = previous_menu[--previous_menus];
@@ -187,10 +195,14 @@ void menuShow(void)
             continue;
 
         menuDraw(current_menu, selected_item);
+        draw_unlock();
     }
+    while(!terminationRequest);
 
+    draw_lock();
     draw_flushFramebuffer();
     draw_restoreFramebuffer();
+    draw_unlock();
 
     svcSleepThread(50 * 1000 * 1000);
 }

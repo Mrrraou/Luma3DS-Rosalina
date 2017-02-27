@@ -39,8 +39,9 @@ void RosalinaMenu_ProcessList(void)
     }
     s32 selected = 0, page = 0, pagePrev = 0;
 
-    while(!terminationRequest)
+    do
     {
+        draw_lock();
         if(page != pagePrev)
             draw_clearFramebuffer();
         draw_string("Process list", 10, 10, COLOR_TITLE);
@@ -59,12 +60,12 @@ void RosalinaMenu_ProcessList(void)
             draw_character(page * PROCESSES_PER_MENU_PAGE + i == selected ? '>' : ' ', 10, 30 + i * SPACING_Y, COLOR_TITLE);
         }
         draw_flushFramebuffer();
+        draw_unlock();
 
         u32 pressed = waitInput();
-
         if(pressed & BUTTON_B)
             break;
-        else if(pressed & BUTTON_DOWN)
+        if(pressed & BUTTON_DOWN)
             selected++;
         else if(pressed & BUTTON_UP)
             selected--;
@@ -88,4 +89,5 @@ void RosalinaMenu_ProcessList(void)
         pagePrev = page;
         page = selected / PROCESSES_PER_MENU_PAGE;
     }
+    while(!terminationRequest);
 }
