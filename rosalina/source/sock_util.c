@@ -158,7 +158,7 @@ void server_run(struct sock_server *serv)
     // Clean up.
     for(unsigned int i = 0; i < serv->nfds; i++)
     {
-        socClose(fds[i].fd);
+        if(fds[i].fd != -1) socClose(fds[i].fd);
     }
 }
 
