@@ -1,6 +1,7 @@
 #pragma once
 #include "sock_util.h"
 
+#define MAX_DEBUG 3
 #define GDB_BUF_LEN 512
 extern char gdb_buffer[GDB_BUF_LEN];
 
@@ -28,12 +29,20 @@ enum gdb_command
 	GDB_NUM_COMMANDS
 };
 
+struct gdb_server_ctx
+{
+	enum gdb_flags flags;
+	Handle debug;
+};
+
 struct gdb_client_ctx
 {
 	enum gdb_flags flags;
 	enum gdb_state state;
+	struct gdb_server_ctx *proc;
 };
 
+int gdb_accept_client(Handle sock, void *server_ctx, void *client_ctx);
 void* gdb_get_client(struct sock_server *serv, Handle sock);
 void gdb_release_client(struct sock_server *serv, void *ctx);
 int gdb_do_packet(Handle socket, void *ctx);

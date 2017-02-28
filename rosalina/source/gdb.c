@@ -52,6 +52,15 @@ enum gdb_command gdb_get_cmd(char c)
 	}
 }
 
+int gdb_accept_client(Handle sock UNUSED, void *server_ctx, void *client_ctx)
+{
+	struct gdb_server_ctx *s_ctx = (struct gdb_server_ctx *)server_ctx;
+	struct gdb_client_ctx *c_ctx = (struct gdb_client_ctx *)client_ctx;
+
+	c_ctx->proc = s_ctx;
+	return 0;
+}
+
 void* gdb_get_client(struct sock_server *serv, Handle sock UNUSED)
 {
 	struct gdb_client_ctx *ctxs = (struct gdb_client_ctx *)serv->userdata;

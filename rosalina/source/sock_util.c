@@ -117,7 +117,7 @@ void server_run(struct sock_server *serv)
                         fds[serv->nfds].fd = client_sock;
                         fds[serv->nfds].events = POLLIN | POLLHUP;
 
-                        int idx = serv->nfds;
+                        int new_idx = serv->nfds;
                         serv->nfds++;
 
                         if(serv->alloc != NULL)
@@ -125,13 +125,18 @@ void server_run(struct sock_server *serv)
                             void *new_ctx = serv->alloc(serv, client_sock);
                             if(new_ctx == NULL)
                             {
-                                server_close(serv, idx);
+                                server_close(serv, new_idx);
                             }
                             else
                             {
-                                serv->ctxs[idx].type = SOCK_CLIENT;
-                                serv->ctxs[idx].data = new_ctx;
+                                serv->ctxs[new_idx].type = SOCK_CLIENT;
+                                serv->ctxs[new_idx].data = new_ctx;
                             }
+                        }
+
+                        if(serv->accept_cb != NULL)
+                        {
+                            serv->accept_cb(client_sock, serv->ctxs[i].data, serv->ctxs[new_idx].data);
                         }
                     }
                 }

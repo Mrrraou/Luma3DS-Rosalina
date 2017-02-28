@@ -21,7 +21,8 @@ static u8 ALIGN(8) debuggerSocketThreadStack[THREAD_STACK_SIZE];
 static u8 ALIGN(8) debuggerDebugThreadStack[THREAD_STACK_SIZE];
 
 struct sock_server gdb_server;
-struct gdb_client_ctx gdb_ctxs[MAX_CLIENTS];
+struct gdb_client_ctx gdb_client_ctxs[MAX_CLIENTS];
+struct gdb_server_ctx gdb_server_ctxs[MAX_DEBUG];
 
 void debuggerSocketThreadMain(void);
 MyThread *debuggerCreateSocketThread(void)
@@ -94,20 +95,29 @@ void Debugger_Disable(void)
     while(!(waitInput() & BUTTON_B));
 }
 
-
 void debuggerSocketThreadMain(void)
 {
-    gdb_server.userdata = gdb_ctxs;
+    gdb_server.userdata = gdb_client_ctxs;
     gdb_server.host = 0;
     
-    //gdb_server.accept_cb = gdb_accept;
+    gdb_server.accept_cb = gdb_accept_client;
     gdb_server.data_cb = gdb_do_packet;
     //gdb_server.close_cb = gdb_close;
 
     gdb_server.alloc = gdb_get_client;
     gdb_server.free = gdb_release_client;
 
-    server_bind(&gdb_server, 4000, NULL);
+    void *c = NULL;
+    for(int i = 0; i < MAX_DEBUG; i++)
+    {
+        if(!(gdb_server_ctxs[i].flags & GDB_FLAG_USED))
+        {
+            gdb_server_ctxs[i].flags |= GDB_FLAG_USED;
+            c = &gdb_server_ctxs[i];
+        }
+    }
+
+    server_bind(&gdb_server, 4000, c);
     server_run(&gdb_server);
 }
 

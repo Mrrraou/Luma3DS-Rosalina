@@ -6,7 +6,7 @@
 
 struct sock_server;
 
-typedef int (*sock_accept_cb)(Handle sock, void **ctx);
+typedef int (*sock_accept_cb)(Handle sock, void *server_ctx, void *client_ctx);
 typedef int (*sock_data_cb)(Handle sock, void *ctx);
 typedef int (*sock_close_cb)(Handle sock, void *ctx);
 
