@@ -13,19 +13,32 @@ typedef int (*sock_close_cb)(Handle sock, void *ctx);
 typedef void* (*sock_alloc_func)(struct sock_server *serv, Handle sock);
 typedef void (*sock_free_func)(struct sock_server *serv, void *ctx);
 
+enum socket_type
+{
+	SOCK_NONE,
+	SOCK_SERVER,
+	SOCK_CLIENT
+};
+
+struct sock_ctx
+{
+	enum socket_type type;
+	void *data;
+};
+
 struct sock_server
 {
 	// params
 	u32 host;
-	u16 port;
 	void *userdata;
 
 	// poll stuff
 	Handle sock;
 	struct pollfd poll_fds[MAX_CLIENTS];
-	void *client_ctxs[MAX_CLIENTS];
+	struct sock_ctx ctxs[MAX_CLIENTS];
 	nfds_t nfds;
 	bool running;
+	bool compact_needed;
 
 	// callbacks
 	sock_accept_cb accept_cb;
@@ -36,5 +49,6 @@ struct sock_server
 	sock_free_func free;
 };
 
-void server_bind(struct sock_server *serv);
+void server_bind(struct sock_server *serv, u16 port, void *opt_data);
 void server_run(struct sock_server *serv);
+void server_close(struct sock_server *serv, int i);

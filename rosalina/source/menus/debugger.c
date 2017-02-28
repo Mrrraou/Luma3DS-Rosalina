@@ -99,7 +99,6 @@ void debuggerSocketThreadMain(void)
 {
     gdb_server.userdata = gdb_ctxs;
     gdb_server.host = 0;
-    gdb_server.port = 4000;
     
     //gdb_server.accept_cb = gdb_accept;
     gdb_server.data_cb = gdb_do_packet;
@@ -108,7 +107,7 @@ void debuggerSocketThreadMain(void)
     gdb_server.alloc = gdb_get_client;
     gdb_server.free = gdb_release_client;
 
-    server_bind(&gdb_server);
+    server_bind(&gdb_server, 4000, NULL);
     server_run(&gdb_server);
 }
 
