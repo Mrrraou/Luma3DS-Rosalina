@@ -37,6 +37,11 @@ void errfHandleCommands(void)
 
             draw_string("An error occurred (ErrDisp)", 10, 10, COLOR_TITLE);
 
+            char processStr[] = "Process #0x00 (TID 0000000000, AID 0000000000)";
+            char aidStr[] = "AID";
+            hexItoa()
+            posY = drawString();
+
             /*switch(info->type)
             {
                 case ERRF_ERRTYPE_GENERIC:
@@ -55,21 +60,54 @@ void errfHandleCommands(void)
                 char hexString[] = "00000000";
 
                 u32 *regs = (u32 *)info->data.exception_data.regs;
+                u32 posX = 0;
                 for(u32 i = 0; i < 17; i += 2)
                 {
-                    posY = draw_string(registerNames[i], 10, posY + SPACING_Y, COLOR_WHITE);
+                    posX = 10;
+                    posY = draw_string(registerNames[i], posX, posY + SPACING_Y, COLOR_WHITE);
                     hexItoa(regs[i], hexString, 8, false);
-                    drawString(hexString, true, 10 + 7 * SPACING_X, posY, COLOR_WHITE);
+                    drawString(hexString, true, posX + 7 * SPACING_X, posY, COLOR_WHITE);
 
+                    posX = 10 + 22 * SPACING_X; 
                     if(i != 16)
                     {
-                        draw_string(registerNames[i + 1], 10 + 22 * SPACING_X, posY, COLOR_WHITE);
+                        draw_string(registerNames[i + 1], posX, posY, COLOR_WHITE);
                         hexItoa(i == 16 ? regs[20] : regs[i + 1], hexString, 8, false);
-                        draw_string(hexString, 10 + 29 * SPACING_X, posY, COLOR_WHITE);
+                        draw_string(hexString, posX + 7 * SPACING_X, posY, COLOR_WHITE);
                     }
                 }
+                
+                if(info->data.exception_data.type == ERRF_EXCEPTION_PREFETCH_ABORT
+                || info->data.exception_data.type == ERRF_EXCEPTION_DATA_ABORT)
+                {
+                    // on pabort this is pc instead of ifar...
+                    draw_string("far", posX, posY + SPACING_Y, COLOR_WHITE);
+                    hexItoa(info->data.exception_data.regs.reg1, hexString, 8, false);
+                    drawString(hexString, true, posX + 7 * SPACING_X, posY, COLOR_WHITE);
 
-                if()
+                    posX = 10 + 22 * SPACING_X; 
+                    draw_string("fsr", posX, posY, COLOR_WHITE);
+                    hexItoa(info->data.exception_data.regs.reg2, hexString, 8, false);
+                    posY = draw_string(hexString, posX + 7 * SPACING_X, posY + SPACING_Y, COLOR_WHITE);
+                }
+
+                else if(info->data.exception_data.type == ERRF_EXCEPTION_VFP)
+                {
+                    posX = 10;
+                    posY = draw_string("fpexc", posX, posY + SPACING_Y, COLOR_WHITE);
+                    hexItoa(info->data.exception_data.regs.fpexc, hexString, 8, false);
+                    drawString(hexString, true, posX + 7 * SPACING_X, posY, COLOR_WHITE);
+
+                    posX = 10;
+                    posY = draw_string("fpinst", posX, posY + SPACING_Y, COLOR_WHITE);
+                    hexItoa(info->data.exception_data.regs.fpinst, hexString, 8, false);
+                    drawString(hexString, true, posX + 7 * SPACING_X, posY, COLOR_WHITE);
+                }
+            }
+
+            else if()
+            {
+
             }
         }
 
