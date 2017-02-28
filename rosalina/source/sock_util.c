@@ -96,6 +96,12 @@ void server_run(struct sock_server *serv)
 
     while(serv->running && !terminationRequest)
     {
+        if(serv->nfds == 0)
+        {
+            svcSleepThread(50 * 1000 * 1000);
+            continue;
+        }
+        
         int res = socPoll(fds, serv->nfds, 50); // 50ms
         if(res == 0) continue; // timeout reached, no activity.
 
