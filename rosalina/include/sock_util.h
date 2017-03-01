@@ -23,7 +23,10 @@ enum socket_type
 struct sock_ctx
 {
 	enum socket_type type;
+	struct sock_ctx *serv;
 	void *data;
+	int n;
+	int i;
 };
 
 struct sock_server
@@ -31,11 +34,14 @@ struct sock_server
 	// params
 	u32 host;
 	void *userdata;
+	int clients_per_server;
 
 	// poll stuff
 	Handle sock;
 	struct pollfd poll_fds[MAX_CLIENTS];
 	struct sock_ctx ctxs[MAX_CLIENTS];
+	struct sock_ctx *ctx_ptrs[MAX_CLIENTS];
+
 	nfds_t nfds;
 	bool running;
 	bool compact_needed;
@@ -49,6 +55,8 @@ struct sock_server
 	sock_free_func free;
 };
 
+void server_init(struct sock_server *serv);
 void server_bind(struct sock_server *serv, u16 port, void *opt_data);
 void server_run(struct sock_server *serv);
-void server_close(struct sock_server *serv, int i);
+void server_close(struct sock_server *serv, struct sock_ctx *ctx);
+struct sock_ctx *server_alloc_ctx(struct sock_server *serv);

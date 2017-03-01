@@ -42,6 +42,8 @@ struct gdb_client_ctx
 	struct gdb_server_ctx *proc;
 };
 
+Result debugger_attach(struct sock_server *serv, u32 pid);
+
 int gdb_accept_client(Handle sock, void *server_ctx, void *client_ctx);
 void* gdb_get_client(struct sock_server *serv, Handle sock);
 void gdb_release_client(struct sock_server *serv, void *ctx);

@@ -67,7 +67,6 @@ void Debugger_Enable(void)
         }
         else
         {
-            gdb_server.running = true;
             debuggerCreateSocketThread();
             debuggerCreateDebugThread();
             draw_string("Debugger thread started successfully.", 10, 10, COLOR_TITLE);
@@ -97,6 +96,8 @@ void Debugger_Disable(void)
 
 void debuggerSocketThreadMain(void)
 {
+    server_init(&gdb_server);
+
     gdb_server.userdata = gdb_client_ctxs;
     gdb_server.host = 0;
     
@@ -107,7 +108,20 @@ void debuggerSocketThreadMain(void)
     gdb_server.alloc = gdb_get_client;
     gdb_server.free = gdb_release_client;
 
-    void *c = NULL;
+    gdb_server.clients_per_server = 1;
+    gdb_server.running = true;
+
+    debugger_attach(&gdb_server, 0x26);
+    server_run(&gdb_server);
+}
+
+void debuggerDebugThreadMain(void)
+{
+}
+
+Result debugger_attach(struct sock_server *serv, u32 pid)
+{
+    struct gdb_server_ctx *c = NULL;
     for(int i = 0; i < MAX_DEBUG; i++)
     {
         if(!(gdb_server_ctxs[i].flags & GDB_FLAG_USED))
@@ -117,10 +131,12 @@ void debuggerSocketThreadMain(void)
         }
     }
 
-    server_bind(&gdb_server, 4000, c);
-    server_run(&gdb_server);
-}
+    if(c == NULL) return -1; // no slot?
+    Result r = svcDebugActiveProcess(&c->debug, pid);
+    if(R_SUCCEEDED(r))
+    {
+        server_bind(serv, 4000 + pid, c);
+    }
 
-void debuggerDebugThreadMain(void)
-{
+    return r;
 }

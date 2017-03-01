@@ -10,7 +10,7 @@
 void compact(struct sock_server *serv)
 {
     int new_fds[MAX_CLIENTS];
-    struct sock_ctx new_ctxs[MAX_CLIENTS];
+    struct sock_ctx *new_ctxs[MAX_CLIENTS];
     nfds_t n = 0;
 
     for(nfds_t i = 0; i < serv->nfds; i++)
@@ -18,7 +18,7 @@ void compact(struct sock_server *serv)
         if(serv->poll_fds[i].fd != -1)
         {
             new_fds[n] = serv->poll_fds[i].fd;
-            new_ctxs[n] = serv->ctxs[i];
+            new_ctxs[n] = serv->ctx_ptrs[i];
             n++;
         }
     }
@@ -26,32 +26,46 @@ void compact(struct sock_server *serv)
     for(nfds_t i = 0; i < n; i++)
     {
         serv->poll_fds[i].fd = new_fds[i];
-        serv->ctxs[i] = new_ctxs[i];
+        serv->ctx_ptrs[i] = new_ctxs[i];
+        serv->ctx_ptrs[i]->i = i;
     }
     serv->nfds = n;
     serv->compact_needed = false;
 }
 
-void server_close(struct sock_server *serv, int i)
+void server_close(struct sock_server *serv, struct sock_ctx *ctx)
 {
     serv->compact_needed = true;
 
-    Handle sock = serv->poll_fds[i].fd;
-    if(serv->ctxs[i].type == SOCK_CLIENT)
+    Handle sock = serv->poll_fds[ctx->i].fd;
+    if(ctx->type == SOCK_CLIENT)
     {
-        if(serv->close_cb != NULL) serv->close_cb(sock, serv->ctxs[i].data);
+        if(serv->close_cb != NULL) serv->close_cb(sock, ctx->data);
     }
 
     socClose(sock);
-    serv->poll_fds[i].fd = -1;
-    serv->poll_fds[i].events = 0;
-    serv->poll_fds[i].revents = 0;
+    serv->poll_fds[ctx->i].fd = -1;
+    serv->poll_fds[ctx->i].events = 0;
+    serv->poll_fds[ctx->i].revents = 0;
 
-    serv->ctxs[i].type = SOCK_NONE;
-    if(serv->ctxs[i].data != NULL)
+    ctx->type = SOCK_NONE;
+    if(ctx->data != NULL)
     {
-        if(serv->free != NULL) serv->free(serv, serv->ctxs[i].data);
-        serv->ctxs[i].data = NULL;
+        if(serv->free != NULL) serv->free(serv, ctx->data);
+        ctx->data = NULL;
+    }
+
+    ctx->serv->n--;
+}
+
+void server_init(struct sock_server *serv)
+{
+    memset_(serv, 0, sizeof(struct sock_server));
+
+    for(int i = 0; i < MAX_CLIENTS; i++)
+    {
+        serv->ctxs[i].type = SOCK_NONE;
+        serv->ctx_ptrs[i] = NULL;
     }
 }
 
@@ -83,11 +97,29 @@ void server_bind(struct sock_server *serv, u16 port, void *opt_data)
                 serv->nfds++;
                 serv->poll_fds[idx].fd = serv->sock;
                 serv->poll_fds[idx].events = POLLIN | POLLHUP;
-                serv->ctxs[idx].type = SOCK_SERVER;
-                serv->ctxs[idx].data = opt_data;
+
+                struct sock_ctx *new_ctx = server_alloc_ctx(serv);
+                new_ctx->type = SOCK_SERVER;
+                new_ctx->data = opt_data;
+                new_ctx->n = 0;
+                new_ctx->i = idx;
+                serv->ctx_ptrs[idx] = new_ctx;
             }
         }
     }
+}
+
+struct sock_ctx *server_alloc_ctx(struct sock_server *serv)
+{
+    for(int i = 0; i < MAX_CLIENTS; i++)
+    {
+        if(serv->ctxs[i].type == SOCK_NONE)
+        {
+            return &serv->ctxs[i];
+        }
+    }
+
+    return NULL;
 }
 
 void server_run(struct sock_server *serv)
@@ -107,14 +139,16 @@ void server_run(struct sock_server *serv)
 
         for(unsigned int i = 0; i < serv->nfds; i++)
         {
+            struct sock_ctx *curr_ctx = serv->ctx_ptrs[i];
+
             if((fds[i].revents & POLLIN) == POLLIN)
             {
-                if(serv->ctxs[i].type == SOCK_SERVER) // Listening socket?
+                if(curr_ctx->type == SOCK_SERVER) // Listening socket?
                 {
                     Handle client_sock = 0;
                     res = socAccept(serv->sock, &client_sock, NULL, 0);
                     
-                    if(serv->nfds == MAX_CLIENTS)
+                    if(curr_ctx->n == serv->clients_per_server || serv->nfds == MAX_CLIENTS)
                     {
                         socClose(client_sock);
                     }
@@ -125,24 +159,33 @@ void server_run(struct sock_server *serv)
 
                         int new_idx = serv->nfds;
                         serv->nfds++;
+                        curr_ctx->n++;
+
+                        struct sock_ctx *new_ctx = server_alloc_ctx(serv);
+                        new_ctx->type = SOCK_CLIENT;
+                        new_ctx->data = NULL;
+                        new_ctx->serv = curr_ctx;
+                        new_ctx->i = new_idx;
+                        new_ctx->n = 0;
+
+                        serv->ctx_ptrs[new_idx] = new_ctx;
 
                         if(serv->alloc != NULL)
                         {
-                            void *new_ctx = serv->alloc(serv, client_sock);
-                            if(new_ctx == NULL)
+                            void *new_userdata = serv->alloc(serv, client_sock);
+                            if(new_userdata == NULL)
                             {
-                                server_close(serv, new_idx);
+                                socClose(client_sock);
                             }
                             else
                             {
-                                serv->ctxs[new_idx].type = SOCK_CLIENT;
-                                serv->ctxs[new_idx].data = new_ctx;
+                                new_ctx->data = new_userdata;
                             }
                         }
 
                         if(serv->accept_cb != NULL)
                         {
-                            serv->accept_cb(client_sock, serv->ctxs[i].data, serv->ctxs[new_idx].data);
+                            serv->accept_cb(client_sock, curr_ctx->data, new_ctx->data);
                         }
                     }
                 }
@@ -150,16 +193,16 @@ void server_run(struct sock_server *serv)
                 {
                     if(serv->data_cb != NULL)
                     {
-                        if(serv->data_cb(fds[i].fd, serv->ctxs[i].data) == -1)
+                        if(serv->data_cb(fds[i].fd, curr_ctx->data) == -1)
                         {
-                            server_close(serv, i);
+                            server_close(serv, curr_ctx);
                         }
                     }
                 }
             }
             else if(fds[i].revents & POLLHUP || fds[i].revents & POLLERR) // For some reason, this never gets hit?
             {
-                server_close(serv, i);
+                server_close(serv, curr_ctx);
             }
         }
 
