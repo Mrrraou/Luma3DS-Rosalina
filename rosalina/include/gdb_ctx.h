@@ -29,10 +29,14 @@ enum gdb_command
 	GDB_NUM_COMMANDS
 };
 
+struct gdb_client_ctx;
+
 struct gdb_server_ctx
 {
 	enum gdb_flags flags;
 	Handle debug;
+	struct sock_ctx *client;
+	struct gdb_client_ctx *client_gdb_ctx;
 };
 
 struct gdb_client_ctx
@@ -44,10 +48,10 @@ struct gdb_client_ctx
 
 Result debugger_attach(struct sock_server *serv, u32 pid);
 
-int gdb_accept_client(Handle sock, void *server_ctx, void *client_ctx);
-void* gdb_get_client(struct sock_server *serv, Handle sock);
-void gdb_release_client(struct sock_server *serv, void *ctx);
-int gdb_do_packet(Handle socket, void *ctx);
+int gdb_accept_client(struct sock_ctx *client_ctx);
+void* gdb_get_client(struct sock_server *serv, struct sock_ctx *client_ctx);
+void gdb_release_client(struct sock_server *serv, void *c);
+int gdb_do_packet(struct sock_ctx *ctx);
 
 int gdb_send_packet(Handle socket, const char *pkt_data, size_t len);
 int gdb_send_packet_hex(Handle socket, const char *pkt_data, size_t len);

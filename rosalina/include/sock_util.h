@@ -5,12 +5,13 @@
 #define MAX_CLIENTS 8
 
 struct sock_server;
+struct sock_ctx;
 
-typedef int (*sock_accept_cb)(Handle sock, void *server_ctx, void *client_ctx);
-typedef int (*sock_data_cb)(Handle sock, void *ctx);
-typedef int (*sock_close_cb)(Handle sock, void *ctx);
+typedef int (*sock_accept_cb)(struct sock_ctx *client_ctx);
+typedef int (*sock_data_cb)(struct sock_ctx *client_ctx);
+typedef int (*sock_close_cb)(struct sock_ctx *client_ctx);
 
-typedef void* (*sock_alloc_func)(struct sock_server *serv, Handle sock);
+typedef void* (*sock_alloc_func)(struct sock_server *serv, struct sock_ctx *client_ctx);
 typedef void (*sock_free_func)(struct sock_server *serv, void *ctx);
 
 enum socket_type
@@ -23,6 +24,7 @@ enum socket_type
 struct sock_ctx
 {
 	enum socket_type type;
+	Handle sock;
 	struct sock_ctx *serv;
 	void *data;
 	int n;

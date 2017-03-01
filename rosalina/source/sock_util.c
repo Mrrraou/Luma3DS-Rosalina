@@ -40,7 +40,7 @@ void server_close(struct sock_server *serv, struct sock_ctx *ctx)
     Handle sock = serv->poll_fds[ctx->i].fd;
     if(ctx->type == SOCK_CLIENT)
     {
-        if(serv->close_cb != NULL) serv->close_cb(sock, ctx->data);
+        if(serv->close_cb != NULL) serv->close_cb(ctx);
     }
 
     socClose(sock);
@@ -101,6 +101,7 @@ void server_bind(struct sock_server *serv, u16 port, void *opt_data)
                 struct sock_ctx *new_ctx = server_alloc_ctx(serv);
                 new_ctx->type = SOCK_SERVER;
                 new_ctx->data = opt_data;
+                new_ctx->sock = serv->sock;
                 new_ctx->n = 0;
                 new_ctx->i = idx;
                 serv->ctx_ptrs[idx] = new_ctx;
@@ -164,6 +165,7 @@ void server_run(struct sock_server *serv)
                         struct sock_ctx *new_ctx = server_alloc_ctx(serv);
                         new_ctx->type = SOCK_CLIENT;
                         new_ctx->data = NULL;
+                        new_ctx->sock = client_sock;
                         new_ctx->serv = curr_ctx;
                         new_ctx->i = new_idx;
                         new_ctx->n = 0;
@@ -172,7 +174,7 @@ void server_run(struct sock_server *serv)
 
                         if(serv->alloc != NULL)
                         {
-                            void *new_userdata = serv->alloc(serv, client_sock);
+                            void *new_userdata = serv->alloc(serv, new_ctx);
                             if(new_userdata == NULL)
                             {
                                 socClose(client_sock);
@@ -185,7 +187,7 @@ void server_run(struct sock_server *serv)
 
                         if(serv->accept_cb != NULL)
                         {
-                            serv->accept_cb(client_sock, curr_ctx->data, new_ctx->data);
+                            serv->accept_cb(new_ctx);
                         }
                     }
                 }
@@ -193,7 +195,7 @@ void server_run(struct sock_server *serv)
                 {
                     if(serv->data_cb != NULL)
                     {
-                        if(serv->data_cb(fds[i].fd, curr_ctx->data) == -1)
+                        if(serv->data_cb(curr_ctx) == -1)
                         {
                             server_close(serv, curr_ctx);
                         }

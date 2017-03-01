@@ -52,16 +52,18 @@ enum gdb_command gdb_get_cmd(char c)
 	}
 }
 
-int gdb_accept_client(Handle sock UNUSED, void *server_ctx, void *client_ctx)
+int gdb_accept_client(struct sock_ctx *client_ctx)
 {
-	struct gdb_server_ctx *s_ctx = (struct gdb_server_ctx *)server_ctx;
-	struct gdb_client_ctx *c_ctx = (struct gdb_client_ctx *)client_ctx;
+	struct gdb_server_ctx *s_ctx = (struct gdb_server_ctx *)client_ctx->serv->data;
+	struct gdb_client_ctx *c_ctx = (struct gdb_client_ctx *)client_ctx->data;
 
 	c_ctx->proc = s_ctx;
+	s_ctx->client = client_ctx;
+	s_ctx->client_gdb_ctx = c_ctx;
 	return 0;
 }
 
-void* gdb_get_client(struct sock_server *serv, Handle sock UNUSED)
+void* gdb_get_client(struct sock_server *serv, struct sock_ctx *c UNUSED)
 {
 	struct gdb_client_ctx *ctxs = (struct gdb_client_ctx *)serv->userdata;
 
@@ -85,9 +87,10 @@ void gdb_release_client(struct sock_server *serv UNUSED, void *c)
 	ctx->flags &= ~GDB_FLAG_USED;
 }
 
-int gdb_do_packet(Handle socket, void *c)
+int gdb_do_packet(struct sock_ctx *c)
 {
-	struct gdb_client_ctx *ctx = (struct gdb_client_ctx *)c;
+	Handle socket = c->sock;
+	struct gdb_client_ctx *ctx = (struct gdb_client_ctx *)c->data;
 
 	switch(ctx->state)
 	{
