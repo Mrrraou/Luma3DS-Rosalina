@@ -37,10 +37,23 @@ void errfHandleCommands(void)
 
             draw_string("An error occurred (ErrDisp)", 10, 10, COLOR_TITLE);
 
-            char processStr[] = "Process #0x00 (TID 0000000000, AID 0000000000)";
-            char aidStr[] = "AID";
-            hexItoa()
-            posY = drawString();
+            static const char *types[] = {
+                "generic", "corrupted", "card removed", "exception", "result failure", "logged"
+            };
+
+            u32 posY = draw_string("Error type: ", 10, 30, COLOR_WHITE);
+            draw_string((u32)info->type > (u32)ERRF_ERRTYPE_LOGGED ? types[0] : types[(u32)info->type], 10 + 12 * SPACING_X, 30, COLOR_WHITE);
+            if(info->type != ERRF_ERRTYPE_CARD_REMOVED)
+            {
+                char processStr[] = "Process ID: 0x00000000"
+                char tidAidStr[] = "TID 0000000000000000, AID 0000000000000000";
+                hexItoa(info->procId, processStr + 14, 8, false);
+                hexItoa(info->titleId, tidAidStr + 4, 16, false);
+                hexItoa(info->appTitleId, tidAidStr + 26, 16, false);
+
+                posY = draw_string(processStr, 10, posY + SPACING_Y, COLOR_WHITE);
+                posY = draw_string(tidAidStr, 10, posY + SPACING_Y, COLOR_WHITE);
+            }
 
             /*switch(info->type)
             {
@@ -49,9 +62,9 @@ void errfHandleCommands(void)
                 case ERRF_ERRTYPE_MEM_CORRUPT:
             }*/
 
-            u32 posY = 30;
             if(info->type == ERRF_ERRTYPE_EXCEPTION)
             {
+                posY += SPACING_Y;
                 static const char *registerNames[] = {
                     "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12",
                     "sp", "lr", "pc", "cpsr", "fsr", "far", "fpexc", "fpinst", "fpinst2"
@@ -66,9 +79,9 @@ void errfHandleCommands(void)
                     posX = 10;
                     posY = draw_string(registerNames[i], posX, posY + SPACING_Y, COLOR_WHITE);
                     hexItoa(regs[i], hexString, 8, false);
-                    drawString(hexString, true, posX + 7 * SPACING_X, posY, COLOR_WHITE);
+                    draw_string(hexString, posX + 7 * SPACING_X, posY, COLOR_WHITE);
 
-                    posX = 10 + 22 * SPACING_X; 
+                    posX = 10 + 22 * SPACING_X;
                     if(i != 16)
                     {
                         draw_string(registerNames[i + 1], posX, posY, COLOR_WHITE);
@@ -76,16 +89,16 @@ void errfHandleCommands(void)
                         draw_string(hexString, posX + 7 * SPACING_X, posY, COLOR_WHITE);
                     }
                 }
-                
+
                 if(info->data.exception_data.type == ERRF_EXCEPTION_PREFETCH_ABORT
                 || info->data.exception_data.type == ERRF_EXCEPTION_DATA_ABORT)
                 {
                     // on pabort this is pc instead of ifar...
-                    draw_string("far", posX, posY + SPACING_Y, COLOR_WHITE);
+                    posY = draw_string("far", posX, posY + SPACING_Y, COLOR_WHITE);
                     hexItoa(info->data.exception_data.regs.reg1, hexString, 8, false);
-                    drawString(hexString, true, posX + 7 * SPACING_X, posY, COLOR_WHITE);
+                    draw_string(hexString, posX + 7 * SPACING_X, posY, COLOR_WHITE);
 
-                    posX = 10 + 22 * SPACING_X; 
+                    posX = 10 + 22 * SPACING_X;
                     draw_string("fsr", posX, posY, COLOR_WHITE);
                     hexItoa(info->data.exception_data.regs.reg2, hexString, 8, false);
                     posY = draw_string(hexString, posX + 7 * SPACING_X, posY + SPACING_Y, COLOR_WHITE);
@@ -96,18 +109,27 @@ void errfHandleCommands(void)
                     posX = 10;
                     posY = draw_string("fpexc", posX, posY + SPACING_Y, COLOR_WHITE);
                     hexItoa(info->data.exception_data.regs.fpexc, hexString, 8, false);
-                    drawString(hexString, true, posX + 7 * SPACING_X, posY, COLOR_WHITE);
+                    draw_string(hexString, posX + 7 * SPACING_X, posY, COLOR_WHITE);
 
                     posX = 10;
                     posY = draw_string("fpinst", posX, posY + SPACING_Y, COLOR_WHITE);
                     hexItoa(info->data.exception_data.regs.fpinst, hexString, 8, false);
-                    drawString(hexString, true, posX + 7 * SPACING_X, posY, COLOR_WHITE);
+                    draw_string(hexString, posX + 7 * SPACING_X, posY, COLOR_WHITE);
                 }
             }
 
-            else if()
+            else if(info->type != ERRF_ERRTYPE_CARD_REMOVED)
             {
+                if(info->type != ERRF_ERRTYPE_FAILURE)
+                {
+                    char pcString[] = "Address: 0x00000000";
+                    hexItoa(info->pcAddr, pcString + 11, 8, false);
+                    posY = draw_string(pcString, 10, posY + SPACING_Y, COLOR_WHITE);
+                }
 
+                char errCodeString[] = "Error code: 0x00000000";
+                hexItoa(info->resCode, errCodeString + 14, 8, false);
+                posY = draw_string(errCodeString, 10, posY + SPACING_Y, COLOR_WHITE);
             }
         }
 
