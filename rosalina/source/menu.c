@@ -83,11 +83,34 @@ void menuThreadMain(void)
         {
             if(R_FAILED(_MCUHWC_GetBatteryLevel(&batteryLevel)))
                 batteryLevel = 255;
-            svcKernelSetState(0x10000, 1);
+            menuEnter();
             menuShow();
-            svcKernelSetState(0x10000, 0);
+            menuLeave();
         }
-        svcSleepThread(50 * 1000 * 1000); // 5ms
+        svcSleepThread(50 * 1000 * 1000);
+    }
+}
+
+static s32 menuRefCount = 0;
+void menuEnter(void)
+{
+    if(AtomicPostIncrement(&menuRefCount) == 0)
+    {
+        svcKernelSetState(0x10000, 1);
+        draw_setupFramebuffer();
+        draw_clearFramebuffer();
+    }
+}
+
+void menuLeave(void)
+{
+    if(AtomicDecrement(&menuRefCount) == 0)
+    {
+        draw_lock();
+        draw_flushFramebuffer();
+        draw_restoreFramebuffer();
+        draw_unlock();
+        svcKernelSetState(0x10000, 0);
     }
 }
 
@@ -132,9 +155,8 @@ void menuShow(void)
     Menu *previous_menu[0x80];
 
     draw_lock();
-    draw_setupFramebuffer();
     draw_clearFramebuffer();
-
+    draw_flushFramebuffer();
     menuDraw(current_menu, selected_item);
     draw_unlock();
 
@@ -198,11 +220,6 @@ void menuShow(void)
         draw_unlock();
     }
     while(!terminationRequest);
-
-    draw_lock();
-    draw_flushFramebuffer();
-    draw_restoreFramebuffer();
-    draw_unlock();
 
     svcSleepThread(50 * 1000 * 1000);
 }

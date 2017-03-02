@@ -3,6 +3,7 @@
 #include "services.h"
 #include "fsreg.h"
 #include "menu.h"
+#include "errdisp.h"
 #include "utils.h"
 #include "MyThread.h"
 #include "kernel_extension.h"
@@ -49,7 +50,7 @@ int main(void)
     Result ret = 0;
     Handle notificationHandle;
 
-    MyThread *t = menuCreateThread();
+    MyThread *menuThread = menuCreateThread(), *errDispThread = errDispCreateThread();
 
     if(R_FAILED(srvEnableNotification(&notificationHandle)))
         svcBreak(USERBREAK_ASSERT);
@@ -68,7 +69,8 @@ int main(void)
     }
     while(!terminationRequest);
 
-    MyThread_Join(t, -1LL);
+    MyThread_Join(menuThread, -1LL);
+    MyThread_Join(errDispThread, -1LL);
     svcCloseHandle(notificationHandle);
     return 0;
 }

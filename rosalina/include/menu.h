@@ -48,5 +48,7 @@ extern bool terminationRequest;
 u32 waitInput(void);
 
 MyThread *menuCreateThread(void);
+void menuEnter(void);
+void menuLeave(void);
 void menuThreadMain(void);
 void menuShow(void);
