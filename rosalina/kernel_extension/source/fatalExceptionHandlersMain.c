@@ -89,7 +89,7 @@ void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
 
     //Dump code
     u8 *instr = (u8 *)pc + ((cpsr & 0x20) ? 2 : 4) - dumpHeader.codeDumpSize; //Doesn't work well on 32-bit Thumb instructions, but it isn't much of a problem
-    dumpHeader.codeDumpSize = ((u32)instr & (((cpsr & 0x20) != 0) ? 2 : 4)) != 0 ? 0 : safecpy(codeDump, instr, dumpHeader.codeDumpSize);
+    dumpHeader.codeDumpSize = ((u32)instr & (((cpsr & 0x20) != 0) ? 1 : 3)) != 0 ? 0 : safecpy(codeDump, instr, dumpHeader.codeDumpSize);
 
     //Copy register dump and code dump
     final = (u8 *)(finalBuffer + sizeof(ExceptionDumpHeader));

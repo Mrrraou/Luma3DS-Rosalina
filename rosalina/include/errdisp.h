@@ -4,3 +4,5 @@
 #include "MyThread.h"
 
 MyThread *errDispCreateThread(void);
+
+void errDispThreadMain(void);
