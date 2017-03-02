@@ -39,7 +39,6 @@ struct sock_server
 	int clients_per_server;
 
 	// poll stuff
-	Handle sock;
 	struct pollfd poll_fds[MAX_CLIENTS];
 	struct sock_ctx ctxs[MAX_CLIENTS];
 	struct sock_ctx *ctx_ptrs[MAX_CLIENTS];

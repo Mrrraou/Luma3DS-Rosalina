@@ -71,12 +71,14 @@ void server_init(struct sock_server *serv)
 
 void server_bind(struct sock_server *serv, u16 port, void *opt_data)
 {
-    Result res = socSocket(&serv->sock, AF_INET, SOCK_STREAM, 0);
+    Handle server_sock;
+    
+    Result res = socSocket(&server_sock, AF_INET, SOCK_STREAM, 0);
     while(R_FAILED(res))
     {
         svcSleepThread(100000000LL);
 
-        res = socSocket(&serv->sock, AF_INET, SOCK_STREAM, 0);
+        res = socSocket(&server_sock, AF_INET, SOCK_STREAM, 0);
     }
 
     if(R_SUCCEEDED(res))
@@ -86,22 +88,22 @@ void server_bind(struct sock_server *serv, u16 port, void *opt_data)
         saddr.sin_port = (port & 0xff00) >> 8 | (port & 0xff) << 8;
         saddr.sin_addr.s_addr = gethostid();
 
-        res = socBind(serv->sock, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
+        res = socBind(server_sock, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
 
         if(R_SUCCEEDED(res))
         {
-            res = socListen(serv->sock, 2);
+            res = socListen(server_sock, 2);
             if(R_SUCCEEDED(res))
             {
                 int idx = serv->nfds;
                 serv->nfds++;
-                serv->poll_fds[idx].fd = serv->sock;
+                serv->poll_fds[idx].fd = server_sock;
                 serv->poll_fds[idx].events = POLLIN | POLLHUP;
 
                 struct sock_ctx *new_ctx = server_alloc_ctx(serv);
                 new_ctx->type = SOCK_SERVER;
                 new_ctx->data = opt_data;
-                new_ctx->sock = serv->sock;
+                new_ctx->sock = server_sock;
                 new_ctx->n = 0;
                 new_ctx->i = idx;
                 serv->ctx_ptrs[idx] = new_ctx;
@@ -147,7 +149,7 @@ void server_run(struct sock_server *serv)
                 if(curr_ctx->type == SOCK_SERVER) // Listening socket?
                 {
                     Handle client_sock = 0;
-                    res = socAccept(serv->sock, &client_sock, NULL, 0);
+                    res = socAccept(fds[i].fd, &client_sock, NULL, 0);
                     
                     if(curr_ctx->n == serv->clients_per_server || serv->nfds == MAX_CLIENTS)
                     {
