@@ -4,6 +4,7 @@
 #include "minisoc.h"
 #include "gdb_ctx.h"
 #include "sock_util.h"
+#include "macros.h"
 #include <sys/socket.h>
 
 Menu menu_debugger = {
@@ -67,6 +68,8 @@ void Debugger_Enable(void)
         }
         else
         {
+            server_init(&gdb_server);
+            gdb_server.running = true;
             debuggerCreateSocketThread();
             debuggerCreateDebugThread();
             draw_string("Debugger thread started successfully.", 10, 10, COLOR_TITLE);
@@ -96,27 +99,71 @@ void Debugger_Disable(void)
 
 void debuggerSocketThreadMain(void)
 {
-    server_init(&gdb_server);
-
     gdb_server.userdata = gdb_client_ctxs;
     gdb_server.host = 0;
     
     gdb_server.accept_cb = gdb_accept_client;
     gdb_server.data_cb = gdb_do_packet;
-    //gdb_server.close_cb = gdb_close;
+    gdb_server.close_cb = gdb_close_client;
 
     gdb_server.alloc = gdb_get_client;
     gdb_server.free = gdb_release_client;
 
     gdb_server.clients_per_server = 1;
-    gdb_server.running = true;
 
     debugger_attach(&gdb_server, 0x26);
     server_run(&gdb_server);
 }
 
+bool debugger_handle_update_needed = true;
+
 void debuggerDebugThreadMain(void)
 {
+    Handle handles[MAX_DEBUG];
+    struct gdb_server_ctx *mapping[MAX_DEBUG];
+
+    int n = 0;
+    Result r = 0;
+
+    while(!terminationRequest && gdb_server.running)
+    {
+        if(debugger_handle_update_needed)
+        {
+            n = 0;
+
+            for(int i = 0; i < MAX_DEBUG; i++)
+            {
+                if(gdb_server_ctxs[i].flags & GDB_FLAG_USED)
+                {
+                    if(gdb_server_ctxs[i].debug != 0 && gdb_server_ctxs[i].client != NULL)
+                    {
+                        mapping[n] = &gdb_server_ctxs[i];
+                        handles[n++] = gdb_server_ctxs[i].debug;
+                    }
+                }
+            }
+            debugger_handle_update_needed = false;
+        }
+
+        if(n == 0)
+        {
+            svcSleepThread(50 * 1000 * 1000);
+            continue;
+        }
+
+        s32 idx = -1;
+        r = svcWaitSynchronizationN(&idx, handles, n, false, 50 * 1000 * 1000); // 50ms
+        if(r != 0x09401BFE) // Timeout error code.
+        {
+            struct gdb_server_ctx *serv_ctx = mapping[idx];
+            struct sock_ctx *client_ctx = serv_ctx->client;
+            struct gdb_client_ctx *client_gdb_ctx = serv_ctx->client_gdb_ctx;
+
+            RecursiveLock_Lock(&client_gdb_ctx->sock_lock);
+                gdb_handle_debug_events(handles[idx], client_ctx);
+            RecursiveLock_Unlock(&client_gdb_ctx->sock_lock);
+        }
+    }
 }
 
 Result debugger_attach(struct sock_server *serv, u32 pid)
@@ -139,4 +186,10 @@ Result debugger_attach(struct sock_server *serv, u32 pid)
     }
 
     return r;
+}
+
+// TODO: stub
+Result debugger_detach(struct sock_server *serv UNUSED, u32 pid UNUSED)
+{
+    return 0;
 }

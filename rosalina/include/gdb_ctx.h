@@ -1,4 +1,7 @@
 #pragma once
+#include <3ds/types.h>
+#include <3ds/svc.h>
+#include <3ds/synchronization.h>
 #include "sock_util.h"
 
 #define MAX_DEBUG 3
@@ -44,14 +47,18 @@ struct gdb_client_ctx
 	enum gdb_flags flags;
 	enum gdb_state state;
 	struct gdb_server_ctx *proc;
+	RecursiveLock sock_lock;
 };
 
 Result debugger_attach(struct sock_server *serv, u32 pid);
 
 int gdb_accept_client(struct sock_ctx *client_ctx);
+int gdb_close_client(struct sock_ctx *client_ctx);
+
 void* gdb_get_client(struct sock_server *serv, struct sock_ctx *client_ctx);
 void gdb_release_client(struct sock_server *serv, void *c);
 int gdb_do_packet(struct sock_ctx *ctx);
+int gdb_handle_debug_events(Handle debug, struct sock_ctx *ctx);
 
 int gdb_send_packet(Handle socket, const char *pkt_data, size_t len);
 int gdb_send_packet_hex(Handle socket, const char *pkt_data, size_t len);

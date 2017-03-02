@@ -3,6 +3,7 @@
 #include "gdb_ctx.h"
 #include "memory.h"
 #include "macros.h"
+#include "menus/debugger.h"
 
 char gdb_buffer[GDB_BUF_LEN];
 
@@ -60,6 +61,19 @@ int gdb_accept_client(struct sock_ctx *client_ctx)
 	c_ctx->proc = s_ctx;
 	s_ctx->client = client_ctx;
 	s_ctx->client_gdb_ctx = c_ctx;
+
+	RecursiveLock_Init(&c_ctx->sock_lock);
+	debugger_handle_update_needed = true;
+
+	return 0;
+}
+
+int gdb_close_client(struct sock_ctx *client_ctx)
+{
+	struct gdb_server_ctx *s_ctx = (struct gdb_server_ctx *)client_ctx->serv->data;
+	s_ctx->client = NULL;
+	s_ctx->client_gdb_ctx = NULL;
+
 	return 0;
 }
 
@@ -89,8 +103,11 @@ void gdb_release_client(struct sock_server *serv UNUSED, void *c)
 
 int gdb_do_packet(struct sock_ctx *c)
 {
+	int ret = -1;
 	Handle socket = c->sock;
 	struct gdb_client_ctx *ctx = (struct gdb_client_ctx *)c->data;
+
+	RecursiveLock_Lock(&ctx->sock_lock);
 
 	switch(ctx->state)
 	{
@@ -101,26 +118,29 @@ int gdb_do_packet(struct sock_ctx *c)
 			int r = soc_recv(socket, gdb_buffer, 1, 0);
 			if(r != 1)
 			{
-				return -1;
+				ret = -1;
+				goto unlock;
 			}
 			else
 			{
 				if(gdb_buffer[0] != '+')
 				{
-					return -1;
+					ret = -1;
+					goto unlock;
 				}
 				else
 				{
 					if(ctx->state == GDB_STATE_NOACK_SENT)
 					{
 						ctx->state = GDB_STATE_NOACK;
-						return 0;
+						ret = 0;
+						goto unlock;
 					}
 				}
 			}
 
 			r = soc_send(socket, "+", 1, 0); // Yes. :(
-			if(r == -1) { return -1; }
+			if(r == -1) { ret = -1; goto unlock; }
 		}
 
 		// lack of break is intentional
@@ -132,7 +152,7 @@ int gdb_do_packet(struct sock_ctx *c)
 			int r = soc_recv_until(socket, gdb_buffer, GDB_BUF_LEN, "#", 1);
 			soc_recv(socket, cksum, 2, 0);
 
-			if(r == 0 || r == -1) { return -1; } // Bubbling -1 up to server will close the connection.
+			if(r == 0 || r == -1) { ret = -1; goto unlock; } // Bubbling -1 up to server will close the connection.
 			else
 			{
 				gdb_buffer[r-1] = 0; // replace trailing '#' with 0
@@ -143,20 +163,26 @@ int gdb_do_packet(struct sock_ctx *c)
 					int res = gdb_command_handlers[cmd](socket, ctx, gdb_buffer + 1);
 					if(res == -1)
 					{
-						return gdb_reply_empty(socket); // Handler failed!
+						ret = gdb_reply_empty(socket); // Handler failed!
+						goto unlock;
 					}
-					return res;
+					ret = res;
+					goto unlock;
 				}
 				else
 				{
-					return gdb_reply_empty(socket); // We don't have a handler!
+					ret = gdb_reply_empty(socket); // We don't have a handler!
+					goto unlock;
 				}
 			}
 		}
 		break;
 	}
 
-	return -1;
+	unlock:
+	RecursiveLock_Unlock(&ctx->sock_lock);
+
+	return ret;
 }
 
 int gdb_reply_empty(Handle sock)
