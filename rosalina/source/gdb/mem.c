@@ -2,7 +2,6 @@
 #include "gdb_ctx.h"
 #include "memory.h"
 #include "macros.h"
-#include "draw.h"
 #include "minisoc.h"
 
 // TODO: stub
@@ -23,10 +22,6 @@ int gdb_handle_read_mem(Handle sock, struct gdb_client_ctx *c, char *buffer UNUS
     {
         return gdb_send_packet(sock, "E01", 3);
     }
-
-    draw_string(addr_start, 10, 10, COLOR_TITLE);
-    draw_string(len_start, 10, 20, COLOR_TITLE);
-    draw_flushFramebuffer();
 
     char buff[256];
     Result r;
