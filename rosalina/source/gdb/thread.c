@@ -32,7 +32,7 @@ int gdb_handle_set_thread_id(Handle sock, struct gdb_client_ctx *c, char *buffer
 
     u32 id = atoi_(buffer+2, 16);
     c->curr_thread_id = id;
-    return gdb_send_packet(sock, "OK", 2);    
+    return gdb_send_packet(sock, "OK", 2);
 }
 
 // TODO: stub
@@ -57,8 +57,7 @@ int gdb_f_thread_info(Handle sock, struct gdb_client_ctx *c, char *buffer UNUSED
         hexItoa(serv->thread_ids[i], str_buff + i * 4, 3, false);
         str_buff[i*4 + 3] = ',';
     }
-    
-    //str_buff[n_threads * 9 - 1] = 0;
+
     return gdb_send_packet_prefix(sock, "m", 1, str_buff, n_threads * 4 - 1);
 }
 

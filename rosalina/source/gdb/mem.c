@@ -46,10 +46,6 @@ int gdb_handle_read_mem(Handle sock, struct gdb_client_ctx *c, char *buffer UNUS
         r = svcReadProcessMemory(buff, serv->debug, addr, read_len);
         if(R_FAILED(r))
         {
-            char s[] = "00000000 err";
-            hexItoa(r, s, 8, false);
-            draw_string(s, 10, 30, COLOR_TITLE);
-            draw_flushFramebuffer();
             memset_(gdb_buffer, '0', read_len*2);
             soc_send(sock, gdb_buffer, read_len*2, 0);
             break;
