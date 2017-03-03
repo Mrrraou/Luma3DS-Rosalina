@@ -5,7 +5,7 @@
 #include "macros.h"
 #include "menus/debugger.h"
 
-char gdb_buffer[GDB_BUF_LEN];
+char gdb_buffer[GDB_BUF_LEN + 4];
 
 gdb_command_handler gdb_command_handlers[GDB_NUM_COMMANDS] = 
 {
@@ -15,7 +15,8 @@ gdb_command_handler gdb_command_handlers[GDB_NUM_COMMANDS] =
 	gdb_handle_long, // GDB_COMMAND_LONG
 	gdb_handle_stopped, // GDB_COMMAND_STOP_REASON
 	gdb_handle_read_regs, // GDB_COMMAND_READ_REGS
-	gdb_handle_read_mem // GDB_COMMAND_READ_MEM
+	gdb_handle_read_mem, // GDB_COMMAND_READ_MEM
+    gdb_handle_set_thread_id // GDB_COMMAND_SET_THREAD_ID
 };
 
 enum gdb_command gdb_get_cmd(char c)
@@ -46,6 +47,9 @@ enum gdb_command gdb_get_cmd(char c)
 			return GDB_COMMAND_READ_MEM;
 		break;
 
+        case 'H':
+            return GDB_COMMAND_SET_THREAD_ID;
+        break;
 
 		default:
 			return GDB_COMMAND_UNK;

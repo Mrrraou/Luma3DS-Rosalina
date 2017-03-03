@@ -111,7 +111,7 @@ void debuggerSocketThreadMain(void)
 
     gdb_server.clients_per_server = 1;
 
-    debugger_attach(&gdb_server, 0x26);
+    debugger_attach(&gdb_server, 0x10);
     server_run(&gdb_server);
 }
 
@@ -159,9 +159,12 @@ void debuggerDebugThreadMain(void)
             struct sock_ctx *client_ctx = serv_ctx->client;
             struct gdb_client_ctx *client_gdb_ctx = serv_ctx->client_gdb_ctx;
 
-            RecursiveLock_Lock(&client_gdb_ctx->sock_lock);
+            if(client_gdb_ctx)
+            {
+                RecursiveLock_Lock(&client_gdb_ctx->sock_lock);
                 gdb_handle_debug_events(handles[idx], client_ctx);
-            RecursiveLock_Unlock(&client_gdb_ctx->sock_lock);
+                RecursiveLock_Unlock(&client_gdb_ctx->sock_lock);
+            }
         }
     }
 }
@@ -179,10 +182,18 @@ Result debugger_attach(struct sock_server *serv, u32 pid)
     }
 
     if(c == NULL) return -1; // no slot?
-    Result r = svcDebugActiveProcess(&c->debug, pid);
+    Result r = svcOpenProcess(&c->proc, pid);
     if(R_SUCCEEDED(r))
     {
-        server_bind(serv, 4000 + pid, c);
+        r = svcDebugActiveProcess(&c->debug, pid);
+        if(R_SUCCEEDED(r))
+        {
+            server_bind(serv, 4000 + pid, c);
+        }
+        else
+        {
+            svcCloseHandle(c->proc);
+        }
     }
 
     return r;

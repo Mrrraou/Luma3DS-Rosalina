@@ -1,3 +1,4 @@
+#include <3ds/result.h>
 #include "gdb_ctx.h"
 #include "minisoc.h"
 #include "memory.h"
@@ -23,7 +24,9 @@ struct gdb_query_handler gdb_query_handlers[] =
 	{"StartNoAckMode", gdb_start_noack, GDB_DIR_WRITE},
 	{"Attached", gdb_handle_attached, GDB_DIR_READ},
 	{"TStatus", gdb_tracepoint_status, GDB_DIR_READ},
-	{"fThreadInfo", gdb_thread_info, GDB_DIR_READ},
+	{"fThreadInfo", gdb_f_thread_info, GDB_DIR_READ},
+	{"sThreadInfo", gdb_s_thread_info, GDB_DIR_READ},
+	{"C", gdb_get_thread_id, GDB_DIR_READ},
 	{NULL, NULL, 0}
 };
 
@@ -98,10 +101,4 @@ int gdb_handle_attached(Handle sock, struct gdb_client_ctx *c UNUSED, char *buff
 int gdb_tracepoint_status(Handle sock, struct gdb_client_ctx *c UNUSED, char *buffer UNUSED)
 {
 	return gdb_send_packet(sock, "T0", 2);
-}
-
-// TODO: stub
-int gdb_thread_info(Handle sock, struct gdb_client_ctx *c UNUSED, char *buffer UNUSED)
-{
-	return gdb_send_packet(sock, "l", 1);
 }
