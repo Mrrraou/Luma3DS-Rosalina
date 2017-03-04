@@ -4,4 +4,5 @@
 #include "kernel.h"
 #include "svc.h"
 
-Result ConnectToPortHook(u32 dummy, const char *name);
+Result ConnectToPortHookWrapper(u32 dummy, const char *name);
+Result ConnectToPortHook(Handle *out, const char *name);

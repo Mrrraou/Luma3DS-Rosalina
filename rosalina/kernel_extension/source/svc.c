@@ -25,13 +25,13 @@ void *svcHook(u8 *pageEnd)
     switch(svcId)
     {
         case 0x2A:
-            return GetSystemInfoHook;
+            return GetSystemInfoHookWrapper;
         case 0x2B:
-            return GetProcessInfoHook;
+            return GetProcessInfoHookWrapper;
         case 0x2C:
-            return GetThreadInfoHook;
+            return GetThreadInfoHookWrapper;
         case 0x2D:
-            return ConnectToPortHook;
+            return ConnectToPortHookWrapper;
         case 0x2E:
             return GetCFWInfo; // DEPRECATED
         case 0x32:

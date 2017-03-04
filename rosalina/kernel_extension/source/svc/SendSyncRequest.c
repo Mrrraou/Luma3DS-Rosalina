@@ -77,7 +77,7 @@ Result SendSyncRequestHook(Handle handle)
     }
 
     Result res = skip ? 0 : ((Result (*)(Handle))officialSVCs[0x32])(handle);
-    if(traced != NULL)
+    if(res == 0 && traced != NULL)
     {
         session = KProcessHandleTable__ToKAutoObject(handleTable, (Handle)cmdbuf[3]);
         if(session != NULL)
