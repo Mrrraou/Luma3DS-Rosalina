@@ -103,19 +103,19 @@ static void findUsefulSymbols(void)
             switch(n_cmp_0)
             {
                 case 1:
-                    usrToKernel8 = (bool (*)(void *, const void *, u32))off;
+                    usrToKernelMemcpy8 = (bool (*)(void *, const void *, u32))off;
                     break;
                 case 2:
-                    usrToKernel32 = (bool (*)(u32 *, const u32 *, u32))off;
+                    usrToKernelMemcpy32 = (bool (*)(u32 *, const u32 *, u32))off;
                     break;
                 case 3:
                     usrToKernelStrncpy = (bool (*)(char *, const char *, u32))off;
                     break;
                 case 4:
-                    kernelToUsr8 = (bool (*)(void *, const void *, u32))off;
+                    kernelToUsrMemcpy8 = (bool (*)(void *, const void *, u32))off;
                     break;
                 case 5:
-                    kernelToUsr32 = (bool (*)(u32 *, const u32 *, u32))off;
+                    kernelToUsrMemcpy32 = (bool (*)(u32 *, const u32 *, u32))off;
                     break;
                 case 6:
                     kernelToUsrStrncpy = (bool (*)(char *, const char *, u32))off;
@@ -228,5 +228,5 @@ void main(volatile struct Parameters *p)
     enableDebugFeatures();
     doOtherPatches();
 
-    *trampo_ = (u32)ConnectToPortHook;
+    *trampo_ = (u32)ConnectToPortHookWrapper;
 }

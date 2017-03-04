@@ -20,11 +20,11 @@ void (*KTimerAndWDTManager__Sanitize)(KTimerAndWDTManager *this);
 void (*flushDataCacheRange)(void *addr, u32 len);
 void (*flushInstructionCacheRange)(void *addr, u32 len);
 
-bool (*usrToKernel8)(void *dst, const void *src, u32 len);
-bool (*usrToKernel32)(u32 *dst, const u32 *src, u32 len);
+bool (*usrToKernelMemcpy8)(void *dst, const void *src, u32 len);
+bool (*usrToKernelMemcpy32)(u32 *dst, const u32 *src, u32 len);
 bool (*usrToKernelStrncpy)(char *dst, const char *src, u32 len);
-bool (*kernelToUsr8)(void *dst, const void *src, u32 len);
-bool (*kernelToUsr32)(u32 *dst, const u32 *src, u32 len);
+bool (*kernelToUsrMemcpy8)(void *dst, const void *src, u32 len);
+bool (*kernelToUsrMemcpy32)(u32 *dst, const u32 *src, u32 len);
 bool (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 
 Result (*CustomBackdoor)(void *function, ...);

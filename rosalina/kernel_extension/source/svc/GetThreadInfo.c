@@ -1,9 +1,8 @@
 #include "svc/GetThreadInfo.h"
 #include "memory.h"
 
-Result GetThreadInfoHook(u32 dummy UNUSED, Handle threadHandle, u32 type)
+Result GetThreadInfoHook(s64 *out, Handle threadHandle, u32 type)
 {
-    u64 out = 0; // should be s64 but who cares
     Result res = 0;
 
     if(type == 0x10000) // Get TLS
@@ -12,18 +11,16 @@ Result GetThreadInfoHook(u32 dummy UNUSED, Handle threadHandle, u32 type)
         KThread *thread = KProcessHandleTable__ToKThread(handleTable, threadHandle);
 
         if(thread == NULL)
-            res = 0xD8E007F7; // invalid handle
+            return 0xD8E007F7; // invalid handle
 
-        out = (u64)(u32)thread->threadLocalStorage;
-
+        *out = (s64)(u64)(u32)thread->threadLocalStorage;
 
         KAutoObject *obj = (KAutoObject *)thread;
-        if(thread != NULL)
-            obj->vtable->DecrementReferenceCount(obj);
+        obj->vtable->DecrementReferenceCount(obj);
     }
 
     else
-        res = GetThreadInfo((s64 *)&out, threadHandle, type);
+        res = GetThreadInfo(out, threadHandle, type);
 
-    return setR0toR3(res, (u32)out, (u32)(out >> 32));
+    return res;
 }

@@ -112,13 +112,6 @@ safecpy:
 
 _safecpy_end:
 
-.thumb
-
-.global setR0toR3
-.type   setR0toR3, %function
-setR0toR3:
-    bx lr
-
 .section .rodata
 
 .global safecpy_sz
