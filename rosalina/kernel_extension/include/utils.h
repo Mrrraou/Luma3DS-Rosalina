@@ -31,8 +31,7 @@ u32 safecpy(void *dst, const void *src, u32 len);
 void KObjectMutex__Acquire(KObjectMutex *this);
 void KObjectMutex__Release(KObjectMutex *this);
 
-
 void atomicStore32(s32 *dst, s32 value);
 
 void flushEntireDataCache(void);
-void flushEntireInstructionCache(void);
+void invalidateEntireInstructionCache(void);

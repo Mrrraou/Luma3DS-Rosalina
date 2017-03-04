@@ -9,12 +9,6 @@ svc0x2F:
     svc 0x2F
     bx lr
 
-.global svcCustomBackdoor
-.type svcCustomBackdoor, %function
-svcCustomBackdoor:
-    svc 0x80
-    bx lr
-
 .global convertVAToPA
 .type   convertVAToPA, %function
 convertVAToPA:

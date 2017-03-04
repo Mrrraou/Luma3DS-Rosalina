@@ -9,6 +9,7 @@
 #include "svc/RestrictGpuDma.h"
 #include "svc/Backdoor.h"
 #include "svc/KernelSetState.h"
+#include "svc/MapProcessMemoryWithSource.h"
 
 void *officialSVCs[0x7E] = {NULL};
 
@@ -54,9 +55,11 @@ void *svcHook(u8 *pageEnd)
         case 0x83:
             return flushEntireDataCache;
         case 0x84:
-            return flushInstructionCacheRange;
+            return invalidateInstructionCacheRange;
         case 0x85:
-            return flushEntireInstructionCache;
+            return invalidateEntireInstructionCache;
+        case 0x86:
+            return MapProcessMemoryWithSource;
 
         default:
             return (svcId <= 0x7D) ? officialSVCs[svcId] : NULL;

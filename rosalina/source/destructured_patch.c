@@ -30,6 +30,7 @@ u8 *DestructuredPatch_FindAndApply(DestructuredPatch *patch, u8 *code, u32 codeS
                 else
                     *(u32 *)(code + patch->patch[i].offset) = patch->patch[i].opcode;
             }
+            patch->applied = true;
             return code;
         }
 

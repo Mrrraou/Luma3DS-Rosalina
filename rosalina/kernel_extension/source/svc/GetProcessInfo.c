@@ -30,6 +30,8 @@ Result GetProcessInfoHook(s64 *out, Handle processHandle, u32 type)
             case 0x10004:
                 *out = codeSetOfProcess(process)->nbRwPages << 12;
                 break;
+            case 0x10005:
+                *out = (s64)(u64)(u32)codeSetOfProcess(process)->textSection.section.loadAddress;
             default:
                 res = 0xD8E007ED; // invalid enum value
                 break;
