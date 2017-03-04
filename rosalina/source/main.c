@@ -7,21 +7,27 @@
 #include "utils.h"
 #include "MyThread.h"
 #include "kernel_extension.h"
+#include "menus/process_patches.h"
 
 // this is called before main
 void __appInit()
 {
-  srvSysInit();
-  fsregInit();
-  fsSysInit();
+    srvSysInit();
+    fsregInit();
+    fsSysInit();
+
+    s64 config = 0;
+    svcGetSystemInfo(&config, 0x10000, 2);
+    if(((config >> 24) & 1) != 0) // "patch games" option
+        ProcessPatches_PatchFS_NoDisplay();
 }
 
 // this is called after main exits
 void __appExit()
 {
-  fsExit();
-  fsregExit();
-  srvSysExit();
+    fsExit();
+    fsregExit();
+    srvSysExit();
 }
 
 
@@ -30,17 +36,17 @@ Result __sync_fini(void);
 
 void __ctru_exit()
 {
-  __appExit();
-  __sync_fini();
-  svcExitProcess();
+    __appExit();
+    __sync_fini();
+    svcExitProcess();
 }
 
 void initSystem()
 {
     installKernelExtension();
 
-  __sync_init();
-  __appInit();
+    __sync_init();
+    __appInit();
 }
 
 bool terminationRequest = false;

@@ -4,6 +4,7 @@
 #include "destructured_patch.h"
 #include "draw.h"
 
+Result svcMapProcessMemoryWithSource(Handle processHandle, u32 dst, u32 src, u32 size);
 
 Menu menu_process_patches = {
     "Process patches menu",
@@ -15,6 +16,7 @@ Menu menu_process_patches = {
 };
 
 static DestructuredPatch smServiceCheckPatch = {
+    .applied = false,
     .matchSize = 0x18,
     .matchItems = 4,
     .match = {
@@ -34,6 +36,7 @@ static DestructuredPatch smServiceCheckPatch = {
 
 
 static DestructuredPatch fsArchiveCheckPatch = {
+    .applied = false,
     .matchSize = 4,
     .matchItems = 2,
     .match = {
@@ -47,11 +50,14 @@ static DestructuredPatch fsArchiveCheckPatch = {
     }
 };
 
-static u8 *PatchProcessByName(const char *name, DestructuredPatch *patch, u32 addr, bool isThumb)
+static u8 *PatchProcessByName(const char *name, DestructuredPatch *patch, bool isThumb)
 {
+    if(patch->applied)
+        return NULL;
+
     u32 pidList[0x40];
     s32 processCount;
-    s64 textTotalRoundedSize = 0;
+    s64 textTotalRoundedSize = 0, startAddress = 0;
     svcGetProcessList(&processCount, pidList, 0x40);
     Handle dstProcessHandle = 0;
 
@@ -77,28 +83,29 @@ static u8 *PatchProcessByName(const char *name, DestructuredPatch *patch, u32 ad
     Handle processHandle = dstProcessHandle;
 
     svcGetProcessInfo(&textTotalRoundedSize, processHandle, 0x10002); // only patch .text
-    if(R_FAILED(res = svcMapProcessMemory(processHandle, addr, addr + textTotalRoundedSize)))
-    return NULL;
+    svcGetProcessInfo(&startAddress, processHandle, 0x10005);
+    if(R_FAILED(res = svcMapProcessMemoryWithSource(processHandle, 0x00100000, (u32) startAddress, textTotalRoundedSize)))
+        return NULL;
 
-    u8 *ret = DestructuredPatch_FindAndApply(patch, (u8*)addr, textTotalRoundedSize, isThumb);
+    u8 *ret = DestructuredPatch_FindAndApply(patch, (u8 *)0x00100000, textTotalRoundedSize, isThumb);
 
-    svcUnmapProcessMemory(processHandle, addr, addr + textTotalRoundedSize);
+    svcUnmapProcessMemory(processHandle, 0x00100000, textTotalRoundedSize);
     return ret;
 }
 
-void ProcessPatches_PatchProcess(const char *processName, DestructuredPatch *patch, bool isThumb, const char *success, const char *failure)
+static void ProcessPatches_PatchProcess(const char *processName, DestructuredPatch *patch, bool isThumb, const char *success, const char *failure)
 {
     draw_lock();
     draw_clearFramebuffer();
     draw_flushFramebuffer();
     draw_unlock();
 
-    u8 *res = PatchProcessByName(processName, patch, 0x100000, isThumb);
+    u8 *res = PatchProcessByName(processName, patch, isThumb);
 
     do
     {
         draw_lock();
-        draw_string(res != NULL ? success : failure, 10, 10, COLOR_WHITE);
+        draw_string(res != NULL ? success : (patch->applied ? "Patch already applied." : failure), 10, 10, COLOR_WHITE);
         draw_flushFramebuffer();
         draw_unlock();
     }
@@ -113,4 +120,9 @@ void ProcessPatches_PatchSM(void)
 void ProcessPatches_PatchFS(void)
 {
     ProcessPatches_PatchProcess("fs", &fsArchiveCheckPatch, true, "Successfully patched FS for the archive checks.", "Couldn't patch FS.");
+}
+
+void ProcessPatches_PatchFS_NoDisplay(void)
+{
+    PatchProcessByName("fs", &fsArchiveCheckPatch, true);
 }

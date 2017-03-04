@@ -9,6 +9,7 @@ typedef struct DestructuredPatchItem {
 } DestructuredPatchItem;
 
 typedef struct DestructuredPatch {
+	bool applied;
 	u32 matchSize;
 	u32 matchItems;
 	DestructuredPatchItem match[0x10];

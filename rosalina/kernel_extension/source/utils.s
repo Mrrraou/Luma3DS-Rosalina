@@ -51,11 +51,11 @@ flushEntireDataCache:
     ldr r12, [r12]
     bx r12
 
-.global flushEntireInstructionCache
-.type   flushEntireInstructionCache, %function
-flushEntireInstructionCache:
+.global invalidateEntireInstructionCache
+.type   invalidateEntireInstructionCache, %function
+invalidateEntireInstructionCache:
     mvn r1, #0              @ this is translated to a full cache flush
-    ldr r12, =flushInstructionCacheRange
+    ldr r12, =invalidateInstructionCacheRange
     ldr r12, [r12]
     bx r12
 

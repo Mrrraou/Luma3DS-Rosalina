@@ -1021,6 +1021,13 @@ INSTANCIATE_KPROCESS(N3DS);
 INSTANCIATE_KPROCESS(O3DS8x);
 INSTANCIATE_KPROCESS(O3DSPre8x);
 
+typedef union KProcessHwInfo
+{
+    KProcessHwInfoN3DS N3DS;
+    KProcessHwInfoO3DS8x O3DS8x;
+    KProcessHwInfoO3DSPre8x O3DSPre8x;
+} KProcessHwInfo;
+
 typedef union KProcess
 {
     KProcessN3DS N3DS;
@@ -1105,12 +1112,22 @@ offsetof(KProcessO3DSPre8x, field)))
 ((kernelVersion >= SYSTEM_VERSION(2, 44, 6)) ? &(obj)->O3DS8x.field :\
 &(obj)->O3DSPre8x.field ))
 
+#define KPROCESS_GET_PTR_TYPE(type, obj, field) (isN3DS ? (type *)(&(obj)->N3DS.field) :\
+((kernelVersion >= SYSTEM_VERSION(2, 44, 6)) ? (type *)(&(obj)->O3DS8x.field) :\
+(type *)(&(obj)->O3DSPre8x.field) ))
+
 #define KPROCESS_GET_RVALUE(obj, field) *(KPROCESS_GET_PTR(obj, field))
+
+#define KPROCESS_GET_RVALUE_TYPE(type, obj, field) *(KPROCESS_GET_PTR(type, obj, field))
+
+static inline KProcessHwInfo *hwInfoOfProcess(KProcess *process)
+{
+    return KPROCESS_GET_PTR_TYPE(KProcessHwInfo, process, hwInfo);
+}
 
 static inline KCodeSet *codeSetOfProcess(KProcess *process)
 {
-    KCodeSet **codeSetPtr = KPROCESS_GET_PTR(process, codeSet);
-    return *codeSetPtr;
+    return KPROCESS_GET_RVALUE(process, codeSet);
 }
 
 static inline KProcessHandleTable *handleTableOfProcess(KProcess *process)
@@ -1120,6 +1137,5 @@ static inline KProcessHandleTable *handleTableOfProcess(KProcess *process)
 
 static inline KDebug *debugOfProcess(KProcess *process)
 {
-    KDebug **debugPtr = KPROCESS_GET_PTR(process, debug);
-    return *debugPtr;
+    return KPROCESS_GET_RVALUE(process, debug);
 }

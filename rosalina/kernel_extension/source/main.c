@@ -85,6 +85,9 @@ static void findUsefulSymbols(void)
     for(off = (u32 *)officialSVCs[0x54]; *off != 0xE8BD8008; off++);
     flushDataCacheRange = (void (*)(void *, u32))(*((u32 *)off[1]) + 3);
 
+    for(off = (u32 *)officialSVCs[0x71]; *off != 0xE2101102; off++);
+    KProcessHwInfo__MapProcessMemory = (Result (*)(KProcessHwInfo *, KProcessHwInfo *, void *, void *, u32))decodeARMBranch(off - 1);
+
     for(off = (u32 *)officialSVCs[0x7C]; *off != 0x03530000; off++);
     KObjectMutex__WaitAndAcquire = (void (*)(KObjectMutex *))decodeARMBranch(++off);
     for(; *off != 0xE320F000; off++);
@@ -156,7 +159,7 @@ static void findUsefulSymbols(void)
         {
             u32 *off2;
             for(off2 = off; *off2 != 0xE92D40F8; off2--);
-            flushInstructionCacheRange = (void (*)(void *, u32))off2;
+            invalidateInstructionCacheRange = (void (*)(void *, u32))off2;
         }
 
         if(kernelVersion >= SYSTEM_VERSION(2, 53, 0) && off[0] == 0xE92D41F0 && off[1] == 0xE1A06000

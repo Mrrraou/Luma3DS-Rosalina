@@ -8,7 +8,7 @@ extern KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *
 extern void (*KSynchronizationObject__Signal)(KSynchronizationObject *this, bool isPulse);
 extern Result (*WaitSynchronization1)(void *this_unused, KThread *thread, KSynchronizationObject *syncObject, s64 timeout);
 extern Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
-
+extern Result (*KProcessHwInfo__MapProcessMemory)(KProcessHwInfo *this, KProcessHwInfo *other, void *dst, void *src, u32 nbPages);
 extern void (*KObjectMutex__WaitAndAcquire)(KObjectMutex *this);
 extern void (*KObjectMutex__ErrorOccured)(void);
 
@@ -21,7 +21,7 @@ extern Result (*DebugActiveProcess)(Handle *out, u32 processId);
 extern void (*KTimerAndWDTManager__Sanitize)(KTimerAndWDTManager *this);
 
 extern void (*flushDataCacheRange)(void *addr, u32 len);
-extern void (*flushInstructionCacheRange)(void *addr, u32 len);
+extern void (*invalidateInstructionCacheRange)(void *addr, u32 len);
 
 extern bool (*usrToKernelMemcpy8)(void *dst, const void *src, u32 len);
 extern bool (*usrToKernelMemcpy32)(u32 *dst, const u32 *src, u32 len);
