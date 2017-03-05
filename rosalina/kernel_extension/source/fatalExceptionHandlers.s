@@ -39,6 +39,7 @@
     \name\()Handler:
         ldr sp, =exceptionStackTop
         ldr sp, [sp]
+        sub sp, #0x100
 
         push {r0-r12, lr}
         mrs r0, spsr
@@ -151,6 +152,12 @@ _commonHandler:
         bne _L2C_sync
 
     _no_L2C:
+
+    cps #0x1F
+    ldr sp, =exceptionStackTop
+    ldr sp, [sp]
+    sub sp, #0x100
+
     mov r0, #0
     mcr p15, 0, r0, c7, c10, 5   @ Drain Memory Barrier
     ldr r0, =_regs
