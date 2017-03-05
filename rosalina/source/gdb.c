@@ -67,7 +67,7 @@ int gdb_accept_client(struct sock_ctx *client_ctx)
 	s_ctx->client_gdb_ctx = c_ctx;
 
 	RecursiveLock_Init(&c_ctx->sock_lock);
-	debugger_handle_update_needed = true;
+	svcSignalEvent(s_ctx->clientAcceptedEvent);
 
 	return 0;
 }
@@ -159,7 +159,7 @@ int gdb_do_packet(struct sock_ctx *c)
 				gdb_handle_break(socket, ctx, NULL);
 				goto unlock;
 			}
-			
+
 			soc_recv(socket, cksum, 2, 0);
 
 			if(r == 0 || r == -1) { ret = -1; goto unlock; } // Bubbling -1 up to server will close the connection.

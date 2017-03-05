@@ -46,6 +46,8 @@ struct gdb_server_ctx
 
 	u32 thread_ids[MAX_THREAD];
 	s32 n_threads;
+
+	Handle clientAcceptedEvent;
 };
 
 struct gdb_client_ctx

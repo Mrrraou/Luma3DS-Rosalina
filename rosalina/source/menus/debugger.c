@@ -51,6 +51,9 @@ void Debugger_Enable(void)
     }
     else
     {
+        for(int i = 0; i < MAX_DEBUG; i++)
+            svcCreateEvent(&gdb_server_ctxs[i].clientAcceptedEvent, RESET_STICKY);
+
         svcCreateEvent(&attachEvent, RESET_ONESHOT);
         draw_string("Initialising SOC...", 10, 10, COLOR_WHITE);
 
@@ -119,13 +122,15 @@ void debuggerSocketThreadMain(void)
 
 void debuggerDebugThreadMain(void)
 {
-    Handle handles[MAX_DEBUG];
+    Handle handles[2 + MAX_DEBUG];
     struct gdb_server_ctx *mapping[MAX_DEBUG];
 
     int n = 0;
     Result r = 0;
 
-    handles[0] = attachEvent;
+    handles[0] = terminationRequestEvent;
+    handles[1] = attachEvent;
+
     while(!terminationRequest && gdb_server.running)
     {
         n = 0;
@@ -137,25 +142,29 @@ void debuggerDebugThreadMain(void)
                 if(gdb_server_ctxs[i].debug != 0)
                 {
                     mapping[n] = &gdb_server_ctxs[i];
-                    handles[1 + n++] = gdb_server_ctxs[i].debug;
+                    handles[2 + n++] = gdb_server_ctxs[i].debug;
                 }
             }
         }
 
         s32 idx = -1;
-        r = svcWaitSynchronizationN(&idx, handles, 1 + n, false, -1LL);
-        if(R_FAILED(r) || idx == 0)
+        r = svcWaitSynchronizationN(&idx, handles, 2 + n, false, -1LL);
+        if(R_SUCCEEDED(r) && idx == 0)
+            break;
+        else if(R_FAILED(r) || idx == 1)
             continue;
         else
         {
-            struct gdb_server_ctx *serv_ctx = mapping[idx];
+            struct gdb_server_ctx *serv_ctx = mapping[idx - 2];
+            svcWaitSynchronization(serv_ctx->clientAcceptedEvent, -1LL);
+
             struct sock_ctx *client_ctx = serv_ctx->client;
             struct gdb_client_ctx *client_gdb_ctx = serv_ctx->client_gdb_ctx;
 
             if(client_gdb_ctx)
             {
                 RecursiveLock_Lock(&client_gdb_ctx->sock_lock);
-                gdb_handle_debug_events(handles[idx], client_ctx);
+                gdb_handle_debug_events(handles[idx - 2], client_ctx);
                 RecursiveLock_Unlock(&client_gdb_ctx->sock_lock);
             }
         }
@@ -179,12 +188,13 @@ Result debugger_attach(struct sock_server *serv, u32 pid)
         r = svcDebugActiveProcess(&c->debug, pid);
         if(R_SUCCEEDED(r))
         {
-            c->flags |= GDB_FLAG_USED;
             server_bind(serv, 4000 + pid, c);
+            c->flags |= GDB_FLAG_USED;
             svcSignalEvent(attachEvent);
         }
         else
         {
+            //TODO: server_unbind
             svcCloseHandle(c->proc);
         }
     }

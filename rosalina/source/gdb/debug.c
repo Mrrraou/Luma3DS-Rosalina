@@ -11,7 +11,7 @@ int gdb_handle_debug_events(Handle debug, struct sock_ctx *ctx UNUSED)
 {
 	DebugEventInfo info;
 	Result r;
-	
+
 	while(true)
 	{
 		if((r = svcGetProcessDebugEvent(&info, debug)) != 0)

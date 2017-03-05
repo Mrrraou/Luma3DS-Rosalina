@@ -44,6 +44,7 @@ typedef struct Menu {
 } Menu;
 
 extern bool terminationRequest;
+extern Handle terminationRequestEvent;
 
 u32 waitInput(void);
 

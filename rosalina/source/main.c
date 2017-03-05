@@ -50,6 +50,7 @@ void initSystem()
 }
 
 bool terminationRequest = false;
+Handle terminationRequestEvent;
 
 int main(void)
 {
@@ -61,6 +62,9 @@ int main(void)
     if(R_FAILED(srvEnableNotification(&notificationHandle)))
         svcBreak(USERBREAK_ASSERT);
 
+    if(R_FAILED(svcCreateEvent(&terminationRequestEvent, RESET_STICKY)))
+        svcBreak(USERBREAK_ASSERT);
+
     do
     {
         svcWaitSynchronization(notificationHandle, -1LL);
@@ -70,8 +74,11 @@ int main(void)
           svcBreak(USERBREAK_ASSERT);
 
         if(notifId == 0x100)
-        // Termination request
-          terminationRequest = true;
+        {
+            // Termination request
+            terminationRequest = true;
+            svcSignalEvent(terminationRequestEvent);
+        }
     }
     while(!terminationRequest);
 
