@@ -598,7 +598,7 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size)
             )) goto error;
     }
 
-    else if(progId == 0x0004003000008A02LL && MULTICONFIG(DEVOPTIONS) == 1) //ErrDisp
+    else if(progId == 0x0004003000008A02LL) //ErrDisp
     {
         static const u8 pattern[] = {
             0x00, 0xD0, 0xE5, 0xDB
