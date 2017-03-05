@@ -21,7 +21,6 @@ enum multiOptions
     SPLASH,
     PIN,
     NEWCPU,
-    DEVOPTIONS
 };
 
 enum singleOptions
@@ -33,7 +32,8 @@ enum singleOptions
     PATCHGAMES,
     PATCHVERSTRING,
     SHOWGBABOOT,
-    PATCHACCESS
+    PATCHACCESS,
+    PATCHUNITINFO
 };
 
 void patchCode(u64 progId, u16 progVer, u8 *code, u32 size);
