@@ -39,6 +39,7 @@ MyThread *debuggerCreateDebugThread(void)
     return &debuggerDebugThread;
 }
 
+static Handle attachEvent;
 void Debugger_Enable(void)
 {
     draw_clearFramebuffer();
@@ -49,7 +50,8 @@ void Debugger_Enable(void)
         draw_string("Already enabled!", 10, 10, COLOR_TITLE);
     }
     else
-    {  
+    {
+        svcCreateEvent(&attachEvent, RESET_ONESHOT);
         draw_string("Initialising SOC...", 10, 10, COLOR_WHITE);
 
         s64 amt = 0;
@@ -101,7 +103,7 @@ void debuggerSocketThreadMain(void)
 {
     gdb_server.userdata = gdb_client_ctxs;
     gdb_server.host = 0;
-    
+
     gdb_server.accept_cb = gdb_accept_client;
     gdb_server.data_cb = gdb_do_packet;
     gdb_server.close_cb = gdb_close_client;
@@ -115,8 +117,6 @@ void debuggerSocketThreadMain(void)
     server_run(&gdb_server);
 }
 
-bool debugger_handle_update_needed = true;
-
 void debuggerDebugThreadMain(void)
 {
     Handle handles[MAX_DEBUG];
@@ -125,35 +125,28 @@ void debuggerDebugThreadMain(void)
     int n = 0;
     Result r = 0;
 
+    handles[0] = attachEvent;
     while(!terminationRequest && gdb_server.running)
     {
-        if(debugger_handle_update_needed)
-        {
-            n = 0;
+        n = 0;
 
-            for(int i = 0; i < MAX_DEBUG; i++)
+        for(int i = 0; i < MAX_DEBUG; i++)
+        {
+            if(gdb_server_ctxs[i].flags & GDB_FLAG_USED)
             {
-                if(gdb_server_ctxs[i].flags & GDB_FLAG_USED)
+                if(gdb_server_ctxs[i].debug != 0)
                 {
-                    if(gdb_server_ctxs[i].debug != 0 && gdb_server_ctxs[i].client != NULL)
-                    {
-                        mapping[n] = &gdb_server_ctxs[i];
-                        handles[n++] = gdb_server_ctxs[i].debug;
-                    }
+                    mapping[n] = &gdb_server_ctxs[i];
+                    handles[1 + n++] = gdb_server_ctxs[i].debug;
                 }
             }
-            debugger_handle_update_needed = false;
-        }
-
-        if(n == 0)
-        {
-            svcSleepThread(50 * 1000 * 1000);
-            continue;
         }
 
         s32 idx = -1;
-        r = svcWaitSynchronizationN(&idx, handles, n, false, 50 * 1000 * 1000); // 50ms
-        if(r != 0x09401BFE) // Timeout error code.
+        r = svcWaitSynchronizationN(&idx, handles, 1 + n, false, -1LL);
+        if(R_FAILED(r) || idx == 0)
+            continue;
+        else
         {
             struct gdb_server_ctx *serv_ctx = mapping[idx];
             struct sock_ctx *client_ctx = serv_ctx->client;
@@ -175,20 +168,20 @@ Result debugger_attach(struct sock_server *serv, u32 pid)
     for(int i = 0; i < MAX_DEBUG; i++)
     {
         if(!(gdb_server_ctxs[i].flags & GDB_FLAG_USED))
-        {
-            gdb_server_ctxs[i].flags |= GDB_FLAG_USED;
             c = &gdb_server_ctxs[i];
-        }
     }
 
     if(c == NULL) return -1; // no slot?
+
     Result r = svcOpenProcess(&c->proc, pid);
     if(R_SUCCEEDED(r))
     {
         r = svcDebugActiveProcess(&c->debug, pid);
         if(R_SUCCEEDED(r))
         {
+            c->flags |= GDB_FLAG_USED;
             server_bind(serv, 4000 + pid, c);
+            svcSignalEvent(attachEvent);
         }
         else
         {
