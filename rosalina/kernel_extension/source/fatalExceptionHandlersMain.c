@@ -93,7 +93,8 @@ void fatalExceptionHandlersMain(u32 *registerDump, u32 type, u32 cpuId)
 
     //Copy register dump and code dump
     final = (u8 *)(finalBuffer + sizeof(ExceptionDumpHeader));
-    final += safecpy(final, registerDump, dumpHeader.registerDumpSize);
+    memcpy(final, registerDump, dumpHeader.registerDumpSize);
+    final += dumpHeader.registerDumpSize;
     memcpy(final, codeDump, dumpHeader.codeDumpSize);
     final += dumpHeader.codeDumpSize;
 
