@@ -7,7 +7,7 @@
 
 char gdb_buffer[GDB_BUF_LEN + 4];
 
-gdb_command_handler gdb_command_handlers[GDB_NUM_COMMANDS] = 
+gdb_command_handler gdb_command_handlers[GDB_NUM_COMMANDS] =
 {
 	gdb_handle_unk,   // GDB_COMMAND_UNK
 	gdb_handle_read_query, // GDB_COMMAND_QUERY_READ
@@ -154,6 +154,12 @@ int gdb_do_packet(struct sock_ctx *c)
 			cksum[2] = 0;
 
 			int r = soc_recv_until(socket, gdb_buffer, GDB_BUF_LEN, "#", 1);
+			if(gdb_buffer[0] == '\x03')
+			{
+				gdb_handle_break(socket, ctx, NULL);
+				goto unlock;
+			}
+			
 			soc_recv(socket, cksum, 2, 0);
 
 			if(r == 0 || r == -1) { ret = -1; goto unlock; } // Bubbling -1 up to server will close the connection.

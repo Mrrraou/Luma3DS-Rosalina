@@ -9,8 +9,9 @@ struct gdb_long_handler
 	gdb_command_handler f;
 };
 
-struct gdb_long_handler gdb_long_handlers[] = 
+struct gdb_long_handler gdb_long_handlers[] =
 {
+	{"CtrlC", gdb_handle_break},
 	{"MustReplyEmpty", gdb_handle_unk}, // unknown packets are replied to with an empty packet..
 	{NULL, NULL}
 };

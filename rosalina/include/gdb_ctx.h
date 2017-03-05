@@ -83,6 +83,7 @@ int gdb_reply_empty(Handle sock);
 int gdb_reply_ok(Handle sock);
 
 int gdb_handle_unk(Handle sock, struct gdb_client_ctx *c, char *buffer);
+int gdb_handle_break(Handle sock, struct gdb_client_ctx *c, char *buffer);
 int gdb_handle_read_query(Handle sock, struct gdb_client_ctx *c, char *buffer);
 int gdb_handle_write_query(Handle sock, struct gdb_client_ctx *c, char *buffer);
 int gdb_handle_long(Handle sock, struct gdb_client_ctx *c, char *buffer);

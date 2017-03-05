@@ -72,7 +72,7 @@ void server_init(struct sock_server *serv)
 void server_bind(struct sock_server *serv, u16 port, void *opt_data)
 {
     Handle server_sock;
-    
+
     Result res = socSocket(&server_sock, AF_INET, SOCK_STREAM, 0);
     while(R_FAILED(res))
     {
@@ -136,7 +136,7 @@ void server_run(struct sock_server *serv)
             svcSleepThread(50 * 1000 * 1000);
             continue;
         }
-        
+
         int res = socPoll(fds, serv->nfds, 50); // 50ms
         if(res == 0) continue; // timeout reached, no activity.
 
@@ -150,7 +150,7 @@ void server_run(struct sock_server *serv)
                 {
                     Handle client_sock = 0;
                     res = socAccept(fds[i].fd, &client_sock, NULL, 0);
-                    
+
                     if(curr_ctx->n == serv->clients_per_server || serv->nfds == MAX_CLIENTS)
                     {
                         socClose(client_sock);
@@ -227,22 +227,24 @@ int soc_recv_until(Handle fd, char *buf, size_t buf_len, char *sig, size_t sig_l
 {
     int r = soc_recvfrom(fd, peek_buffer, PEEK_SIZE, MSG_PEEK, NULL, 0);
     if(r == 0 || r == -1)
+        return r;
+
+    else if(peek_buffer[0] == '\x03')
     {
+        buf[0] = peek_buffer[0];
         return r;
     }
 
     char *ptr = (char*) memsearch((u8*)peek_buffer, sig, PEEK_SIZE, sig_len);
     if(ptr == NULL)
-    {
         return -1; // Line too long!
-    }
+
     size_t len = ptr - peek_buffer;
     len += sig_len;
 
     if(len > buf_len)
-    {
         return -1;
-    }
+
     memset_(peek_buffer, 0, len);
 
     r = soc_recvfrom(fd, buf, len, 0, NULL, 0);
