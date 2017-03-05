@@ -73,7 +73,6 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "Splash: Off( ) Before( ) After( ) payloads",
                                         "PIN lock: Off( ) 4( ) 6( ) 8( ) digits",
                                         "New 3DS CPU: Off( ) Clock( ) L2( ) Clock+L2( )",
-                                        "Dev. features: Off( ) ErrDisp( ) UNITINFO( )"
                                       };
 
     const char *singleOptionsText[] = { "( ) Autoboot SysNAND",
@@ -83,8 +82,8 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                         "( ) Enable game patching",
                                         "( ) Show NAND or user string in System Settings",
                                         "( ) Show GBA boot screen in patched AGB_FIRM",
-                                        "( ) Patch SVC/service/archive/ARM9 access",
-                                        "( ) Hide Pin when entering"
+                                        "( ) Patch ARM9 access",
+                                        "( ) Set developer UNITINFO",
                                       };
 
     const char *optionsDescription[]  = { "Select the default EmuNAND.\n\n"
@@ -115,20 +114,6 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "New 3DS exclusive/enhanced games.\n\n"
                                           "'Clock+L2' can cause issues with some\n"
                                           "games.",
-
-                                          "Select the developer features.\n\n"
-                                          "\t* If 'Off' is not checked, exception\n"
-                                          "handlers will be enabled on A9LH.\n"
-                                          "\t* 'ErrDisp' also displays debug info\n"
-                                          "on the 'An error has occurred' screen.\n"
-                                          "\t* 'UNITINFO' also makes the console\n"
-                                          "be always detected as a\n"
-                                          "development unit\n"
-                                          "(which breaks online features, amiibos\n"
-                                          "and retail CIAs, but allows installing\n"
-                                          "and booting some developer software).\n\n"
-                                          "Only change this if you know what you\n"
-                                          "are doing!",
 
                                           "If enabled, SysNAND will be launched\n"
                                           "on boot.\n\n"
@@ -184,16 +169,20 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
                                           "Enable showing the GBA boot screen\n"
                                           "when booting GBA games.",
 
-                                          "Disable SVC, service, archive and ARM9\n"
-                                          "exheader access checks.\n\n"
+                                          "Disable ARM9 exheader access checks.\n\n"
                                           "The service and archive patches\n"
                                           "don't work on New 3DS FIRMs between\n"
                                           "9.3 and 10.4.\n\n"
                                           "Only change this if you know what you\n"
                                           "are doing!",
-                                          
-                                          "Hides the input when entering pin\n"
-                                          "to unlock the 3DS"
+
+                                          "Makes the console be always detected\n"
+                                          "as a development unit\n"
+                                          "(which breaks online features, amiibo\n"
+                                          "and retail CIAs, but allows installing\n"
+                                          "and booting some developer software).\n\n"
+                                          "Only change this if you know what you\n"
+                                          "are doing!"
                                        };
 
     struct multiOption {
@@ -207,7 +196,6 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         { .posXs = {12, 22, 31, 0}, .visible = true  },
         { .posXs = {14, 19, 24, 29}, .visible = true },
         { .posXs = {17, 26, 32, 44}, .visible = ISN3DS },
-        { .posXs = {19, 30, 42, 0}, .visible = true  }
     };
 
     struct singleOption {
@@ -223,7 +211,7 @@ void configMenu(bool isSdMode, bool oldPinStatus, u32 oldPinMode)
         { .visible = true },
         { .visible = true },
         { .visible = true },
-        { .visible = true }
+        { .visible = true },
     };
 
     //Calculate the amount of the various kinds of options and pre-select the first single one

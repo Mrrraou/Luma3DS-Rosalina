@@ -30,7 +30,7 @@
 
 #define CONFIG_FILE         "config.bin"
 #define CONFIG_VERSIONMAJOR 1
-#define CONFIG_VERSIONMINOR 8
+#define CONFIG_VERSIONMINOR 9 // keep it identical to upstream
 
 #define BOOTCFG_NAND         BOOTCONFIG(0, 7)
 #define BOOTCFG_FIRM         BOOTCONFIG(3, 7)
@@ -43,8 +43,7 @@ enum multiOptions
     BRIGHTNESS,
     SPLASH,
     PIN,
-    NEWCPU,
-    DEVOPTIONS
+    NEWCPU
 };
 
 enum singleOptions
@@ -57,7 +56,7 @@ enum singleOptions
     PATCHVERSTRING,
     SHOWGBABOOT,
     PATCHACCESS,
-    HIDEPIN
+    PATCHUNITINFO
 };
 
 typedef enum ConfigurationStatus
