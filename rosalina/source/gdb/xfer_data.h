@@ -41,6 +41,7 @@ const char xfer_target_xml_data[] = "<?xml version=\"1.0\"?>\n\
     <reg name=\"d14\" bitsize=\"64\" type=\"float\"/>\n\
     <reg name=\"d15\" bitsize=\"64\" type=\"float\"/>\n\
     <reg name=\"fpscr\" bitsize=\"32\" type=\"int\" group=\"float\"/>\n\
+    <reg name=\"fpexc\" bitsize=\"32\" type=\"int\" group=\"float\"/>\n\
   </feature>\n\
 </target>";
 
