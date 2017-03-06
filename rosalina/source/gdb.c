@@ -7,53 +7,42 @@
 
 char gdb_buffer[GDB_BUF_LEN + 4];
 
-gdb_command_handler gdb_command_handlers[GDB_NUM_COMMANDS] =
-{
-	gdb_handle_unk,   // GDB_COMMAND_UNK
-	gdb_handle_read_query, // GDB_COMMAND_QUERY_READ
-	gdb_handle_write_query, // GDB_COMMAND_QUERY_WRITE
-	gdb_handle_long, // GDB_COMMAND_LONG
-	gdb_handle_stopped, // GDB_COMMAND_STOP_REASON
-	gdb_handle_read_regs, // GDB_COMMAND_READ_REGS
-	gdb_handle_read_mem, // GDB_COMMAND_READ_MEM
-    gdb_handle_set_thread_id // GDB_COMMAND_SET_THREAD_ID
-};
-
-enum gdb_command gdb_get_cmd(char c)
+gdb_command_handler gdb_get_cmd_handler(char c)
 {
 	switch(c)
 	{
 		case 'q':
-			return GDB_COMMAND_QUERY_READ;
-		break;
+			return gdb_handle_read_query;
 
 		case 'Q':
-			return GDB_COMMAND_QUERY_WRITE;
-		break;
+			return gdb_handle_write_query;
 
 		case 'v':
-			return GDB_COMMAND_LONG;
-		break;
+			return gdb_handle_long;
 
 		case '?':
-			return GDB_COMMAND_STOP_REASON;
-		break;
+			return gdb_handle_stopped;
 
 		case 'g':
-			return GDB_COMMAND_READ_REGS;
-		break;
+			return gdb_handle_read_regs;
+
+		case 'G':
+			return gdb_handle_write_regs;
+
+		case 'p':
+			return gdb_handle_read_reg;
+
+		case 'P':
+			return gdb_handle_write_reg;
 
 		case 'm':
-			return GDB_COMMAND_READ_MEM;
-		break;
+			return gdb_handle_read_mem;
 
         case 'H':
-            return GDB_COMMAND_SET_THREAD_ID;
-        break;
+            return gdb_handle_set_thread_id;
 
 		default:
-			return GDB_COMMAND_UNK;
-		break;
+			return gdb_handle_unk;
 	}
 }
 
@@ -167,10 +156,10 @@ int gdb_do_packet(struct sock_ctx *c)
 			{
 				gdb_buffer[r-1] = 0; // replace trailing '#' with 0
 
-				enum gdb_command cmd = gdb_get_cmd(gdb_buffer[1]);
-				if(gdb_command_handlers[cmd] != NULL)
+				gdb_command_handler handler = gdb_get_cmd_handler(gdb_buffer[1]);
+				if(handler != NULL)
 				{
-					int res = gdb_command_handlers[cmd](socket, ctx, gdb_buffer + 1);
+					int res = handler(socket, ctx, gdb_buffer + 1);
 					if(res == -1)
 					{
 						ret = gdb_reply_empty(socket); // Handler failed!

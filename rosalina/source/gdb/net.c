@@ -16,7 +16,7 @@ uint8_t gdb_cksum(const char *pkt_data, size_t len)
 
 void gdb_hex_encode(char *dst, const char *src, size_t len) // Len is in bytes.
 {
-	const char *alphabet = "0123456789abcdef";
+	static const char *alphabet = "0123456789abcdef";
 	for(size_t i = 0; i < len; i++)
 	{
 		dst[i*2] = alphabet[(src[i] & 0xf0) >> 4];
@@ -24,6 +24,28 @@ void gdb_hex_encode(char *dst, const char *src, size_t len) // Len is in bytes.
 	}
 }
 
+static char gdb_hex_decode_digit(char src, bool *ok)
+{
+	*ok = true;
+	if(src >= '0' && src <= '9') return src - '0';
+	else if(src >= 'a' && src <= 'f') return 0xA + (src - 'a');
+	else if(src >= 'A' && src <= 'F') return 0xA + (src - 'A');
+	else
+	{
+		*ok = false;
+		return 0;
+	}
+}
+
+int gdb_hex_decode(char *dst, const char *src, size_t len)
+{
+	size_t i;
+	bool ok = true;
+	for(i = 0; i < len && ok && src[2 * i] != 0 && src[2 * i + 1] != 0; i++)
+		dst[i] = (gdb_hex_decode_digit(src[2 * i], &ok) << 4) | gdb_hex_decode_digit(src[2 * i + 1], &ok);
+
+	return i;
+}
 int gdb_send_packet(Handle socket, const char *pkt_data, size_t len)
 {
 	gdb_buffer[0] = '$';
@@ -72,4 +94,3 @@ int gdb_send_packet_hex(Handle socket, const char *pkt_data, size_t len)
 
 	return soc_send(socket, gdb_buffer, len*2+4, 0);
 }
-

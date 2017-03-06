@@ -21,19 +21,6 @@ enum gdb_state
 	GDB_STATE_NOACK,
 };
 
-enum gdb_command
-{
-	GDB_COMMAND_UNK,
-	GDB_COMMAND_QUERY_READ,
-	GDB_COMMAND_QUERY_WRITE,
-	GDB_COMMAND_LONG,
-	GDB_COMMAND_STOP_REASON,
-	GDB_COMMAND_READ_REGS,
-	GDB_COMMAND_READ_MEM,
-	GDB_COMMAND_SET_THREAD_ID,
-	GDB_NUM_COMMANDS
-};
-
 struct gdb_client_ctx;
 
 struct gdb_server_ctx
@@ -71,6 +58,7 @@ int gdb_do_packet(struct sock_ctx *ctx);
 int gdb_handle_debug_events(Handle debug, struct sock_ctx *ctx);
 
 void gdb_hex_encode(char *dst, const char *src, size_t len); // Len is in bytes.
+int gdb_hex_decode(char *dst, const char *src, size_t len);
 uint8_t gdb_cksum(const char *pkt_data, size_t len);
 
 int gdb_send_packet(Handle socket, const char *pkt_data, size_t len);
@@ -78,9 +66,8 @@ int gdb_send_packet_hex(Handle socket, const char *pkt_data, size_t len);
 int gdb_send_packet_prefix(Handle socket, const char *prefix, size_t prefix_len, const char *pkt_data, size_t len);
 
 typedef int (*gdb_command_handler)(Handle sock, struct gdb_client_ctx *c, char *buffer);
-extern gdb_command_handler gdb_command_handlers[GDB_NUM_COMMANDS];
 
-enum gdb_command gdb_get_cmd(char c);
+gdb_command_handler gdb_get_cmd_handler(char c);
 int gdb_reply_empty(Handle sock);
 int gdb_reply_ok(Handle sock);
 
@@ -91,6 +78,9 @@ int gdb_handle_write_query(Handle sock, struct gdb_client_ctx *c, char *buffer);
 int gdb_handle_long(Handle sock, struct gdb_client_ctx *c, char *buffer);
 int gdb_handle_stopped(Handle sock, struct gdb_client_ctx *c, char *buffer);
 int gdb_handle_read_regs(Handle sock, struct gdb_client_ctx *c, char *buffer);
+int gdb_handle_write_regs(Handle sock, struct gdb_client_ctx *c, char *buffer);
+int gdb_handle_read_reg(Handle sock, struct gdb_client_ctx *c, char *buffer);
+int gdb_handle_write_reg(Handle sock, struct gdb_client_ctx *c, char *buffer);
 int gdb_handle_read_mem(Handle sock, struct gdb_client_ctx *c, char *buffer);
 int gdb_handle_set_thread_id(Handle sock, struct gdb_client_ctx *c, char *buffer);
 
