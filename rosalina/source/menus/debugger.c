@@ -164,7 +164,7 @@ void debuggerDebugThreadMain(void)
             if(client_gdb_ctx)
             {
                 RecursiveLock_Lock(&client_gdb_ctx->sock_lock);
-                gdb_handle_debug_events(handles[idx - 2], client_ctx);
+                gdb_handle_debug_events(handles[idx], client_ctx);
                 RecursiveLock_Unlock(&client_gdb_ctx->sock_lock);
             }
         }
