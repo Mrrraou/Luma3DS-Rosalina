@@ -91,7 +91,7 @@ int gdb_handle_read_reg(Handle sock, struct gdb_client_ctx *c, char *buffer)
 	else if(flags & THREADCONTEXT_CONTROL_CPU_SPRS)
 		return gdb_send_packet_hex(sock, (const char *)(&regs.cpu_registers.sp + (n - 13)), 4); // hacky
 	else if(flags & THREADCONTEXT_CONTROL_FPU_GPRS)
-		return gdb_send_packet_hex(sock, (const char *)&regs.fpu_registers.f[n], 4);
+		return gdb_send_packet_hex(sock, (const char *)&regs.fpu_registers.s[n], 4);
 	else
 		return gdb_send_packet_hex(sock, (const char *)(&regs.fpu_registers.fpscr + n), 4); // hacky
 }
@@ -128,7 +128,7 @@ int gdb_handle_write_reg(Handle sock, struct gdb_client_ctx *c, char *buffer)
 	else if(flags & THREADCONTEXT_CONTROL_CPU_SPRS)
 		*(&regs.cpu_registers.sp + (n - 13)) = value; // hacky
 	else if(flags & THREADCONTEXT_CONTROL_FPU_GPRS)
-		memcpy(&regs.fpu_registers.f[n], &value, 4);
+		memcpy(&regs.fpu_registers.s[n], &value, 4);
 	else
 		*(&regs.fpu_registers.fpscr + n) = value; // hacky
 
