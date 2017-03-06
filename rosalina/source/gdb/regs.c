@@ -21,8 +21,5 @@ int gdb_handle_read_regs(Handle sock, struct gdb_client_ctx *c, char *buffer UNU
         return gdb_send_packet(sock, "E01", 3);
     }
 
-    char buf[sizeof(ThreadContext) + 4];
-    memcpy(buf, &regs->cpu_registers, sizeof(CpuRegisters));
-    memcpy(buf + sizeof(CpuRegisters) + 4, &reg->fpu_registers, sizeof(FpuRegisters));
-	return gdb_send_packet_hex(sock, buf, sizeof(buf));
+    return gdb_send_packet_hex(sock, (const char *)&regs, sizeof(ThreadContext));
 }
