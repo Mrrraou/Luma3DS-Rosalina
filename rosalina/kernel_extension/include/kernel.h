@@ -734,8 +734,8 @@ typedef struct FpuRegisters
 {
   union
   {
-      double d[16];
-      float  f[32];
+      struct PACKED { double d[16]; };
+      float  s[32];
   };
   u32 fpscr;
   u32 fpexc;

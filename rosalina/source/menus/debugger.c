@@ -157,7 +157,6 @@ void debuggerDebugThreadMain(void)
         {
             struct gdb_server_ctx *serv_ctx = mapping[idx - 2];
             svcWaitSynchronization(serv_ctx->clientAcceptedEvent, -1LL);
-
             struct sock_ctx *client_ctx = serv_ctx->client;
             struct gdb_client_ctx *client_gdb_ctx = serv_ctx->client_gdb_ctx;
 
@@ -188,7 +187,7 @@ Result debugger_attach(struct sock_server *serv, u32 pid)
         r = svcDebugActiveProcess(&c->debug, pid);
         if(R_SUCCEEDED(r))
         {
-            server_bind(serv, 4000 + pid, c);
+            server_bind(serv, /*4000 + pid*/ 5000, c);
             c->flags |= GDB_FLAG_USED;
             svcSignalEvent(attachEvent);
         }

@@ -9,6 +9,7 @@
 
 int gdb_handle_debug_events(Handle debug, struct sock_ctx *ctx UNUSED)
 {
+	/*
 	DebugEventInfo info;
 	Result r;
 
@@ -28,5 +29,18 @@ int gdb_handle_debug_events(Handle debug, struct sock_ctx *ctx UNUSED)
 		}
 		svcContinueDebugEvent(debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS);
 	}
+	return 0;
+*/
+
+	DebugEventInfo info, dummy;
+	Result r = svcGetProcessDebugEvent(&info, debug);
+
+	if(R_FAILED(r))
+		return -1;
+	r = svcBreakDebugProcess(debug);
+	//svcWaitSynchronization(debug, 0LL);
+	if(R_FAILED(r)) return 0;
+	while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, debug)));
+
 	return 0;
 }

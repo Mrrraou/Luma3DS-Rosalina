@@ -41,6 +41,10 @@ gdb_command_handler gdb_get_cmd_handler(char c)
         case 'H':
             return gdb_handle_set_thread_id;
 
+		case 'c':
+		case 'C':
+			return gdb_handle_continue;
+
 		default:
 			return gdb_handle_unk;
 	}

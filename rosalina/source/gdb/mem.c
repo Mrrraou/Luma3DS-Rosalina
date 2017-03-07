@@ -4,7 +4,6 @@
 #include "macros.h"
 #include "minisoc.h"
 
-// TODO: stub
 int gdb_handle_read_mem(Handle sock, struct gdb_client_ctx *c, char *buffer UNUSED)
 {
     struct gdb_server_ctx *serv = c->proc;
@@ -17,6 +16,7 @@ int gdb_handle_read_mem(Handle sock, struct gdb_client_ctx *c, char *buffer UNUS
     const char *len_start = addr_end + 1;
     u32 addr = atoi_(addr_start, 16);
     u32 len = atoi_(len_start, 16);
+    u32 len_total = len;
 
     if(addr < 0x1000)
     {
@@ -24,13 +24,13 @@ int gdb_handle_read_mem(Handle sock, struct gdb_client_ctx *c, char *buffer UNUS
     }
 
     char buff[256];
-    Result r;
+    Result r = 0;
     u8 cksum = 0;
 
     // Send packet header.
     soc_send(sock, "$", 1, 0);
 
-    while(len != 0)
+    while(len != 0 && R_SUCCEEDED(r))
     {
         u32 read_len = len;
         if(read_len > 256)
@@ -41,9 +41,13 @@ int gdb_handle_read_mem(Handle sock, struct gdb_client_ctx *c, char *buffer UNUS
         r = svcReadProcessMemory(buff, serv->debug, addr, read_len);
         if(R_FAILED(r))
         {
-            memset_(gdb_buffer, '0', read_len*2);
-            soc_send(sock, gdb_buffer, read_len*2, 0);
-            break;
+            if(len == len_total)
+            {
+                memcpy(buff, "E01", 3);
+                read_len = 3;
+            }
+            else
+                read_len = 0;
         }
 
         len -= read_len;
