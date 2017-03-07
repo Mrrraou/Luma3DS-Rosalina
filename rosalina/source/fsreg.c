@@ -13,7 +13,9 @@ Result fsregInit(void)
     if(AtomicPostIncrement(&fsregRefCount))
         return 0;
 
-    ret = svcGetSystemInfo((s64 *)&fsregHandle, 0x20000, 0);
+    s64 fsregHandle_;
+    ret = svcGetSystemInfo(&fsregHandle_, 0x20000, 0);
+    fsregHandle = (Handle) fsregHandle_;
 
     if(R_FAILED(ret))
         AtomicDecrement(&fsregRefCount);
