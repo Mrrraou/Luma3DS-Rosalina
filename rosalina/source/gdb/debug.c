@@ -37,10 +37,12 @@ int gdb_handle_debug_events(Handle debug, struct sock_ctx *ctx UNUSED)
 
 	if(R_FAILED(r))
 		return -1;
-	r = svcBreakDebugProcess(debug);
-	//svcWaitSynchronization(debug, 0LL);
-	if(R_FAILED(r)) return 0;
-	while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, debug)));
 
+	u32 n = 1;
+	while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, debug))) n++;
+	r = svcBreakDebugProcess(debug);
+	if(R_SUCCEEDED(r)) n++;
+	for(u32 i = 0; i < n - 1; i++)
+		svcContinueDebugEvent(debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS);
 	return 0;
 }

@@ -52,7 +52,10 @@ void Debugger_Enable(void)
     else
     {
         for(int i = 0; i < MAX_DEBUG; i++)
+        {
+            svcCreateEvent(&gdb_server_ctxs[i].continuedEvent, RESET_ONESHOT);
             svcCreateEvent(&gdb_server_ctxs[i].clientAcceptedEvent, RESET_STICKY);
+        }
 
         svcCreateEvent(&attachEvent, RESET_ONESHOT);
         draw_string("Initialising SOC...", 10, 10, COLOR_WHITE);
@@ -142,7 +145,7 @@ void debuggerDebugThreadMain(void)
                 if(gdb_server_ctxs[i].debug != 0)
                 {
                     mapping[n] = &gdb_server_ctxs[i];
-                    handles[2 + n++] = gdb_server_ctxs[i].debug;
+                    handles[2 + n++] = gdb_server_ctxs[i].debugOrContinuedEvent;
                 }
             }
         }
@@ -160,8 +163,11 @@ void debuggerDebugThreadMain(void)
             struct sock_ctx *client_ctx = serv_ctx->client;
             struct gdb_client_ctx *client_gdb_ctx = serv_ctx->client_gdb_ctx;
 
+            if(serv_ctx->debugOrContinuedEvent == serv_ctx->continuedEvent)
+                serv_ctx->debugOrContinuedEvent = serv_ctx->debug;
             if(client_gdb_ctx)
             {
+                serv_ctx->debugOrContinuedEvent = serv_ctx->continuedEvent;
                 RecursiveLock_Lock(&client_gdb_ctx->sock_lock);
                 gdb_handle_debug_events(handles[idx], client_ctx);
                 RecursiveLock_Unlock(&client_gdb_ctx->sock_lock);
@@ -187,7 +193,8 @@ Result debugger_attach(struct sock_server *serv, u32 pid)
         r = svcDebugActiveProcess(&c->debug, pid);
         if(R_SUCCEEDED(r))
         {
-            server_bind(serv, /*4000 + pid*/ 5000, c);
+            server_bind(serv, 4000 + pid, c);
+            c->debugOrContinuedEvent = c->debug;
             c->flags |= GDB_FLAG_USED;
             svcSignalEvent(attachEvent);
         }

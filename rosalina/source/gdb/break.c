@@ -7,7 +7,7 @@
 int gdb_handle_break(Handle sock, struct gdb_client_ctx *c, char *buffer UNUSED)
 {
     struct gdb_server_ctx *serv = c->proc;
-    
+
     Result r = svcBreakDebugProcess(serv->debug);
 
     if(r == (Result)0xD8202007 /* already interrupted */ || R_SUCCEEDED(r))
@@ -31,7 +31,7 @@ int gdb_handle_continue(Handle sock UNUSED, struct gdb_client_ctx *c, char *buff
     }
     else
         addrStart = buffer + 1;
-    
+
     if(*addrStart != 0  && c->curr_thread_id != 0)
     {
         ThreadContext regs;
@@ -44,7 +44,10 @@ int gdb_handle_continue(Handle sock UNUSED, struct gdb_client_ctx *c, char *buff
         }
     }
 
-    while(svcContinueDebugEvent(serv->debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS) != (Result)0xD8402009); // continue all
+    DebugEventInfo dummy;
+    while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, serv->debug)));
+    while(R_SUCCEEDED(svcContinueDebugEvent(serv->debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS)));
+    svcSignalEvent(serv->continuedEvent);
 
     return 0; //Hmmm...
 }
