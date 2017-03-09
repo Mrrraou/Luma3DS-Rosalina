@@ -103,7 +103,7 @@ int gdb_send_stop_reply(Handle debug, DebugEventInfo *info, struct sock_ctx *ctx
 
 				case EXCEVENT_ATTACH_BREAK:
 				{
-					memcpy(buffer, "S05", 3);
+					memcpy(buffer, "S02", 3);
 					len = 3;
 					break;
 				}
@@ -153,14 +153,14 @@ int gdb_send_stop_reply(Handle debug, DebugEventInfo *info, struct sock_ctx *ctx
 
 				case EXCEVENT_USER_BREAK:
 				{
-					memcpy(buffer, "T05", 3);
+					memcpy(buffer, "T02", 3); // SIGINT
 					len = 3 + gdb_parse_common_thread_info(buffer + 3, debug, info->thread_id, false);
 					break;
 				}
 
 				case EXCEVENT_DEBUGGER_BREAK:
 				{
-					memcpy(buffer, "T05", 3);
+					memcpy(buffer, "T02", 3); // SIGINT
 					len = 3;
 
 					for(u32 i = 0; i < 4; i++)
