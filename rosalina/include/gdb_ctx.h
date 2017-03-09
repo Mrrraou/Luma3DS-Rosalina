@@ -37,6 +37,11 @@ struct gdb_server_ctx
 	Handle clientAcceptedEvent, continuedEvent;
 
 	Handle debugOrContinuedEvent;
+
+	bool processExited;
+
+	DebugEventInfo pendingDebugEvents[0x10], latestDebugEvent;
+	u32 numPendingDebugEvents;
 };
 
 struct gdb_client_ctx
@@ -57,11 +62,15 @@ int gdb_close_client(struct sock_ctx *client_ctx);
 void* gdb_get_client(struct sock_server *serv, struct sock_ctx *client_ctx);
 void gdb_release_client(struct sock_server *serv, void *c);
 int gdb_do_packet(struct sock_ctx *ctx);
+
 int gdb_handle_debug_events(Handle debug, struct sock_ctx *ctx);
 
 void gdb_hex_encode(char *dst, const char *src, size_t len); // Len is in bytes.
 int gdb_hex_decode(char *dst, const char *src, size_t len);
 uint8_t gdb_cksum(const char *pkt_data, size_t len);
+
+int gdb_send_stop_reply(Handle debug, DebugEventInfo *info, struct sock_ctx *ctx);
+int gdb_send_mem(Handle sock, Handle debug, const char *prefix, u32 prefixLen, u32 addr, u32 len);
 
 int gdb_send_packet(Handle socket, const char *pkt_data, size_t len);
 int gdb_send_packet_hex(Handle socket, const char *pkt_data, size_t len);

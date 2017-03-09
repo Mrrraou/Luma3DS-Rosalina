@@ -4,18 +4,12 @@
 #include "macros.h"
 #include "minisoc.h"
 
-int gdb_handle_break(Handle sock, struct gdb_client_ctx *c, char *buffer UNUSED)
+int gdb_handle_break(Handle sock UNUSED, struct gdb_client_ctx *c, char *buffer UNUSED)
 {
     struct gdb_server_ctx *serv = c->proc;
 
-    Result r = svcBreakDebugProcess(serv->debug);
-
-    if(r == (Result)0xD8202007 /* already interrupted */ || R_SUCCEEDED(r))
-        return gdb_send_packet(sock, "OK", 2);
-    else if(r == (Result)0xD8A02008) // parent process ended
-        return gdb_send_packet(sock, "E03", 3);
-    else
-        return gdb_send_packet(sock, "E01", 3);
+    svcBreakDebugProcess(serv->debug);
+    return 0;
 }
 
 int gdb_handle_continue(Handle sock UNUSED, struct gdb_client_ctx *c, char *buffer)
@@ -44,10 +38,22 @@ int gdb_handle_continue(Handle sock UNUSED, struct gdb_client_ctx *c, char *buff
         }
     }
 
-    DebugEventInfo dummy;
-    while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, serv->debug)));
-    while(R_SUCCEEDED(svcContinueDebugEvent(serv->debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS)));
-    svcSignalEvent(serv->continuedEvent);
+    if(serv->numPendingDebugEvents > 0)
+    {
+        gdb_send_stop_reply(serv->debug, &serv->pendingDebugEvents[0], serv->client);
+        serv->latestDebugEvent = serv->pendingDebugEvents[0];
+        for(u32 i = 0; i < serv->numPendingDebugEvents; i++)
+            serv->pendingDebugEvents[i] = serv->pendingDebugEvents[i + 1];
+        --serv->numPendingDebugEvents;
+    }
+
+    else
+    {
+        DebugEventInfo dummy;
+        while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, serv->debug)));
+        while(R_SUCCEEDED(svcContinueDebugEvent(serv->debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS)));
+        svcSignalEvent(serv->continuedEvent);
+    }
 
     return 0; //Hmmm...
 }

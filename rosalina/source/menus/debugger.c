@@ -193,8 +193,13 @@ Result debugger_attach(struct sock_server *serv, u32 pid)
         r = svcDebugActiveProcess(&c->debug, pid);
         if(R_SUCCEEDED(r))
         {
+            while(R_SUCCEEDED(svcGetProcessDebugEvent(&c->latestDebugEvent, c->debug)))
+            {
+                if(c->latestDebugEvent.type != DBGEVENT_EXCEPTION || c->latestDebugEvent.exception.type != EXCEVENT_ATTACH_BREAK)
+                    svcContinueDebugEvent(c->debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS);
+            }
             server_bind(serv, 4000 + pid, c);
-            c->debugOrContinuedEvent = c->debug;
+            c->debugOrContinuedEvent = c->continuedEvent;
             c->flags |= GDB_FLAG_USED;
             svcSignalEvent(attachEvent);
         }
