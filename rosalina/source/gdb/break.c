@@ -7,12 +7,11 @@
 int gdb_handle_break(Handle sock UNUSED, struct gdb_client_ctx *c, char *buffer UNUSED)
 {
     struct gdb_server_ctx *serv = c->proc;
-
     svcBreakDebugProcess(serv->debug);
     return 0;
 }
 
-int gdb_handle_continue(Handle sock UNUSED, struct gdb_client_ctx *c, char *buffer)
+int gdb_handle_continue(Handle sock , struct gdb_client_ctx *c, char *buffer)
 {
     struct gdb_server_ctx *serv = c->proc;
 

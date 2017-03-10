@@ -145,13 +145,14 @@ void debuggerDebugThreadMain(void)
                 if(gdb_server_ctxs[i].debug != 0)
                 {
                     mapping[n] = &gdb_server_ctxs[i];
-                    handles[2 + n++] = gdb_server_ctxs[i].debugOrContinuedEvent;
+                    handles[2 + n++] = gdb_server_ctxs[i].eventToWaitFor;
                 }
             }
         }
 
         s32 idx = -1;
         r = svcWaitSynchronizationN(&idx, handles, 2 + n, false, -1LL);
+
         if(R_SUCCEEDED(r) && idx == 0)
             break;
         else if(R_FAILED(r) || idx == 1)
@@ -159,18 +160,17 @@ void debuggerDebugThreadMain(void)
         else
         {
             struct gdb_server_ctx *serv_ctx = mapping[idx - 2];
-            svcWaitSynchronization(serv_ctx->clientAcceptedEvent, -1LL);
-            struct sock_ctx *client_ctx = serv_ctx->client;
-            struct gdb_client_ctx *client_gdb_ctx = serv_ctx->client_gdb_ctx;
 
-            if(serv_ctx->debugOrContinuedEvent == serv_ctx->continuedEvent)
-                serv_ctx->debugOrContinuedEvent = serv_ctx->debug;
-            if(client_gdb_ctx)
+            if(serv_ctx->eventToWaitFor == serv_ctx->clientAcceptedEvent)
+                serv_ctx->eventToWaitFor = serv_ctx->continuedEvent;
+            else if(serv_ctx->eventToWaitFor == serv_ctx->continuedEvent)
+                serv_ctx->eventToWaitFor = serv_ctx->debug;
+            else
             {
-                serv_ctx->debugOrContinuedEvent = serv_ctx->continuedEvent;
-                RecursiveLock_Lock(&client_gdb_ctx->sock_lock);
-                gdb_handle_debug_events(handles[idx], client_ctx);
-                RecursiveLock_Unlock(&client_gdb_ctx->sock_lock);
+                serv_ctx->eventToWaitFor = serv_ctx->continuedEvent;
+                RecursiveLock_Lock(&serv_ctx->client_gdb_ctx->sock_lock);
+                gdb_handle_debug_events(handles[idx], serv_ctx->client);
+                RecursiveLock_Unlock(&serv_ctx->client_gdb_ctx->sock_lock);
             }
         }
     }
@@ -199,7 +199,7 @@ Result debugger_attach(struct sock_server *serv, u32 pid)
                     svcContinueDebugEvent(c->debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS);
             }
             server_bind(serv, 4000 + pid, c);
-            c->debugOrContinuedEvent = c->continuedEvent;
+            c->eventToWaitFor = c->clientAcceptedEvent;
             c->flags |= GDB_FLAG_USED;
             svcSignalEvent(attachEvent);
         }

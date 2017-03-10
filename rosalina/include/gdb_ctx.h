@@ -36,7 +36,7 @@ struct gdb_server_ctx
 
 	Handle clientAcceptedEvent, continuedEvent;
 
-	Handle debugOrContinuedEvent;
+	Handle eventToWaitFor;
 
 	bool processExited;
 
