@@ -87,7 +87,7 @@ Result miniSocExit(void)
 	socMemhandle = 0;
 
 	u32 tmp;
-	svcControlMemory(&tmp, soc_block_addr, soc_block_addr, soc_block_size, MEMOP_FREE, 0); 
+	svcControlMemory(&tmp, soc_block_addr, soc_block_addr, soc_block_size, MEMOP_FREE, 0);
 
 	ret = SOCU_Shutdown();
 
@@ -155,7 +155,7 @@ Result socBind(Handle sockfd, const struct sockaddr *addr, socklen_t addrlen)
 	else
 		tmp_addrlen = 0x1c;
 
-	if(addrlen < tmp_addrlen) 
+	if(addrlen < tmp_addrlen)
 	{
 		return -1;
 	}
@@ -211,7 +211,7 @@ Result socAccept(Result sockfd, Handle *out, struct sockaddr *addr, socklen_t *a
 	u32 *cmdbuf = getThreadCommandBuffer();
 	u8 tmpaddr[0x1c];
 	u32 saved_threadstorage[2];
-	
+
 	memset_(tmpaddr, 0, 0x1c);
 
 	cmdbuf[0] = IPC_MakeHeader(0x4,2,2); // 0x40082
@@ -330,7 +330,7 @@ ssize_t soc_recv(Handle sockfd, void *buf, size_t len, int flags)
 	return soc_recvfrom(sockfd, buf, len, flags, NULL, 0);
 }
 
-ssize_t soc_send(Handle sockfd, void *buf, size_t len, int flags)
+ssize_t soc_send(Handle sockfd, const void *buf, size_t len, int flags)
 {
 	return soc_sendto(sockfd, buf, len, flags, NULL, 0);
 }

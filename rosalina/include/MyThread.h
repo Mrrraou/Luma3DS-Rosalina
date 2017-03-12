@@ -5,7 +5,7 @@
 #include <3ds/svc.h>
 #include <3ds/synchronization.h>
 
-#define THREAD_STACK_SIZE 0x1000
+#define THREAD_STACK_SIZE 0x2000
 
 typedef struct MyThread
 {

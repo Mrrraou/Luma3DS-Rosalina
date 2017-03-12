@@ -26,7 +26,7 @@ Result socPoll(struct pollfd *fds, nfds_t nfds, int timeout);
 int socClose(Handle sockfd);
 
 ssize_t soc_recv(Handle sockfd, void *buf, size_t len, int flags);
-ssize_t soc_send(Handle sockfd, void *buf, size_t len, int flags);
+ssize_t soc_send(Handle sockfd, const void *buf, size_t len, int flags);
 
 int soc_recv_until(Handle fd, char *buf, size_t buf_len, char *sig, size_t sig_len);
 

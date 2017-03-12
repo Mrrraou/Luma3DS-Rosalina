@@ -1,67 +1,97 @@
-#include <3ds/result.h>
-#include "gdb_ctx.h"
-#include "minisoc.h"
-#include "memory.h"
-#include "macros.h"
+#include "gdb/thread.h"
+#include "gdb/net.h"
+#include "fmt.h"
 
-int gdb_get_thread_id(Handle sock, struct gdb_client_ctx *c, char *buffer UNUSED)
+// There's a grand maximum of 0x7F threads debugged for all debugged processes
+// but more than 14 debugged threads per process involve undefined behavior
+
+// This allows us to always respond 'l' (end of list) in 'qsThreadInfo' queries, though
+
+void GDB_UpdateCurrentThreadFromList(GDBContext *ctx, u32 *threadIds, u32 nbThreads)
 {
-    struct gdb_server_ctx *serv = c->proc;
-    s32 n_threads = serv->n_threads;
-    if(n_threads == 0)
+    u32 scheduledThreadIds[0x7F];
+    s32 nbScheduledThreads = 0;
+    s64 dummy;
+
+    for(u32 i = 0; i < nbThreads; i++)
     {
-        return gdb_send_packet(sock, "E01", 3);
+        u32 mask = 0;
+        svcGetDebugThreadParam(&dummy, &mask, ctx->debug, threadIds[i], DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
+        if(mask == 1)
+            scheduledThreadIds[nbScheduledThreads++] = threadIds[i];
     }
 
-    if(c->curr_thread_id == 0)
+    s32 maxDynaPrio = 64;
+    for(s32 i = 0; i < nbScheduledThreads; i++)
     {
-        c->curr_thread_id = serv->thread_ids[0];
-    }
-
-    char buf[3];
-    hexItoa(c->curr_thread_id, buf, 3, false);
-    return gdb_send_packet(sock, buf, 3);
-}
-
-int gdb_handle_set_thread_id(Handle sock, struct gdb_client_ctx *c, char *buffer)
-{
-    if(buffer[1] != 'g')
-    {
-        return -1;
-    }
-
-    u32 id = atoi_(buffer+2, 16);
-    c->curr_thread_id = id;
-    return gdb_send_packet(sock, "OK", 2);
-}
-
-// TODO: stub
-
-int gdb_f_thread_info(Handle sock, struct gdb_client_ctx *c, char *buffer UNUSED)
-{
-    struct gdb_server_ctx *serv = c->proc;
-    s32 n_threads = serv->n_threads;
-    if(n_threads == 0)
-    {
-        Result r = svcGetThreadList(&n_threads, serv->thread_ids, MAX_THREAD, serv->proc);
-        if(R_FAILED(r))
+        Handle thread;
+        s32 dynaPrio = 64;
+        svcOpenThread(&thread, scheduledThreadIds[i], ctx->process);
+        svcGetThreadPriority(&dynaPrio, thread);
+        svcCloseHandle(thread);
+        if(dynaPrio < maxDynaPrio)
         {
-            return -1;
+            maxDynaPrio = dynaPrio;
+            ctx->currentThreadId = scheduledThreadIds[i];
         }
-        serv->n_threads = n_threads;
     }
-
-    char str_buff[MAX_THREAD * 4 - 1];
-    for(s32 i = 0; i < n_threads; i++)
-    {
-        hexItoa(serv->thread_ids[i], str_buff + i * 4, 3, false);
-        str_buff[i*4 + 3] = ',';
-    }
-
-    return gdb_send_packet_prefix(sock, "m", 1, str_buff, n_threads * 4 - 1);
 }
 
-int gdb_s_thread_info(Handle sock, struct gdb_client_ctx *c UNUSED, char *buffer UNUSED)
+GDB_DECLARE_HANDLER(SetThreadId)
 {
-    return gdb_send_packet(sock, "l", 1);
+    if(ctx->commandData[0] == 'g')
+    {
+        u32 id = atoi_(ctx->commandData + 1, 16);
+        ctx->selectedThreadId = id;
+        return GDB_ReplyOk(ctx);
+    }
+    else if(ctx->commandData[0] == 'c')
+        return GDB_ReplyOk(ctx); // ignore (because we only support all-stop mode)
+    else
+        return GDB_ReplyErrno(ctx, EPERM);
+}
+
+GDB_DECLARE_QUERY_HANDLER(CurrentThreadId)
+{
+    if(ctx->currentThreadId == 0)
+    {
+        u32 threadIds[0x7F];
+        s32 nbThreads;
+        Result r = svcGetThreadList(&nbThreads, threadIds, 0x7F, ctx->process);
+
+        if(R_FAILED(r))
+            return GDB_ReplyErrno(ctx, EPERM);
+
+        GDB_UpdateCurrentThreadFromList(ctx, threadIds, nbThreads);
+    }
+
+    return GDB_SendFormattedPacket(ctx, "%x", ctx->currentThreadId);
+}
+
+GDB_DECLARE_QUERY_HANDLER(FThreadInfo)
+{
+    u32 threadIds[0x7F];
+    s32 nbThreads;
+
+    char buf[GDB_BUF_LEN + 1] = {'m'};
+
+    Result r = svcGetThreadList(&nbThreads, threadIds, 0x7F, ctx->process);
+    if(R_FAILED(r))
+        return GDB_SendPacket(ctx, "l", 1);
+
+    if(nbThreads == 0x7F) __asm__ volatile("bkpt 1");
+    char *bufptr = buf + 1;
+
+    for(s32 i = 0; i < nbThreads && bufptr < buf + GDB_BUF_LEN - 9; i++)
+    {
+        *bufptr++ = ',';
+        bufptr += sprintf(bufptr, "%x", threadIds[i]);
+    }
+
+    return GDB_SendPacket(ctx, buf, bufptr - buf);
+}
+
+GDB_DECLARE_QUERY_HANDLER(SThreadInfo)
+{
+    return GDB_SendPacket(ctx, "l", 1);
 }

@@ -1,96 +1,106 @@
-#include <3ds.h>
+#include "gdb/net.h"
+#include <stdarg.h>
+#include "fmt.h"
 #include "minisoc.h"
-#include "gdb_ctx.h"
-#include "draw.h"
-#include "memory.h"
 
-uint8_t gdb_cksum(const char *pkt_data, size_t len)
+u8 GDB_ComputeChecksum(const char *packetData, u32 len)
 {
-	uint8_t cksum = 0;
-	for(size_t i = 0; i < len; i++)
-	{
-		cksum += (uint8_t)pkt_data[i];
-	}
-	return cksum;
+    u8 cksum = 0;
+    for(u32 i = 0; i < len; i++)
+        cksum += (u8)packetData[i];
+
+    return cksum;
 }
 
-void gdb_hex_encode(char *dst, const char *src, size_t len) // Len is in bytes.
+void GDB_EncodeHex(char *dst, const void *src, u32 len)
 {
-	static const char *alphabet = "0123456789abcdef";
-	for(size_t i = 0; i < len; i++)
-	{
-		dst[i*2] = alphabet[(src[i] & 0xf0) >> 4];
-		dst[i*2+1] = alphabet[src[i] & 0x0f];
-	}
+    static const char *alphabet = "0123456789abcdef";
+    const u8 *src8 = (u8 *)src;
+
+    for(u32 i = 0; i < len; i++)
+    {
+        dst[2 * i] = alphabet[(src8[i] & 0xf0) >> 4];
+        dst[2 * i + 1] = alphabet[src8[i] & 0x0f];
+    }
 }
 
-static char gdb_hex_decode_digit(char src, bool *ok)
+static inline u32 GDB_DecodeHexDigit(char src, bool *ok)
 {
-	*ok = true;
-	if(src >= '0' && src <= '9') return src - '0';
-	else if(src >= 'a' && src <= 'f') return 0xA + (src - 'a');
-	else if(src >= 'A' && src <= 'F') return 0xA + (src - 'A');
-	else
-	{
-		*ok = false;
-		return 0;
-	}
+    *ok = true;
+    if(src >= '0' && src <= '9') return src - '0';
+    else if(src >= 'a' && src <= 'f') return 0xA + (src - 'a');
+    else if(src >= 'A' && src <= 'F') return 0xA + (src - 'A');
+    else
+    {
+        *ok = false;
+        return 0;
+    }
 }
 
-int gdb_hex_decode(char *dst, const char *src, size_t len)
+int GDB_DecodeHex(void *dst, const char *src, u32 len)
 {
-	size_t i;
-	bool ok = true;
-	for(i = 0; i < len && ok && src[2 * i] != 0 && src[2 * i + 1] != 0; i++)
-		dst[i] = (gdb_hex_decode_digit(src[2 * i], &ok) << 4) | gdb_hex_decode_digit(src[2 * i + 1], &ok);
+    u32 i = 0;
+    bool ok = true;
+    u8 *dst8 = (u8 *)dst;
+    for(i = 0; i < len && ok && src[2 * i] != 0 && src[2 * i + 1] != 0; i++)
+        dst8[i] = (GDB_DecodeHexDigit(src[2 * i], &ok) << 4) | GDB_DecodeHexDigit(src[2 * i + 1], &ok);
 
-	return i;
-}
-int gdb_send_packet(Handle socket, const char *pkt_data, size_t len)
-{
-	gdb_buffer[0] = '$';
-	memcpy(gdb_buffer + 1, pkt_data, len);
-
-	char *cksum_loc = gdb_buffer + len + 1;
-	*cksum_loc++ = '#';
-
-	hexItoa(gdb_cksum(pkt_data, len), cksum_loc, 2, false);
-
-	return soc_send(socket, gdb_buffer, len+4, 0);
+    return (!ok) ? i - 1 : i;
 }
 
-int gdb_send_packet_prefix(Handle socket, const char *prefix, size_t prefix_len, const char *pkt_data, size_t len)
+int GDB_SendPacket(GDBContext *ctx, const char *packetData, u32 len)
 {
-	if(prefix_len + len + 4 > GDB_BUF_LEN) return -1; // Too long!
+    ctx->buffer[0] = '$';
+    memcpy(ctx->buffer + 1, packetData, len);
 
-	gdb_buffer[0] = '$';
+    char *checksumLoc = ctx->buffer + len + 1;
+    *checksumLoc++ = '#';
 
-	memcpy(gdb_buffer + 1, prefix, prefix_len);
-	memcpy(gdb_buffer + prefix_len + 1, pkt_data, len);
-
-	uint8_t total_cksum = gdb_cksum(prefix, prefix_len);
-	total_cksum += gdb_cksum(pkt_data, len);
-
-	char *cksum_loc = gdb_buffer + len + prefix_len + 1;
-	*cksum_loc++ = '#';
-
-	hexItoa(total_cksum, cksum_loc, 2, false);
-
-	return soc_send(socket, gdb_buffer, prefix_len+len+4, 0);
+    hexItoa(GDB_ComputeChecksum(packetData, len), checksumLoc, 2, false);
+    return soc_send(ctx->socketCtx.sock, ctx->buffer, 4 + len, 0);
 }
 
-int gdb_send_packet_hex(Handle socket, const char *pkt_data, size_t len)
+int GDB_SendFormattedPacket(GDBContext *ctx, const char *packetDataFmt, ...)
 {
-	if(len*2 + 4 > GDB_BUF_LEN) return -1; // Too long!
+    // It goes without saying you shouldn't use that with user-controlled data...
+    char buf[GDB_BUF_LEN + 1];
+    va_list args;
+    va_start(args, packetDataFmt);
+    int n = vsprintf(buf, packetDataFmt, args);
+    va_end(args);
 
-	gdb_buffer[0] = '$';
+    if(n < 0) return n;
+    else return GDB_SendPacket(ctx, buf, (u32)n);
+}
 
-	gdb_hex_encode(gdb_buffer + 1, pkt_data, len);
+int GDB_SendHexPacket(GDBContext *ctx, const void *packetData, u32 len)
+{
+    if(4 + 2 * len > GDB_BUF_LEN)
+        return -1;
 
-	char *cksum_loc = gdb_buffer + len*2 + 1;
-	*cksum_loc++ = '#';
+    ctx->buffer[0] = '$';
+    GDB_EncodeHex(ctx->buffer + 1, packetData, len);
 
-	hexItoa(gdb_cksum(pkt_data, len), cksum_loc, 2, false);
+    char *checksumLoc = ctx->buffer + 2 * len + 1;
+    *checksumLoc++ = '#';
 
-	return soc_send(socket, gdb_buffer, len*2+4, 0);
+    hexItoa(GDB_ComputeChecksum(ctx->buffer + 1, 2 * len), checksumLoc, 2, false);
+    return soc_send(ctx->socketCtx.sock, ctx->buffer, 4 + len, 0);
+}
+
+int GDB_ReplyEmpty(GDBContext *ctx)
+{
+    return soc_send(ctx->socketCtx.sock, "$#00", 4, 0);
+}
+
+int GDB_ReplyOk(GDBContext *ctx)
+{
+    return soc_send(ctx->socketCtx.sock, "$OK#9a", 6, 0);
+}
+
+int GDB_ReplyErrno(GDBContext *ctx, int no)
+{
+    char buf[] = "E01";
+    hexItoa(no, buf + 1, 2, false);
+    return GDB_SendPacket(ctx, buf, 3);
 }

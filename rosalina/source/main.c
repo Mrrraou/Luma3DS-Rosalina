@@ -10,6 +10,7 @@
 #include "menus/process_patches.h"
 
 // this is called before main
+bool isN3DS;
 void __appInit()
 {
     srvSysInit();
@@ -20,6 +21,9 @@ void __appInit()
     svcGetSystemInfo(&config, 0x10000, 2);
     if(((config >> 24) & 1) != 0) // "patch games" option
         ProcessPatches_PatchFS_NoDisplay();
+
+    s64 dummy;
+    isN3DS = svcGetSystemInfo(&dummy, 0x10001, 0) == 0;
 }
 
 // this is called after main exits
