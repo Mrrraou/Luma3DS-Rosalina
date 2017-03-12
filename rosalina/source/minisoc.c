@@ -203,7 +203,7 @@ Result socListen(Handle sockfd, int max_connections)
 	return ret;
 }
 
-Result socAccept(Result sockfd, Handle *out, struct sockaddr *addr, socklen_t *addrlen)
+Result socAccept(Handle sockfd, Handle *out, struct sockaddr *addr, socklen_t *addrlen)
 {
 	Result ret = 0;
 	int tmp_addrlen = 0x1c;
@@ -232,9 +232,7 @@ Result socAccept(Result sockfd, Handle *out, struct sockaddr *addr, socklen_t *a
 	staticbufs[1] = saved_threadstorage[1];
 
 	if(ret != 0)
-	{
 		return ret;
-	}
 
 	ret = (int)cmdbuf[1];
 	if(ret == 0)
@@ -249,11 +247,9 @@ Result socAccept(Result sockfd, Handle *out, struct sockaddr *addr, socklen_t *a
 	}
 
 	if(ret >= 0)
-	{
 		*out = (Handle)ret;
-	}
 
-	return 0;
+	return ret;
 }
 
 Result socPoll(struct pollfd *fds, nfds_t nfds, int timeout)

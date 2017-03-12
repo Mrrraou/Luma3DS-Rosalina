@@ -21,7 +21,7 @@ s32 _net_convert_error(s32 sock_retval);
 Result socSocket(Handle *out, int domain, int type, int protocol);
 Result socBind(Handle sockfd, const struct sockaddr *addr, socklen_t addrlen);
 Result socListen(Handle sockfd, int max_connections);
-Result socAccept(Result sockfd, Handle *out, struct sockaddr *addr, socklen_t *addrlen);
+Result socAccept(Handle sockfd, Handle *out, struct sockaddr *addr, socklen_t *addrlen);
 Result socPoll(struct pollfd *fds, nfds_t nfds, int timeout);
 int socClose(Handle sockfd);
 
