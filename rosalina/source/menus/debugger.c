@@ -56,7 +56,7 @@ void Debugger_Enable(void)
         hexItoa(0x02C00000 - amt, msg1, 8, false);
         draw_string(msg1, 10, 20, COLOR_WHITE);
 
-        Result res = miniSocInit(0x20000);
+        Result res = miniSocInit(0x30000);
         if(R_FAILED(res))
         {
             char msg2[] = "00000000 err";

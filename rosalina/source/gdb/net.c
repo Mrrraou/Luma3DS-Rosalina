@@ -85,7 +85,7 @@ int GDB_SendHexPacket(GDBContext *ctx, const void *packetData, u32 len)
     *checksumLoc++ = '#';
 
     hexItoa(GDB_ComputeChecksum(ctx->buffer + 1, 2 * len), checksumLoc, 2, false);
-    return soc_send(ctx->socketCtx.sock, ctx->buffer, 4 + len, 0);
+    return soc_send(ctx->socketCtx.sock, ctx->buffer, 4 + 2 * len, 0);
 }
 
 int GDB_ReplyEmpty(GDBContext *ctx)

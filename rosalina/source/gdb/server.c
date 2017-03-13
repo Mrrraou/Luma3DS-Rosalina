@@ -186,25 +186,24 @@ int GDB_DoPacket(sock_ctx *socketCtx)
         {
             char cksum[3];
             cksum[2] = 0;
-
-            int r = soc_recv_until(socket, ctx->buffer, GDB_BUF_LEN, "#", 1);
-            if(r == -1)
+            int r = soc_recv_until(socket, ctx->buffer, GDB_BUF_LEN, "#", 1, true);
+            if(r < 0)
             {
-                char ctrlc = soc_recv(socket, &ctrlc, 1, 0);
-                if(ctrlc == '\x03')
-                {
-                    GDB_HandleBreak(ctx);
-                    ret = 0;
-                }
-                else
-                    ret = -1;
+                ret = -1;
+                goto unlock;
+            }
+
+            else if(ctx->buffer[0] == '\x03')
+            {
+                GDB_HandleBreak(ctx);
+                ret = 0;
                 goto unlock;
             }
 
             soc_recv(socket, cksum, 2, 0);
 
             // Bubbling -1 up to server will close the connection.
-            if(r == 0 || r == -1)
+            if(r <= 0)
             {
                 ret = -1;
                 goto unlock;

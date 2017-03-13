@@ -4,7 +4,7 @@
 GDB_DECLARE_HANDLER(ReadRegisters)
 {
     if(ctx->selectedThreadId == 0)
-        return GDB_ReplyErrno(ctx, EPERM);
+        ctx->selectedThreadId = ctx->currentThreadId;
 
     ThreadContext regs;
     Result r = svcGetDebugThreadContext(&regs, ctx->debug, ctx->selectedThreadId, THREADCONTEXT_CONTROL_ALL);
@@ -17,7 +17,7 @@ GDB_DECLARE_HANDLER(ReadRegisters)
 GDB_DECLARE_HANDLER(WriteRegisters)
 {
     if(ctx->selectedThreadId == 0)
-        return GDB_ReplyErrno(ctx, EPERM);
+        ctx->selectedThreadId = ctx->currentThreadId;
 
     ThreadContext regs;
 
@@ -63,7 +63,7 @@ static u32 GDB_ConvertRegisterNumber(ThreadContextControlFlags *flags, u32 gdbNu
 GDB_DECLARE_HANDLER(ReadRegister)
 {
     if(ctx->selectedThreadId == 0)
-        return GDB_ReplyErrno(ctx, EPERM);
+        ctx->selectedThreadId = ctx->currentThreadId;
 
     ThreadContext regs;
     ThreadContextControlFlags flags;
@@ -90,7 +90,7 @@ GDB_DECLARE_HANDLER(ReadRegister)
 GDB_DECLARE_HANDLER(WriteRegister)
 {
     if(ctx->selectedThreadId == 0)
-        return GDB_ReplyErrno(ctx, EPERM);
+        ctx->selectedThreadId = ctx->currentThreadId;
 
     ThreadContext regs;
     ThreadContextControlFlags flags;
