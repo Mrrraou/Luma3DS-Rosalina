@@ -60,7 +60,7 @@ static GDBCommandHandler GDB_GetCommandHandler(char c)
 
         case 'T':
             return GDB_HandleIsThreadAlive;
-        
+
         case 'c':
         case 'C':
             return GDB_HandleContinue;
@@ -82,11 +82,7 @@ int GDB_AcceptClient(sock_ctx *socketCtx)
         r = svcDebugActiveProcess(&ctx->debug, ctx->pid);
         if(R_SUCCEEDED(r))
         {
-            while(R_SUCCEEDED(svcGetProcessDebugEvent(&ctx->latestDebugEvent, ctx->debug)))
-            {
-                if(ctx->latestDebugEvent.type != DBGEVENT_EXCEPTION || ctx->latestDebugEvent.exception.type != EXCEVENT_ATTACH_BREAK)
-                    svcContinueDebugEvent(ctx->debug, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
-            }
+            while(R_SUCCEEDED(svcGetProcessDebugEvent(&ctx->latestDebugEvent, ctx->debug)));
         }
         else
         {
@@ -190,7 +186,9 @@ int GDB_DoPacket(sock_ctx *socketCtx)
             char cksum[3];
             cksum[2] = 0;
             int r = soc_recv_until(socket, ctx->buffer, GDB_BUF_LEN, "#", 1, true);
-            if(r < 0)
+
+            // Bubbling -1 up to server will close the connection.
+            if(r <= 0)
             {
                 ret = -1;
                 goto unlock;
@@ -203,17 +201,10 @@ int GDB_DoPacket(sock_ctx *socketCtx)
                 goto unlock;
             }
 
-            soc_recv(socket, cksum, 2, 0);
-
-            // Bubbling -1 up to server will close the connection.
-            if(r <= 0)
-            {
-                ret = -1;
-                goto unlock;
-            }
-
             else
             {
+                soc_recv(socket, cksum, 2, 0);
+
                 ctx->buffer[r-1] = 0; // replace trailing '#' with 0
 
                 GDBCommandHandler handler = GDB_GetCommandHandler(ctx->buffer[1]);
@@ -227,13 +218,9 @@ int GDB_DoPacket(sock_ctx *socketCtx)
                         goto unlock;
                     }
                     ret = res;
-                    goto unlock;
                 }
                 else
-                {
                     ret = GDB_HandleUnsupported(ctx); // We don't have a handler!
-                    goto unlock;
-                }
             }
         }
         break;

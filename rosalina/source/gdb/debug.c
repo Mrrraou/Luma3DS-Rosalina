@@ -243,20 +243,11 @@ int GDB_SendStopReply(GDBContext *ctx, DebugEventInfo *info)
 
 int GDB_HandleDebugEvents(GDBContext *ctx)
 {
-    u32 n = 0, m = 0;
     DebugEventInfo info;
     while(R_SUCCEEDED(svcGetProcessDebugEvent(&info, ctx->debug)))
-    {
-        if(info.type != DBGEVENT_EXIT_PROCESS && (info.flags & 1) != 0)
-            m++;
-        ctx->pendingDebugEvents[n++, ctx->numPendingDebugEvents++] = info;
-    }
-    if(n == 0)
-        return -1;
+        ctx->pendingDebugEvents[ctx->numPendingDebugEvents++] = info;
 
-    if(R_SUCCEEDED(svcBreakDebugProcess(ctx->debug))) m++;
-    for(u32 i = 0; i < m - 1; i++)
-        svcContinueDebugEvent(ctx->debug, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
+    svcBreakDebugProcess(ctx->debug);
 
     int ret = 0;
     if(ctx->numPendingDebugEvents > 0)

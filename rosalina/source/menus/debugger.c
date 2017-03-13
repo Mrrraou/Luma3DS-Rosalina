@@ -125,8 +125,8 @@ void debuggerDebugThreadMain(void)
             continue;
         else
         {
-            GDBContext *ctx = &gdbCtxs[0];
-            //RecursiveLock_Lock(&ctx->lock);
+            GDBContext *ctx = &gdbCtxs[idx - 1];
+            RecursiveLock_Lock(&ctx->lock);
 
             if(ctx->eventToWaitFor == ctx->clientAcceptedEvent)
                 ctx->eventToWaitFor = ctx->continuedEvent;
@@ -134,13 +134,11 @@ void debuggerDebugThreadMain(void)
                 ctx->eventToWaitFor = ctx->debug;
             else
             {
-                RecursiveLock_Lock(&ctx->lock);
-                ctx->eventToWaitFor = ctx->continuedEvent;
                 GDB_HandleDebugEvents(ctx);
-                RecursiveLock_Unlock(&ctx->lock);
+                ctx->eventToWaitFor = ctx->continuedEvent;
             }
 
-            //RecursiveLock_Unlock(&ctx->lock);
+            RecursiveLock_Unlock(&ctx->lock);
         }
     }
 }

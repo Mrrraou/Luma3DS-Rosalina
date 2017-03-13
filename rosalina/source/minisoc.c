@@ -341,16 +341,19 @@ int soc_recv_until(Handle fd, char *buf, size_t buf_len, char *sig, size_t sig_l
     else if(handle_ctrlc && peek_buffer[0] == '\x03')
     {
         buf[0] = peek_buffer[0];
-        return r;
+        peek_buffer[0] = 0;
+        return soc_recvfrom(fd, buf, 1, 0, NULL, 0);
     }
-    char *ptr = (char*) memsearch((u8*)peek_buffer, sig, PEEK_SIZE, sig_len);
-    if(ptr == NULL)
-        return -1; // Line too long!
-    size_t len = ptr - peek_buffer;
-    len += sig_len;
-    if(len > buf_len)
-        return -1;
-    memset_(peek_buffer, 0, len);
-    r = soc_recvfrom(fd, buf, len, 0, NULL, 0);
-    return r;
+    else
+    {
+        char *ptr = (char*) memsearch((u8*)peek_buffer, sig, PEEK_SIZE, sig_len);
+        if(ptr == NULL)
+            return -1; // Line too long!
+        size_t len = ptr - peek_buffer;
+        len += sig_len;
+        if(len > buf_len)
+            return -1;
+        memset_(peek_buffer, 0, len);
+        return soc_recvfrom(fd, buf, len, 0, NULL, 0);
+    }
 }
