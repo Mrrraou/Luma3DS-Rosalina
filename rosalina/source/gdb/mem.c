@@ -4,60 +4,104 @@
 
 int GDB_SendProcessMemory(GDBContext *ctx, const char *prefix, u32 prefixLen, u32 addr, u32 len)
 {
-    char buff[256];
-    Result r = 0;
-    u8 cksum = 0;
+    char buf[GDB_BUF_LEN];
+    char membuf[GDB_BUF_LEN / 2];
 
-    // Send packet header.
-    soc_send(ctx->socketCtx.sock, "$", 1, 0);
-    soc_send(ctx->socketCtx.sock, prefix, prefixLen, 0);
-    u32 total = len;
+    if(prefix != NULL)
+        memcpy(buf, prefix, prefixLen);
+    else
+        prefixLen = 0;
 
-    while(len != 0 && R_SUCCEEDED(r))
+    if(prefixLen + 2 * len > GDB_BUF_LEN) // gdb shouldn't send requests which responses don't fit in a packet
+        return prefix == NULL ? GDB_ReplyErrno(ctx, ENOMEM) : -1;
+
+    Result r = svcReadProcessMemory(membuf, ctx->debug, addr, len);
+    if(R_FAILED(r))
     {
-        u32 readLen = len;
-        if(readLen > 256)
-            readLen = 256;
-
-        r = svcReadProcessMemory(buff, ctx->debug, addr, len);
-        if(R_FAILED(r))
+        // if the requested memory is split inside two pages, with the second one being not accessible...
+        u32 newlen = 0x1000 - (addr & 0xFFF);
+        if(newlen >= len || R_FAILED(svcReadProcessMemory(membuf, ctx->debug, addr, newlen)))
+            return prefix == NULL ? GDB_ReplyErrno(ctx, EFAULT) : -2;
+        else
         {
-            if(len == total)
-            {
-                memcpy(buff, "E01", 3);
-                readLen = 3;
-            }
-            else
-                readLen = 0;
+            GDB_EncodeHex(buf + prefixLen, membuf, newlen);
+            return GDB_SendPacket(ctx, buf, prefixLen + 2 * newlen);
         }
-
-        len -= readLen;
-        cksum += GDB_ComputeChecksum(buff, readLen);
-        GDB_EncodeHex(ctx->buffer, buff, readLen);
-        soc_send(ctx->socketCtx.sock, ctx->buffer, 2 * readLen, 0);
     }
+    else
+    {
+        GDB_EncodeHex(buf + prefixLen, membuf, len);
+        return GDB_SendPacket(ctx, buf, prefixLen + 2 * len);
+    }
+}
 
-    // Send packet trailer.
-    char s[] = "#00";
-    hexItoa(cksum, s + 1, 2, false);
-    soc_send(ctx->socketCtx.sock, s, 3, 0);
-
-    return 4 + (len == total) ? 3 : total - len;
+int GDB_WriteProcessMemory(GDBContext *ctx, const void *buf, u32 addr, u32 len)
+{
+    Result r = svcWriteProcessMemory(ctx->debug, buf, addr, len);
+    if(R_FAILED(r))
+        return GDB_ReplyErrno(ctx, EFAULT);
+    else
+        return GDB_SendHexPacket(ctx, buf, len);
 }
 
 GDB_DECLARE_HANDLER(ReadMemory)
 {
-    const char *addr_start = ctx->commandData;
-    char *addr_end = (char*)strchr(addr_start, ',');
-    if(addr_end == NULL) return -1;
+    const char *addrStart = ctx->commandData;
+    char *addrEnd = (char*)strchr(addrStart, ',');
+    if(addrEnd == NULL) return -1;
 
-    *addr_end = 0;
-    const char *len_start = addr_end + 1;
-    u32 addr = atoi_(addr_start, 16);
-    u32 len = atoi_(len_start, 16);
-
-    if(addr < 0x1000)
-        return GDB_ReplyErrno(ctx, EPERM);
+    *addrEnd = 0;
+    const char *lenStart = addrEnd + 1;
+    u32 addr = atoi_(addrStart, 16);
+    u32 len = atoi_(lenStart, 16);
 
     return GDB_SendProcessMemory(ctx, NULL, 0, addr, len);
+}
+
+GDB_DECLARE_HANDLER(WriteMemory)
+{
+    char *addrStart = ctx->commandData;
+    char *addrEnd = (char*)strchr(addrStart, ',');
+    if(addrEnd == NULL) return -1;
+
+    char *lenStart = addrEnd + 1;
+    char *lenEnd = (char*)strchr(lenStart, ':');
+    char *dataStart = lenEnd + 1;
+
+    *addrEnd = 0;
+    *lenEnd = 0;
+    u32 addr = atoi_(addrStart, 16);
+    u32 len = atoi_(lenStart, 16);
+
+    if(dataStart + 2 * len >= ctx->buffer + 4 + GDB_BUF_LEN)
+        return GDB_ReplyErrno(ctx, ENOMEM);
+
+    u8 data[GDB_BUF_LEN / 2];
+    len = GDB_DecodeHex(data, dataStart, len);
+
+    return GDB_WriteProcessMemory(ctx, data, addr, len);
+}
+
+GDB_DECLARE_HANDLER(WriteMemoryRaw)
+{
+    char *addrStart = ctx->commandData;
+    char *addrEnd = (char*)strchr(addrStart, ',');
+    if(addrEnd == NULL) return -1;
+
+    char *lenStart = addrEnd + 1;
+    char *lenEnd = (char*)strchr(lenStart, ':');
+    char *dataStart = lenEnd + 1;
+
+    *addrEnd = 0;
+    *lenEnd = 0;
+    u32 addr = atoi_(addrStart, 16);
+    u32 len = atoi_(lenStart, 16);
+
+    if(dataStart + 2 * len >= ctx->buffer + 4 + GDB_BUF_LEN)
+        return GDB_ReplyErrno(ctx, ENOMEM);
+
+    u8 data[GDB_BUF_LEN / 2];
+    GDB_UnescapeBinaryData(data, dataStart, len);
+
+    return GDB_WriteProcessMemory(ctx, data, addr, len);
 }

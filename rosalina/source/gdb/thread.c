@@ -107,3 +107,18 @@ GDB_DECLARE_QUERY_HANDLER(SThreadInfo)
 {
     return GDB_SendPacket(ctx, "l", 1);
 }
+
+GDB_DECLARE_QUERY_HANDLER(ThreadEvents)
+{
+    switch(ctx->commandData[0])
+    {
+        case '0':
+            ctx->catchThreadEvents = false;
+            return GDB_ReplyOk(ctx);
+        case '1':
+            ctx->catchThreadEvents = true;
+            return GDB_ReplyOk(ctx);
+        default:
+            return GDB_ReplyErrno(ctx, EPERM);
+    }
+}

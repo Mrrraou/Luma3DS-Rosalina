@@ -25,6 +25,7 @@ static GDBQueryHandler queryHandlers[] =
     {"TStatus", GDB_HandleQueryTStatus, GDB_QUERY_DIRECTION_READ},
     {"fThreadInfo", GDB_HandleQueryFThreadInfo, GDB_QUERY_DIRECTION_READ},
     {"sThreadInfo", GDB_HandleQuerySThreadInfo, GDB_QUERY_DIRECTION_READ},
+    {"ThreadEvents", GDB_HandleQueryThreadEvents, GDB_QUERY_DIRECTION_WRITE},
     {"C", GDB_HandleQueryCurrentThreadId, GDB_QUERY_DIRECTION_READ},
 };
 
@@ -65,8 +66,7 @@ int GDB_HandleWriteQuery(GDBContext *ctx)
 
 GDB_DECLARE_QUERY_HANDLER(Supported)
 {
-    const char *supp = "PacketSize=400;qXfer:features:read+;QStartNoAckMode+";
-    return GDB_SendPacket(ctx, supp, strlen(supp));
+    return GDB_SendFormattedPacket(ctx, "PacketSize=%d;qXfer:features:read+;QThreadEvents+;QStartNoAckMode+", sizeof(ctx->buffer));
 }
 
 GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)

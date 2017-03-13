@@ -55,6 +55,12 @@ static GDBCommandHandler GDB_GetCommandHandler(char c)
         case 'm':
             return GDB_HandleReadMemory;
 
+        case 'M':
+            return GDB_HandleWriteMemory;
+
+        case 'X':
+            return GDB_HandleWriteMemoryRaw;
+
         case 'H':
             return GDB_HandleSetThreadId;
 

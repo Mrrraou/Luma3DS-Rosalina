@@ -46,6 +46,7 @@ typedef struct GDBContext
     Handle clientAcceptedEvent, continuedEvent;
     Handle eventToWaitFor;
 
+    bool catchThreadEvents;
     bool processExited;
 
     DebugEventInfo pendingDebugEvents[0x10], latestDebugEvent;

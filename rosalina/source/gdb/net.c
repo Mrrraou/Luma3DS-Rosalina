@@ -48,6 +48,26 @@ int GDB_DecodeHex(void *dst, const char *src, u32 len)
     return (!ok) ? i - 1 : i;
 }
 
+int GDB_UnescapeBinaryData(void *dst, const void *src, u32 len)
+{
+    u8 *dst8 = (u8 *)dst;
+    const u8 *src8 = (const u8 *)src;
+
+    for(u32 i = 0; i < len; i++)
+    {
+        if(*src8 == '}')
+        {
+            src8++;
+            *dst8++ = *src8++ ^ 0x20;
+        }
+        else
+            *dst8++ = *src8++;
+    }
+
+    return len;
+}
+
+
 int GDB_SendPacket(GDBContext *ctx, const char *packetData, u32 len)
 {
     ctx->buffer[0] = '$';

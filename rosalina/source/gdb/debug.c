@@ -99,14 +99,17 @@ int GDB_SendStopReply(GDBContext *ctx, DebugEventInfo *info)
 
         case DBGEVENT_ATTACH_THREAD:
         {
-            if(info->attach_thread.creator_thread_id == 0)
+            if(info->attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)
                 break; // Dismissed
 
-            return GDB_SendFormattedPacket(ctx, "T05create:%x", info->thread_id);
+            return GDB_SendPacket(ctx, "T05create:;", 11);
         }
 
         case DBGEVENT_EXIT_THREAD:
         {
+            if(!ctx->catchThreadEvents)
+                break;
+
             // no signal, SIGTERM, SIGQUIT (process exited), SIGTERM (process terminated)
             static const char *threadExitRepliesPrefix[] = {"w00;", "w0f;", "w03;", "w0f;"};
             return GDB_SendFormattedPacket(ctx, "%s%x", threadExitRepliesPrefix[(u32)info->exit_thread.reason], info->thread_id);
@@ -136,7 +139,7 @@ int GDB_SendStopReply(GDBContext *ctx, DebugEventInfo *info)
 
                     ctx->currentThreadId = info->thread_id;
                     GDB_ParseCommonThreadInfo(buffer, ctx, exc.type == EXCEVENT_UNDEFINED_SYSCALL);
-                    return GDB_SendFormattedPacket(ctx, "T%02x%s", signum, buffer);
+                    return GDB_SendFormattedPacket(ctx, "T%02x%s;", signum, buffer);
                 }
 
                 case EXCEVENT_ATTACH_BREAK:
@@ -153,7 +156,7 @@ int GDB_SendStopReply(GDBContext *ctx, DebugEventInfo *info)
 
                             /*
                             GDB_ParseCommonThreadInfo(buffer, ctx, info->thread_id, false);
-                            return GDB_SendFormattedPacket(ctx, "T05%s;swbreak", buffer);
+                            return GDB_SendFormattedPacket(ctx, "T05%s;swbreak:", buffer);
                             */
                             break;
                         }
@@ -179,7 +182,7 @@ int GDB_SendStopReply(GDBContext *ctx, DebugEventInfo *info)
                 {
                     ctx->currentThreadId = info->thread_id;
                     GDB_ParseCommonThreadInfo(buffer, ctx, false);
-                    return GDB_SendFormattedPacket(ctx, "T02%s", buffer); // SIGINT
+                    return GDB_SendFormattedPacket(ctx, "T02%s;", buffer); // SIGINT
                     //TODO
                 }
 
@@ -208,7 +211,7 @@ int GDB_SendStopReply(GDBContext *ctx, DebugEventInfo *info)
                     else
                     {
                         GDB_ParseCommonThreadInfo(buffer, ctx, false);
-                        return GDB_SendFormattedPacket(ctx, "T02%s", buffer);
+                        return GDB_SendFormattedPacket(ctx, "T02%s;", buffer);
                     }
                 }
 
@@ -221,19 +224,38 @@ int GDB_SendStopReply(GDBContext *ctx, DebugEventInfo *info)
         {
             ctx->currentThreadId = info->thread_id;
             GDB_ParseCommonThreadInfo(buffer, ctx, false);
-            return GDB_SendFormattedPacket(ctx, "T05%s;syscall_entry:%02x", buffer, info->syscall.syscall);
+            return GDB_SendFormattedPacket(ctx, "T05%s;syscall_entry:%02x;", buffer, info->syscall.syscall);
         }
 
         case DBGEVENT_SYSCALL_OUT:
         {
             ctx->currentThreadId = info->thread_id;
             GDB_ParseCommonThreadInfo(buffer, ctx, false);
-            return GDB_SendFormattedPacket(ctx, "T05%s;syscall_return:%02x", buffer, info->syscall.syscall);
+            return GDB_SendFormattedPacket(ctx, "T05%s;syscall_return:%02x;", buffer, info->syscall.syscall);
         }
 
         case DBGEVENT_OUTPUT_STRING:
-            return GDB_SendProcessMemory(ctx, "O", 1, info->output_string.string_addr, info->output_string.string_size);
+        {
+            u32 addr = info->output_string.string_addr;
+            u32 remaining = info->output_string.string_size;
+            u32 sent = 0;
+            int total = 0;
+            while(remaining > 0)
+            {
+                u32 pending = (GDB_BUF_LEN - 1) / 2;
+                pending = pending > remaining ? pending : remaining;
 
+                int res = GDB_SendProcessMemory(ctx, "O", 1, addr + sent, pending);
+                if(res < 0 || (u32) res != 5 + 2 * pending)
+                    break;
+
+                sent += pending;
+                remaining -= pending;
+                total += res;
+            }
+
+            return total;
+        }
         default:
             break;
     }
