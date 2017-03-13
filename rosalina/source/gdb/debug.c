@@ -49,7 +49,7 @@ GDB_DECLARE_HANDLER(Continue)
     {
         DebugEventInfo dummy;
         while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
-        while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS)));
+        while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS)));
         ctx->flags |= GDB_FLAG_PROCESS_CONTINUING;
         ctx->currentThreadId = 0;
     }
@@ -83,12 +83,10 @@ static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, bool isUndefIns
     r = svcGetDebugThreadParam(&dummy, &core, ctx->debug, ctx->currentThreadId, DBGTHREAD_PARAMETER_CPU_IDEAL);
 
     if(R_FAILED(r))
-        return sprintf(out, "thread:%x;d:%08x;e:%08x;f:%08x;19:%08x", threadId, regs.cpu_registers.sp, regs.cpu_registers.lr, regs.cpu_registers.pc, regs.cpu_registers.cpsr);
+        return sprintf(out, "thread:%x;d:%x;e:%x;f:%x;19:%x", threadId, regs.cpu_registers.sp, regs.cpu_registers.lr, regs.cpu_registers.pc, regs.cpu_registers.cpsr);
     else
-        return sprintf(out, "thread:%x;d:%08x;e:%08x;f:%08x;19:%08x;core:%x", threadId, regs.cpu_registers.sp, regs.cpu_registers.lr, regs.cpu_registers.pc, regs.cpu_registers.cpsr, core);
+        return sprintf(out, "thread:%x;d:%x;e:%x;f:%x;19:%x;core:%x", threadId, regs.cpu_registers.sp, regs.cpu_registers.lr, regs.cpu_registers.pc, regs.cpu_registers.cpsr, core);
 }
-
-extern bool isN3DS;
 
 int GDB_SendStopReply(GDBContext *ctx, DebugEventInfo *info)
 {
@@ -187,26 +185,31 @@ int GDB_SendStopReply(GDBContext *ctx, DebugEventInfo *info)
 
                 case EXCEVENT_DEBUGGER_BREAK:
                 {
-                    memcpy(buffer, "T02", 3); // SIGINT
-                    u8 affinityMask = 0xFF;
-                    //svcGetProcessAffinityMask(&affinityMask, ctx->process, isN3DS ? 4 : 2);
-                    if(affinityMask < 4 && exc.debugger_break.threadIds[affinityMask] > 0)
-                        ctx->currentThreadId = (u32) exc.debugger_break.threadIds[affinityMask];
+                    u32 threadIds[4];
+                    u32 nbThreads = 0;
+
+                    s32 idealProcessor;
+                    Result r = svcGetProcessIdealProcessor(&idealProcessor, ctx->process);
+                    if(R_SUCCEEDED(r) && exc.debugger_break.thread_ids[idealProcessor] > 0)
+                        ctx->currentThreadId = (u32) exc.debugger_break.thread_ids[idealProcessor];
                     else
                     {
-                        u32 threadIds[4];
-                        u32 nbThreads;
-                        for(u32 i = 0; i < (isN3DS ? 4 : 2); i++)
+                        for(u32 i = 0; i < 4; i++)
                         {
-                            if(exc.debugger_break.threadIds[i] > 0)
-                                threadIds[nbThreads++] = (u32)exc.debugger_break.threadIds[i];
+                            if(exc.debugger_break.thread_ids[i] > 0)
+                                threadIds[nbThreads++] = (u32)exc.debugger_break.thread_ids[i];
                         }
-
-                        GDB_UpdateCurrentThreadFromList(ctx, threadIds, nbThreads);
+                        if(nbThreads > 0)
+                            GDB_UpdateCurrentThreadFromList(ctx, threadIds, nbThreads);
                     }
 
-                    GDB_ParseCommonThreadInfo(buffer, ctx, false);
-                    return GDB_SendFormattedPacket(ctx, "T02%s", buffer); // SIGINT
+                    if(ctx->currentThreadId == 0)
+                        return GDB_SendPacket(ctx, "S02", 3);
+                    else
+                    {
+                        GDB_ParseCommonThreadInfo(buffer, ctx, false);
+                        return GDB_SendFormattedPacket(ctx, "T02%s", buffer);
+                    }
                 }
 
                 default:
@@ -253,7 +256,7 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
 
     if(R_SUCCEEDED(svcBreakDebugProcess(ctx->debug))) m++;
     for(u32 i = 0; i < m - 1; i++)
-        svcContinueDebugEvent(ctx->debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS);
+        svcContinueDebugEvent(ctx->debug, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
 
     int ret = 0;
     if(ctx->numPendingDebugEvents > 0)

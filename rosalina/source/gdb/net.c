@@ -51,6 +51,7 @@ int GDB_DecodeHex(void *dst, const char *src, u32 len)
 int GDB_SendPacket(GDBContext *ctx, const char *packetData, u32 len)
 {
     ctx->buffer[0] = '$';
+
     memcpy(ctx->buffer + 1, packetData, len);
 
     char *checksumLoc = ctx->buffer + len + 1;
@@ -86,6 +87,29 @@ int GDB_SendHexPacket(GDBContext *ctx, const void *packetData, u32 len)
 
     hexItoa(GDB_ComputeChecksum(ctx->buffer + 1, 2 * len), checksumLoc, 2, false);
     return soc_send(ctx->socketCtx.sock, ctx->buffer, 4 + 2 * len, 0);
+}
+
+int GDB_SendDebugString(GDBContext *ctx, const char *fmt, ...) // unsecure
+{
+    if(!(ctx->numPendingDebugEvents != 0 || (ctx->flags & GDB_FLAG_PROCESS_CONTINUING)))
+        return 0;
+    char formatted[(GDB_BUF_LEN - 1) / 2 + 1];
+    ctx->buffer[0] = '$';
+    ctx->buffer[1] = 'O';
+
+    va_list args;
+    va_start(args, fmt);
+    int n = vsprintf(formatted, fmt, args);
+    va_end(args);
+
+    if(n <= 0) return n;
+    GDB_EncodeHex(ctx->buffer + 2, formatted, 2 * n);
+
+    char *checksumLoc = ctx->buffer + 2 * n + 2;
+    *checksumLoc++ = '#';
+
+    hexItoa(GDB_ComputeChecksum(ctx->buffer + 1, 2 * n + 1), checksumLoc, 2, false);
+    return soc_send(ctx->socketCtx.sock, ctx->buffer, 5 + 2 * n, 0);
 }
 
 int GDB_ReplyEmpty(GDBContext *ctx)

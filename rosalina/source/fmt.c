@@ -1,7 +1,7 @@
 // TuxSH's changes: add support for 64-bit numbers, remove floating-point code
 
 #include "fmt.h"
-
+#include <3ds.h>
 /* File : barebones/ee_printf.c
 	This file contains an implementation of ee_printf that only requires a method to output a char to a UART without pulling in library code.
 
@@ -214,7 +214,6 @@ static int ee_vsprintf(char *buf, const char *fmt, va_list args)
   int i, base;
   char *str;
   char *s;
-
   int flags;            // Flags to number()
 
   int field_width;      // Width of output field
@@ -302,7 +301,10 @@ repeat:
       case 's':
         s = va_arg(args, char *);
         if (!s) s = "<NULL>";
-        len = strnlen(s, precision);
+        if(precision != -1)
+            len = strnlen(s, precision);
+        else
+            len = strlen(s);
         if (!(flags & LEFT)) while (len < field_width--) *str++ = ' ';
         for (i = 0; i < len; ++i) *str++ = *s++;
         while (len < field_width--) *str++ = ' ';

@@ -58,6 +58,9 @@ static GDBCommandHandler GDB_GetCommandHandler(char c)
         case 'H':
             return GDB_HandleSetThreadId;
 
+        case 'T':
+            return GDB_HandleIsThreadAlive;
+        
         case 'c':
         case 'C':
             return GDB_HandleContinue;
@@ -82,7 +85,7 @@ int GDB_AcceptClient(sock_ctx *socketCtx)
             while(R_SUCCEEDED(svcGetProcessDebugEvent(&ctx->latestDebugEvent, ctx->debug)))
             {
                 if(ctx->latestDebugEvent.type != DBGEVENT_EXCEPTION || ctx->latestDebugEvent.exception.type != EXCEVENT_ATTACH_BREAK)
-                    svcContinueDebugEvent(ctx->debug, DBG_NO_ERRF_CPU_EXCEPTION_DUMPS);
+                    svcContinueDebugEvent(ctx->debug, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
             }
         }
         else

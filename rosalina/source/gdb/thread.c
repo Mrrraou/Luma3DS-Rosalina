@@ -12,7 +12,6 @@ void GDB_UpdateCurrentThreadFromList(GDBContext *ctx, u32 *threadIds, u32 nbThre
     u32 scheduledThreadIds[0x7F];
     s32 nbScheduledThreads = 0;
     s64 dummy;
-
     for(u32 i = 0; i < nbThreads; i++)
     {
         u32 mask = 0;
@@ -51,6 +50,19 @@ GDB_DECLARE_HANDLER(SetThreadId)
         return GDB_ReplyErrno(ctx, EPERM);
 }
 
+GDB_DECLARE_HANDLER(IsThreadAlive)
+{
+    u32 threadId = (u32)atoi_(ctx->commandData, 16);
+    s64 dummy;
+    u32 mask;
+
+    Result r = svcGetDebugThreadParam(&dummy, &mask, ctx->debug, threadId, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
+    if(R_SUCCEEDED(r) && mask != 2)
+        return GDB_ReplyOk(ctx);
+    else
+        return GDB_ReplyErrno(ctx, EPERM);
+}
+
 GDB_DECLARE_QUERY_HANDLER(CurrentThreadId)
 {
     if(ctx->currentThreadId == 0)
@@ -73,20 +85,20 @@ GDB_DECLARE_QUERY_HANDLER(FThreadInfo)
     u32 threadIds[0x7F];
     s32 nbThreads;
 
-    char buf[GDB_BUF_LEN + 1] = {'m'};
+    char buf[GDB_BUF_LEN + 1];
 
     Result r = svcGetThreadList(&nbThreads, threadIds, 0x7F, ctx->process);
     if(R_FAILED(r))
         return GDB_SendPacket(ctx, "l", 1);
 
-    if(nbThreads == 0x7F) __asm__ volatile("bkpt 1");
-    char *bufptr = buf + 1;
+    char *bufptr = buf;
 
     for(s32 i = 0; i < nbThreads && bufptr < buf + GDB_BUF_LEN - 9; i++)
     {
         *bufptr++ = ',';
         bufptr += sprintf(bufptr, "%x", threadIds[i]);
     }
+    buf[0] = 'm';
 
     return GDB_SendPacket(ctx, buf, bufptr - buf);
 }
