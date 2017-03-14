@@ -33,7 +33,7 @@ void compact(struct sock_server *serv)
     serv->compact_needed = false;
 }
 
-void server_close(struct sock_server *serv, struct sock_ctx *ctx)
+void server_close_ctx(struct sock_server *serv, struct sock_ctx *ctx)
 {
     serv->compact_needed = true;
 
@@ -57,6 +57,8 @@ void server_close(struct sock_server *serv, struct sock_ctx *ctx)
 
 void server_init(struct sock_server *serv)
 {
+    memset_(serv, 0, sizeof(struct sock_server));
+
     for(int i = 0; i < MAX_PORTS; i++)
         serv->serv_ctxs[i].type = SOCK_NONE;
 
@@ -120,6 +122,7 @@ struct sock_ctx *server_alloc_server_ctx(struct sock_server *serv)
 void server_run(struct sock_server *serv)
 {
     struct pollfd *fds = serv->poll_fds;
+    serv->running = true;
 
     while(serv->running && !terminationRequest)
     {
@@ -142,11 +145,10 @@ void server_run(struct sock_server *serv)
                 {
                     Handle client_sock = 0;
                     res = socAccept(fds[i].fd, &client_sock, NULL, 0);
-                    //if(res < 0) __asm__ volatile("bkpt 1");
+
                     if(curr_ctx->n == serv->clients_per_server || serv->nfds == MAX_CTXS)
-                    {
                         socClose(client_sock);
-                    }
+
                     else
                     {
                         fds[serv->nfds].fd = client_sock;
@@ -171,21 +173,32 @@ void server_run(struct sock_server *serv)
                 else
                 {
                     if(serv->data_cb(curr_ctx) == -1)
-                        server_close(serv, curr_ctx);
+                        server_close_ctx(serv, curr_ctx);
                 }
             }
             else if(fds[i].revents & POLLHUP || fds[i].revents & POLLERR) // For some reason, this never gets hit?
-            {
-                server_close(serv, curr_ctx);
-            }
+                server_close_ctx(serv, curr_ctx);
         }
 
-        if(serv->compact_needed) compact(serv);
+        if(serv->compact_needed)
+            compact(serv);
     }
 
     // Clean up.
     for(unsigned int i = 0; i < serv->nfds; i++)
     {
-        if(fds[i].fd != -1) socClose(fds[i].fd);
+        if(fds[i].fd != -1)
+            socClose(fds[i].fd);
     }
+
+    serv->running = false;
+}
+
+void server_stop(struct sock_server *serv)
+{
+    for(nfds_t i = 0; i < serv->nfds; i++)
+        server_close_ctx(serv, serv->ctx_ptrs[i]);
+    compact(serv);
+
+    serv->running = false;
 }

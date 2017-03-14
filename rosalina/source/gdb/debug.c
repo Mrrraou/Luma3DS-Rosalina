@@ -6,19 +6,14 @@
 
 GDB_DECLARE_HANDLER(Detach)
 {
-    DebugEventInfo dummy;
-    while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
-    while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, (DebugFlags)0)));
-
-    ctx->state = GDB_STATE_CLOSED;
+    ctx->state = GDB_STATE_CLOSING;
     return GDB_ReplyOk(ctx);
 }
 
 GDB_DECLARE_HANDLER(Kill)
 {
-    ctx->state = GDB_STATE_CLOSED;
+    ctx->state = GDB_STATE_CLOSING;
     ctx->flags |= GDB_FLAG_TERMINATE_PROCESS;
-    
     return 0;
 }
 
@@ -282,17 +277,28 @@ int GDB_SendStopReply(GDBContext *ctx, DebugEventInfo *info)
     return 0;
 }
 
-int GDB_HandleDebugEvents(GDBContext *ctx)
+void GDB_BreakProcessAndSinkDebugEvents(GDBContext *ctx, DebugFlags flags)
 {
-    DebugEventInfo info;
-    while(R_SUCCEEDED(svcGetProcessDebugEvent(&info, ctx->debug)))
-        ctx->pendingDebugEvents[ctx->nbPendingDebugEvents++] = info;
-
     Result r = svcBreakDebugProcess(ctx->debug);
     if(R_FAILED(r))
         ctx->nbDebugEvents = ctx->nbPendingDebugEvents;
     else
         ctx->nbDebugEvents = ctx->nbPendingDebugEvents + 1;
+
+    for(u32 i = 0; i < ctx->nbDebugEvents - 1; i++)
+        svcContinueDebugEvent(ctx->debug, flags);
+}
+
+int GDB_HandleDebugEvents(GDBContext *ctx)
+{
+    if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
+        return 0;
+    
+    DebugEventInfo info;
+    while(R_SUCCEEDED(svcGetProcessDebugEvent(&info, ctx->debug)))
+        ctx->pendingDebugEvents[ctx->nbPendingDebugEvents++] = info;
+
+    GDB_BreakProcessAndSinkDebugEvents(ctx, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
 
     int ret = 0;
     if(ctx->nbPendingDebugEvents > 0)

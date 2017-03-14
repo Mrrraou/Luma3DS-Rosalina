@@ -19,6 +19,8 @@ static MyThread debuggerDebugThread;
 static u8 ALIGN(8) debuggerSocketThreadStack[THREAD_STACK_SIZE];
 static u8 ALIGN(8) debuggerDebugThreadStack[THREAD_STACK_SIZE];
 
+static GDBServer server;
+
 void debuggerSocketThreadMain(void);
 MyThread *debuggerCreateSocketThread(void)
 {
@@ -38,15 +40,12 @@ void Debugger_Enable(void)
     draw_clearFramebuffer();
     draw_flushFramebuffer();
 
-    if(gdbServer.running)
+    if(server.super.running)
     {
         draw_string("Already enabled!", 10, 10, COLOR_TITLE);
     }
     else
     {
-        for(int i = 0; i < MAX_DEBUG; i++)
-            GDB_InitializeContext(gdbCtxs + i);
-
         draw_string("Initialising SOC...", 10, 10, COLOR_WHITE);
 
         s64 amt = 0;
@@ -65,11 +64,10 @@ void Debugger_Enable(void)
         }
         else
         {
-            server_init(&gdbServer);
-            gdbServer.running = true;
+            GDB_InitializeServer(&server);
             debuggerCreateSocketThread();
             debuggerCreateDebugThread();
-            draw_string("Debugger thread started successfully.", 10, 10, COLOR_TITLE);
+            draw_string("Debugger started successfully.", 10, 10, COLOR_TITLE);
         }
     }
 
@@ -83,7 +81,9 @@ void Debugger_Disable(void)
     draw_clearFramebuffer();
     draw_flushFramebuffer();
 
-    gdbServer.running = false;
+    GDB_StopServer(&server);
+    GDB_FinalizeServer(&server);
+
     MyThread_Join(&debuggerSocketThread, -1);
     MyThread_Join(&debuggerDebugThread, -1);
 
@@ -96,36 +96,37 @@ void Debugger_Disable(void)
 
 void debuggerSocketThreadMain(void)
 {
-    gdbCtxs[0].pid = 0x10;
-    server_bind(&gdbServer, 4000);
-    server_bind(&gdbServer, 4001);
-    server_bind(&gdbServer, 4002);
-    server_run(&gdbServer);
+    GDB_RunServer(&server);
 }
 
 void debuggerDebugThreadMain(void)
 {
-    Handle handles[1 + MAX_DEBUG];
+    Handle handles[2 + MAX_DEBUG];
 
     Result r = 0;
 
     handles[0] = terminationRequestEvent;
+    handles[1] = server.statusUpdated;
 
-    while(!terminationRequest && gdbServer.running)
+    while(!terminationRequest && server.super.running)
     {
         for(int i = 0; i < MAX_DEBUG; i++)
-            handles[1 + i] = gdbCtxs[i].eventToWaitFor;
+            handles[2 + i] = server.ctxs[i].eventToWaitFor;
 
         s32 idx = -1;
-        r = svcWaitSynchronizationN(&idx, handles, 1 + MAX_DEBUG, false, -1LL);
+        r = svcWaitSynchronizationN(&idx, handles, 2 + MAX_DEBUG, false, -1LL);
 
         if(R_SUCCEEDED(r) && idx == 0)
             break;
-        else if(R_FAILED(r) || idx < 0)
+        else if(R_FAILED(r) || idx < 2)
             continue;
         else
         {
-            GDBContext *ctx = &gdbCtxs[idx - 1];
+            GDBContext *ctx = &server.ctxs[idx - 2];
+
+            if(ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_CLOSING)
+                continue;
+
             RecursiveLock_Lock(&ctx->lock);
 
             if(ctx->eventToWaitFor == ctx->clientAcceptedEvent)
