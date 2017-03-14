@@ -293,7 +293,7 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
 {
     if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
         return 0;
-    
+
     DebugEventInfo info;
     while(R_SUCCEEDED(svcGetProcessDebugEvent(&info, ctx->debug)))
         ctx->pendingDebugEvents[ctx->nbPendingDebugEvents++] = info;

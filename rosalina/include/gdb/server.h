@@ -4,8 +4,17 @@
 #include "minisoc.h"
 #include "sock_util.h"
 
-extern sock_server gdbServer;
-extern GDBContext  gdbCtxs[MAX_DEBUG];
+typedef struct GDBServer
+{
+    sock_server super;
+    Handle statusUpdated;
+    GDBContext ctxs[MAX_DEBUG];
+} GDBServer;
+
+void GDB_InitializeServer(GDBServer *server);
+void GDB_FinalizeServer(GDBServer *server);
+void GDB_RunServer(GDBServer *server);
+void GDB_StopServer(GDBServer *server);
 
 int GDB_AcceptClient(sock_ctx *socketCtx);
 int GDB_CloseClient(sock_ctx *socketCtx);

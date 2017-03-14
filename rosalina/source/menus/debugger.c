@@ -108,7 +108,7 @@ void debuggerDebugThreadMain(void)
     handles[0] = terminationRequestEvent;
     handles[1] = server.statusUpdated;
 
-    while(!terminationRequest && server.super.running)
+    do
     {
         for(int i = 0; i < MAX_DEBUG; i++)
             handles[2 + i] = server.ctxs[i].eventToWaitFor;
@@ -118,7 +118,7 @@ void debuggerDebugThreadMain(void)
 
         if(R_SUCCEEDED(r) && idx == 0)
             break;
-        else if(R_FAILED(r) || idx < 2)
+        else if(idx < 2)
             continue;
         else
         {
@@ -142,4 +142,5 @@ void debuggerDebugThreadMain(void)
             RecursiveLock_Unlock(&ctx->lock);
         }
     }
+    while(!terminationRequest && server.super.running);
 }

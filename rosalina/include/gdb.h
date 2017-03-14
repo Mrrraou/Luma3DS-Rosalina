@@ -25,15 +25,16 @@ typedef enum GDBFlags
 
 typedef enum GDBState
 {
+    GDB_STATE_DISCONNECTED,
     GDB_STATE_CONNECTED,
     GDB_STATE_NOACK_SENT,
     GDB_STATE_NOACK,
-    GDB_STATE_CLOSED
+    GDB_STATE_CLOSING
 } GDBState;
 
 typedef struct GDBContext
 {
-    sock_ctx socketCtx;
+    sock_ctx super;
 
     RecursiveLock lock;
     GDBFlags flags;
@@ -52,7 +53,7 @@ typedef struct GDBContext
     bool processExited;
 
     DebugEventInfo pendingDebugEvents[0x10], latestDebugEvent;
-    u32 numPendingDebugEvents;
+    u32 nbPendingDebugEvents, nbDebugEvents;
 
     char buffer[GDB_BUF_LEN + 4];
     char *commandData;

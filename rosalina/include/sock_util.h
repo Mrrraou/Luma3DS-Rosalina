@@ -35,7 +35,6 @@ typedef struct sock_server
 {
     // params
     u32 host;
-    void *userdata;
     int clients_per_server;
 
     // poll stuff
@@ -59,5 +58,6 @@ typedef struct sock_server
 void server_init(struct sock_server *serv);
 void server_bind(struct sock_server *serv, u16 port);
 void server_run(struct sock_server *serv);
-void server_close(struct sock_server *serv, struct sock_ctx *ctx);
+void server_stop(struct sock_server *serv);
+void server_close_ctx(struct sock_server *serv, struct sock_ctx *ctx);
 struct sock_ctx *server_alloc_server_ctx(struct sock_server *serv);
