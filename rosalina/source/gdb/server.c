@@ -235,7 +235,29 @@ int GDB_DoPacket(sock_ctx *socketCtx)
     unlock:
     RecursiveLock_Unlock(&ctx->lock);
 
-    if((oldFlags & GDB_FLAG_PROCESS_CONTINUING) && !(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
+    if(ctx->state == GDB_STATE_CLOSED)
+    {
+        //svcTerminateDebugProcess(ctx->debug);
+        DebugEventInfo dummy;
+        while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
+        while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, (DebugFlags)0)));
+
+        svcSignalEvent(ctx->continuedEvent);
+
+        if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
+        {
+            DebugEventInfo dummy;
+            while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
+            for(u32 i = 0; i < ctx->nbDebugEvents - 1; i++)
+                svcContinueDebugEvent(ctx->debug, (DebugFlags)0));
+
+            ctx->nbDebugEvents = ctx->nbPendingDebugEvents = 0;
+            svcTerminateDebugProcess(ctx->debug);
+        }
+
+        return -1;
+    }
+    else if((oldFlags & GDB_FLAG_PROCESS_CONTINUING) && !(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
     {
         if(R_FAILED(svcBreakDebugProcess(ctx->debug)))
             ctx->flags |= GDB_FLAG_PROCESS_CONTINUING;

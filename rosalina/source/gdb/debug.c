@@ -4,6 +4,24 @@
 #include "gdb/mem.h"
 #include "fmt.h"
 
+GDB_DECLARE_HANDLER(Detach)
+{
+    DebugEventInfo dummy;
+    while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
+    while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, (DebugFlags)0)));
+
+    ctx->state = GDB_STATE_CLOSED;
+    return GDB_ReplyOk(ctx);
+}
+
+GDB_DECLARE_HANDLER(Kill)
+{
+    ctx->state = GDB_STATE_CLOSED;
+    ctx->flags |= GDB_FLAG_TERMINATE_PROCESS;
+    
+    return 0;
+}
+
 GDB_DECLARE_HANDLER(Break)
 {
     ctx->flags &= ~GDB_FLAG_PROCESS_CONTINUING;
@@ -36,13 +54,13 @@ GDB_DECLARE_HANDLER(Continue)
     }
 
     int ret = 0;
-    if(ctx->numPendingDebugEvents > 0)
+    if(ctx->nbPendingDebugEvents > 0)
     {
         ret = GDB_SendStopReply(ctx, &ctx->pendingDebugEvents[0]);
         ctx->latestDebugEvent = ctx->pendingDebugEvents[0];
-        for(u32 i = 0; i < ctx->numPendingDebugEvents; i++)
+        for(u32 i = 0; i < ctx->nbPendingDebugEvents; i++)
             ctx->pendingDebugEvents[i] = ctx->pendingDebugEvents[i + 1];
-        --ctx->numPendingDebugEvents;
+        --ctx->nbPendingDebugEvents;
     }
 
     else
@@ -50,6 +68,7 @@ GDB_DECLARE_HANDLER(Continue)
         DebugEventInfo dummy;
         while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
         while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS)));
+        ctx->nbDebugEvents = 0;
         ctx->flags |= GDB_FLAG_PROCESS_CONTINUING;
         ctx->currentThreadId = 0;
     }
@@ -267,18 +286,22 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
 {
     DebugEventInfo info;
     while(R_SUCCEEDED(svcGetProcessDebugEvent(&info, ctx->debug)))
-        ctx->pendingDebugEvents[ctx->numPendingDebugEvents++] = info;
+        ctx->pendingDebugEvents[ctx->nbPendingDebugEvents++] = info;
 
-    svcBreakDebugProcess(ctx->debug);
+    Result r = svcBreakDebugProcess(ctx->debug);
+    if(R_FAILED(r))
+        ctx->nbDebugEvents = ctx->nbPendingDebugEvents;
+    else
+        ctx->nbDebugEvents = ctx->nbPendingDebugEvents + 1;
 
     int ret = 0;
-    if(ctx->numPendingDebugEvents > 0)
+    if(ctx->nbPendingDebugEvents > 0)
     {
         ret = GDB_SendStopReply(ctx, &ctx->pendingDebugEvents[0]);
         ctx->latestDebugEvent = ctx->pendingDebugEvents[0];
-        for(u32 i = 0; i < ctx->numPendingDebugEvents; i++)
+        for(u32 i = 0; i < ctx->nbPendingDebugEvents; i++)
             ctx->pendingDebugEvents[i] = ctx->pendingDebugEvents[i + 1];
-        --ctx->numPendingDebugEvents;
+        --ctx->nbPendingDebugEvents;
     }
 
     return ret;

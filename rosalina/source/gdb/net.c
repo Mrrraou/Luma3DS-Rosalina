@@ -67,7 +67,6 @@ int GDB_UnescapeBinaryData(void *dst, const void *src, u32 len)
     return len;
 }
 
-
 int GDB_SendPacket(GDBContext *ctx, const char *packetData, u32 len)
 {
     ctx->buffer[0] = '$';

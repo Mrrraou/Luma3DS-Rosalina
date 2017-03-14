@@ -2,6 +2,8 @@
 
 #include "gdb.h"
 
+GDB_DECLARE_HANDLER(Detach);
+GDB_DECLARE_HANDLER(Kill);
 GDB_DECLARE_HANDLER(Break);
 GDB_DECLARE_HANDLER(Continue);
 GDB_DECLARE_HANDLER(GetStopReason);
