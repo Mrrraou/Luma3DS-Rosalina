@@ -104,7 +104,8 @@ GDB_DECLARE_HANDLER(WriteRegister)
     *valueStart++ = 0;
 
     u32 n = GDB_ConvertRegisterNumber(&flags, (u32)atoi_(ctx->commandData, 16));
-    u32 value = (u32)atoi_(valueStart, 16);
+    u32 value;
+    GDB_DecodeHex(&value, valueStart, 8);
 
     if(!flags)
         return GDB_ReplyErrno(ctx, EPERM);
