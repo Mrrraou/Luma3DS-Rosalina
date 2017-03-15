@@ -38,12 +38,16 @@ void GDB_FinalizeServer(GDBServer *server)
         GDB_FinalizeContext(server->ctxs + i);
 }
 
+#ifndef GDB_PORT_BASE
+#define GDB_PORT_BASE 4000
+#endif
+
 void GDB_RunServer(GDBServer *server)
 {
     server->ctxs[0].pid = 0x10;
-    server_bind(&server->super, 4000);
-    server_bind(&server->super, 4001);
-    server_bind(&server->super, 4002);
+    server_bind(&server->super, GDB_PORT_BASE);
+    server_bind(&server->super, GDB_PORT_BASE + 1);
+    server_bind(&server->super, GDB_PORT_BASE + 2);
     server_run(&server->super);
 }
 
