@@ -28,15 +28,22 @@ GDB_DECLARE_HANDLER(Continue)
     char *addrStart;
     u32 addr = 0;
 
-    if(*(ctx->commandData - 1) == 'C')
+    if(*(ctx->commandData - 1) == 'C' && *(ctx->commandData - 2) == '$')
     {
         for(addrStart = ctx->commandData; *addrStart != ';' && *addrStart != 0; addrStart++);
         addrStart++;
     }
-    else
+    else if(*(ctx->commandData - 2) == '$')
         addrStart = ctx->commandData;
+    else
+    {
+        addrStart = NULL;
+        if(strncmp(ctx->commandData, "c", 5) != 0 && strncmp(ctx->commandData, "c:-1", 5) != 0)
+            // enforce vCont;c = vCont;c:-1
+            return GDB_ReplyErrno(ctx, EPERM);
+    }
 
-    if(*addrStart != 0  && ctx->currentThreadId != 0)
+    if(addrStart != NULL && *addrStart != 0  && ctx->currentThreadId != 0)
     {
         ThreadContext regs;
         addr = (u32)atoi_(++addrStart, 16);

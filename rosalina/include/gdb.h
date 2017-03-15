@@ -14,7 +14,7 @@
 
 #define GDB_DECLARE_HANDLER(name) int GDB_Handle##name(GDBContext *ctx)
 #define GDB_DECLARE_QUERY_HANDLER(name) GDB_DECLARE_HANDLER(Query##name)
-#define GDB_DECLARE_LONG_HANDLER(name) GDB_DECLARE_HANDLER(Long##name)
+#define GDB_DECLARE_VERBOSE_HANDLER(name) GDB_DECLARE_HANDLER(Verbose##name)
 
 typedef enum GDBFlags
 {

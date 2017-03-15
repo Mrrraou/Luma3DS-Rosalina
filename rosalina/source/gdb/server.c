@@ -1,7 +1,7 @@
 #include "gdb/server.h"
 #include "gdb/net.h"
 #include "gdb/query.h"
-#include "gdb/long_command.h"
+#include "gdb/verbose.h"
 #include "gdb/thread.h"
 #include "gdb/debug.h"
 #include "gdb/regs.h"
@@ -155,7 +155,7 @@ static inline GDBCommandHandler GDB_GetCommandHandler(char c)
             return GDB_HandleWriteQuery;
 
         case 'v':
-            return GDB_HandleLongCommand;
+            return GDB_HandleVerboseCommand;
 
         case '?':
             return GDB_HandleGetStopReason;

@@ -40,12 +40,21 @@ GDB_DECLARE_HANDLER(SetThreadId)
 {
     if(ctx->commandData[0] == 'g')
     {
+        if(memcmp(ctx->commandData + 2, "-1", 2) == 0)
+            return GDB_ReplyErrno(ctx, EPERM); // a thread must be specified
+        
         u32 id = atoi_(ctx->commandData + 1, 16);
         ctx->selectedThreadId = id;
         return GDB_ReplyOk(ctx);
     }
     else if(ctx->commandData[0] == 'c')
-        return GDB_ReplyOk(ctx); // ignore (because we only support all-stop mode)
+    {
+        // We can't stop/continue particular threads
+        if(memcmp(ctx->commandData + 2, "-1", 2) == 0)
+            return GDB_ReplyOk(ctx);
+        else
+            return GDB_ReplyErrno(ctx, EPERM);
+    }
     else
         return GDB_ReplyErrno(ctx, EPERM);
 }
