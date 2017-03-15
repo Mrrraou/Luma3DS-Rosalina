@@ -77,7 +77,7 @@ GDB_DECLARE_QUERY_HANDLER(CurrentThreadId)
         GDB_UpdateCurrentThreadFromList(ctx, threadIds, nbThreads);
     }
 
-    return GDB_SendFormattedPacket(ctx, "%x", ctx->currentThreadId);
+    return GDB_SendFormattedPacket(ctx, "QC%x", ctx->currentThreadId);
 }
 
 GDB_DECLARE_QUERY_HANDLER(FThreadInfo)

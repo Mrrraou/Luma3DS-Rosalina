@@ -22,7 +22,6 @@ static GDBQueryHandler queryHandlers[] =
     {"Xfer", GDB_HandleQueryXfer, GDB_QUERY_DIRECTION_READ},
     {"StartNoAckMode", GDB_HandleQueryStartNoAckMode, GDB_QUERY_DIRECTION_WRITE},
     {"Attached", GDB_HandleQueryAttached, GDB_QUERY_DIRECTION_READ},
-    {"TStatus", GDB_HandleQueryTStatus, GDB_QUERY_DIRECTION_READ},
     {"fThreadInfo", GDB_HandleQueryFThreadInfo, GDB_QUERY_DIRECTION_READ},
     {"sThreadInfo", GDB_HandleQuerySThreadInfo, GDB_QUERY_DIRECTION_READ},
     {"ThreadEvents", GDB_HandleQueryThreadEvents, GDB_QUERY_DIRECTION_WRITE},
@@ -78,9 +77,4 @@ GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)
 GDB_DECLARE_QUERY_HANDLER(Attached)
 {
     return GDB_SendPacket(ctx, "1", 1);
-}
-
-GDB_DECLARE_QUERY_HANDLER(TStatus) // tracepoint status
-{
-    return GDB_SendPacket(ctx, "T0", 2);
 }
