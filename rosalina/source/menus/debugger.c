@@ -130,6 +130,8 @@ void debuggerDebugThreadMain(void)
             {
                 svcClearEvent(ctx->clientAcceptedEvent);
                 ctx->eventToWaitFor = ctx->clientAcceptedEvent;
+                RecursiveLock_Unlock(&ctx->lock);
+                continue;
             }
             
             if(ctx->eventToWaitFor == ctx->clientAcceptedEvent)

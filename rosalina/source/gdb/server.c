@@ -68,6 +68,7 @@ int GDB_AcceptClient(sock_ctx *socketCtx)
         r = svcDebugActiveProcess(&ctx->debug, ctx->pid);
         if(R_SUCCEEDED(r))
         {
+            ctx->state = GDB_STATE_CONNECTED;
             while(R_SUCCEEDED(svcGetProcessDebugEvent(&ctx->latestDebugEvent, ctx->debug)));
         }
         else
@@ -310,8 +311,6 @@ int GDB_DoPacket(sock_ctx *socketCtx)
 
         return -1;
     }
-
-    RecursiveLock_Unlock(&ctx->lock);
 
     if((oldFlags & GDB_FLAG_PROCESS_CONTINUING) && !(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
     {
