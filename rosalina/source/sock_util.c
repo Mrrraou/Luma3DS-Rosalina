@@ -190,8 +190,6 @@ void server_run(struct sock_server *serv)
         if(fds[i].fd != -1)
             socClose(fds[i].fd);
     }
-
-    serv->running = false;
 }
 
 void server_stop(struct sock_server *serv)

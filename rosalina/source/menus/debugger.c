@@ -124,11 +124,14 @@ void debuggerDebugThreadMain(void)
         {
             GDBContext *ctx = &server.ctxs[idx - 2];
 
-            if(ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_CLOSING)
-                continue;
-
             RecursiveLock_Lock(&ctx->lock);
-
+           
+            if(ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_CLOSING)
+            {
+                svcClearEvent(ctx->clientAcceptedEvent);
+                ctx->eventToWaitFor = ctx->clientAcceptedEvent;
+            }
+            
             if(ctx->eventToWaitFor == ctx->clientAcceptedEvent)
                 ctx->eventToWaitFor = ctx->continuedEvent;
             else if(ctx->eventToWaitFor == ctx->continuedEvent)

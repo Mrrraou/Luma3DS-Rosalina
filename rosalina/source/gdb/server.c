@@ -295,11 +295,9 @@ int GDB_DoPacket(sock_ctx *socketCtx)
     }
 
     unlock:
+    RecursiveLock_Unlock(&ctx->lock);
     if(ctx->state == GDB_STATE_CLOSING)
     {
-        ctx->eventToWaitFor = ctx->clientAcceptedEvent;
-        RecursiveLock_Unlock(&ctx->lock);
-
         if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
         {
             GDB_BreakProcessAndSinkDebugEvents(ctx, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
