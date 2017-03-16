@@ -305,7 +305,7 @@ int GDB_DoPacket(sock_ctx *socketCtx)
     {
         if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
         {
-            GDB_BreakProcessAndSinkDebugEvents(ctx, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
+            GDB_BreakProcessAndSinkDebugEvents(ctx, NULL, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
             svcTerminateDebugProcess(ctx->debug);
         }
 

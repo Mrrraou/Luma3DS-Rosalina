@@ -125,7 +125,7 @@ void debuggerDebugThreadMain(void)
             GDBContext *ctx = &server.ctxs[idx - 2];
 
             RecursiveLock_Lock(&ctx->lock);
-           
+
             if(ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_CLOSING)
             {
                 svcClearEvent(ctx->clientAcceptedEvent);
@@ -133,15 +133,15 @@ void debuggerDebugThreadMain(void)
                 RecursiveLock_Unlock(&ctx->lock);
                 continue;
             }
-            
+
             if(ctx->eventToWaitFor == ctx->clientAcceptedEvent)
                 ctx->eventToWaitFor = ctx->continuedEvent;
             else if(ctx->eventToWaitFor == ctx->continuedEvent)
                 ctx->eventToWaitFor = ctx->debug;
             else
             {
-                GDB_HandleDebugEvents(ctx);
-                ctx->eventToWaitFor = ctx->continuedEvent;
+                if(GDB_HandleDebugEvents(ctx) >= 0)
+                    ctx->eventToWaitFor = ctx->continuedEvent;
             }
 
             RecursiveLock_Unlock(&ctx->lock);
