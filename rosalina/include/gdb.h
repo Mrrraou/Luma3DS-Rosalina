@@ -50,8 +50,8 @@ typedef struct GDBContext
     Handle eventToWaitFor;
 
     bool catchThreadEvents;
-    bool processExited;
-
+    bool processEnded, processExited;
+    
     DebugEventInfo pendingDebugEvents[0x10], latestDebugEvent;
     u32 nbPendingDebugEvents, nbDebugEvents;
 

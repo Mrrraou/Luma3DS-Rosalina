@@ -110,7 +110,7 @@ int GDB_SendHexPacket(GDBContext *ctx, const void *packetData, u32 len)
 
 int GDB_SendDebugString(GDBContext *ctx, const char *fmt, ...) // unsecure
 {
-    if(ctx->state == GDB_STATE_CLOSING || !(ctx->nbPendingDebugEvents != 0 || (ctx->flags & GDB_FLAG_PROCESS_CONTINUING)))
+    if(ctx->state == GDB_STATE_CLOSING || !(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
         return 0;
 
     char formatted[(GDB_BUF_LEN - 1) / 2 + 1];

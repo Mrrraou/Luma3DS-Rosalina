@@ -138,7 +138,7 @@ void GDB_ReleaseClient(sock_server *socketSrv, sock_ctx *socketCtx)
     ctx->pid = 0;
     ctx->currentThreadId = ctx->selectedThreadId = 0;
 
-    ctx->catchThreadEvents = ctx->processExited = false;
+    ctx->catchThreadEvents = ctx->processExited = ctx->processEnded = false;
     ctx->nbPendingDebugEvents = ctx->nbDebugEvents = 0;
 
     RecursiveLock_Unlock(&ctx->lock);
@@ -196,6 +196,11 @@ static inline GDBCommandHandler GDB_GetCommandHandler(char c)
 
         case 'k':
             return GDB_HandleKill;
+
+        case 'r': // shouldn't be supported/reboot the system, remove this in released code
+            svcKernelSetState(7);
+            return 0;
+
 
         default:
             return GDB_HandleUnsupported;
@@ -305,8 +310,8 @@ int GDB_DoPacket(sock_ctx *socketCtx)
     {
         if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
         {
-            GDB_BreakProcessAndSinkDebugEvents(ctx, NULL, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
             svcTerminateDebugProcess(ctx->debug);
+            ctx->processEnded = true;
         }
 
         return -1;

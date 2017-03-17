@@ -128,6 +128,12 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
         case DBGEVENT_EXIT_THREAD:
         {
+            if(info->exit_thread.reason >= EXITTHREAD_EVENT_EXIT_PROCESS)
+            {
+                ctx->processEnded = true;
+                ctx->processExited = info->exit_thread.reason == EXITTHREAD_EVENT_EXIT_PROCESS;
+            }
+
             if(!ctx->catchThreadEvents)
                 break;
 
@@ -138,9 +144,12 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
         case DBGEVENT_EXIT_PROCESS:
         {
-            // exited (no error), SIGTERM (terminated), SIGKILL (killed due to unhandled CPU exception), SIGTERM (process terminated)
-            static const char *processExitReplies[] = {"W00", "X0f", "X09"};
-            ctx->processExited = true;
+            // This code is unreachable. DBGEVENT_EXIT_PROCESS is actually only sent on process __deletion__
+
+            // exited (no error / unhandled exception), SIGTERM (process terminated) * 2
+            static const char *processExitReplies[] = {"W00", "X0f", "X0f"};
+            ctx->processEnded = true;
+            ctx->processExited = info->exit_process.reason == EXITPROCESS_EVENT_EXIT;
             return GDB_SendPacket(ctx, processExitReplies[(u32)info->exit_process.reason], 3);
         }
 
@@ -284,35 +293,16 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
     return 0;
 }
 
-bool GDB_BreakProcessAndSinkDebugEvents(GDBContext *ctx, const DebugEventInfo *info, DebugFlags flags)
+void GDB_BreakProcessAndSinkDebugEvents(GDBContext *ctx, DebugFlags flags)
 {
-    bool dontStop = info != NULL && (
-                    info->type == DBGEVENT_OUTPUT_STRING || info->type == DBGEVENT_ATTACH_PROCESS ||
-                    (info->type == DBGEVENT_ATTACH_THREAD && (info->attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)) ||
-                    (info->type == DBGEVENT_EXIT_THREAD && (info->exit_thread.reason >= EXITTHREAD_EVENT_EXIT_PROCESS || !ctx->catchThreadEvents)) ||
-                    !(info->flags & 1));
-
-    if(dontStop)
-    {
-        ctx->nbDebugEvents = ctx->nbPendingDebugEvents - 1;
-        if(info->type == DBGEVENT_EXIT_PROCESS || (info->flags & 1))
-            svcContinueDebugEvent(ctx->debug, flags);
-
-        return false;
-    }
+    Result r = svcBreakDebugProcess(ctx->debug);
+    if(R_FAILED(r))
+        ctx->nbDebugEvents = ctx->nbPendingDebugEvents;
     else
-    {
-        Result r = svcBreakDebugProcess(ctx->debug);
-        if(R_FAILED(r))
-            ctx->nbDebugEvents = ctx->nbPendingDebugEvents;
-        else
-            ctx->nbDebugEvents = ctx->nbPendingDebugEvents + 1;
+        ctx->nbDebugEvents = ctx->nbPendingDebugEvents + 1;
 
-        for(u32 i = 0; i < ctx->nbDebugEvents - 1; i++)
-            svcContinueDebugEvent(ctx->debug, flags);
-
-        return true;
-    }
+    for(u32 i = 0; i < ctx->nbDebugEvents - 1; i++)
+        svcContinueDebugEvent(ctx->debug, flags);
 }
 
 int GDB_HandleDebugEvents(GDBContext *ctx)
@@ -321,20 +311,47 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
         return 0;
 
     DebugEventInfo info;
-    while(R_SUCCEEDED(svcGetProcessDebugEvent(&info, ctx->debug)))
-        ctx->pendingDebugEvents[ctx->nbPendingDebugEvents++] = info;
-
-    bool stopped = GDB_BreakProcessAndSinkDebugEvents(ctx, &info, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
+    Result r = svcGetProcessDebugEvent(&info, ctx->debug);
+    if(R_FAILED(r))
+        return -1;
 
     int ret = 0;
-    if(ctx->nbPendingDebugEvents > 0)
-    {
-        ret = GDB_SendStopReply(ctx, &ctx->pendingDebugEvents[0]);
-        ctx->latestDebugEvent = ctx->pendingDebugEvents[0];
-        for(u32 i = 0; i < ctx->nbPendingDebugEvents; i++)
-            ctx->pendingDebugEvents[i] = ctx->pendingDebugEvents[i + 1];
-        --ctx->nbPendingDebugEvents;
-    }
 
-    return stopped ? ret : -ret;
+    bool dontBreak = info.type == DBGEVENT_OUTPUT_STRING || info.type == DBGEVENT_ATTACH_PROCESS ||
+                    (info.type == DBGEVENT_ATTACH_THREAD && (info.attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)) ||
+                    (info.type == DBGEVENT_EXIT_THREAD && (info.exit_thread.reason >= EXITTHREAD_EVENT_EXIT_PROCESS || !ctx->catchThreadEvents)) ||
+                     info.type == DBGEVENT_EXIT_PROCESS;
+
+
+    if(dontBreak)
+    {
+        ret = GDB_SendStopReply(ctx, &info);
+        if(info.type == DBGEVENT_EXIT_PROCESS || (info.flags & 1))
+            svcContinueDebugEvent(ctx->debug, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
+        return -ret - 1;
+    }
+    else
+    {
+        if(ctx->processEnded)
+            return 0;
+        do
+        {
+            ctx->pendingDebugEvents[ctx->nbPendingDebugEvents++] = info;
+        }
+        while(R_SUCCEEDED(svcGetProcessDebugEvent(&info, ctx->debug)));
+
+        GDB_BreakProcessAndSinkDebugEvents(ctx, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
+
+        if(ctx->nbPendingDebugEvents > 0)
+        {
+            ret = GDB_SendStopReply(ctx, &ctx->pendingDebugEvents[0]);
+            ctx->flags &= ~GDB_FLAG_PROCESS_CONTINUING;
+            ctx->latestDebugEvent = ctx->pendingDebugEvents[0];
+            for(u32 i = 0; i < ctx->nbPendingDebugEvents; i++)
+                ctx->pendingDebugEvents[i] = ctx->pendingDebugEvents[i + 1];
+            --ctx->nbPendingDebugEvents;
+        }
+
+        return ret;
+    }
 }

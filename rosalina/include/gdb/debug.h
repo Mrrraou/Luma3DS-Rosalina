@@ -10,4 +10,4 @@ GDB_DECLARE_HANDLER(GetStopReason);
 
 int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info);
 int GDB_HandleDebugEvents(GDBContext *ctx);
-bool GDB_BreakProcessAndSinkDebugEvents(GDBContext *ctx, const DebugEventInfo *info, DebugFlags flags);
+void GDB_BreakProcessAndSinkDebugEvents(GDBContext *ctx, DebugFlags flags);

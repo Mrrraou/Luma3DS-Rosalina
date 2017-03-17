@@ -4,6 +4,7 @@
 #include "minisoc.h"
 #include "gdb/server.h"
 #include "gdb/debug.h"
+#include "gdb/net.h"
 
 Menu menu_debugger = {
     "Debugger options menu",
@@ -101,7 +102,7 @@ void debuggerSocketThreadMain(void)
 
 void debuggerDebugThreadMain(void)
 {
-    Handle handles[2 + MAX_DEBUG];
+    Handle handles[2 + 2 * MAX_DEBUG];
 
     Result r = 0;
 
@@ -110,22 +111,27 @@ void debuggerDebugThreadMain(void)
 
     do
     {
+        u32 nbProcessHandles = 0;
         for(int i = 0; i < MAX_DEBUG; i++)
-            handles[2 + i] = server.ctxs[i].eventToWaitFor;
+        {
+            GDBContext *ctx = &server.ctxs[i];
+            handles[2 + i] = ctx->eventToWaitFor;
+            if(ctx->state != GDB_STATE_DISCONNECTED && ctx->state != GDB_STATE_CLOSING && !ctx->processEnded)
+            handles[2 + MAX_DEBUG + nbProcessHandles++] = ctx->process;
+        }
 
         s32 idx = -1;
-        r = svcWaitSynchronizationN(&idx, handles, 2 + MAX_DEBUG, false, -1LL);
+        r = svcWaitSynchronizationN(&idx, handles, 2 + MAX_DEBUG + nbProcessHandles, false, -1LL);
 
         if(R_SUCCEEDED(r) && idx == 0)
             break;
         else if(idx < 2)
             continue;
-        else
+        else if(idx < 2 + MAX_DEBUG)
         {
             GDBContext *ctx = &server.ctxs[idx - 2];
 
             RecursiveLock_Lock(&ctx->lock);
-
             if(ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_CLOSING)
             {
                 svcClearEvent(ctx->clientAcceptedEvent);
@@ -144,6 +150,23 @@ void debuggerDebugThreadMain(void)
                     ctx->eventToWaitFor = ctx->continuedEvent;
             }
 
+            RecursiveLock_Unlock(&ctx->lock);
+        }
+        else // process terminated
+        {
+            u32 i;
+            for(i = 0; i < MAX_DEBUG && server.ctxs[i].process != handles[idx]; i++);
+            GDBContext *ctx = &server.ctxs[i];
+
+            if(ctx == NULL || ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_CLOSING) continue;
+
+            svcSleepThread(25 * 1000 * 1000LL); // wait a bit and see if we can net some thread exit debug events
+            RecursiveLock_Lock(&ctx->lock);
+            ctx->processEnded = true;
+            ctx->catchThreadEvents = false; // don't report them
+            for(u32 i = 0; i < 0x7F; i++)
+                GDB_HandleDebugEvents(ctx);
+            GDB_SendPacket(ctx, ctx->processExited ? "W00" : "X0f", 3); // GDB will close the connection when receiving this
             RecursiveLock_Unlock(&ctx->lock);
         }
     }
