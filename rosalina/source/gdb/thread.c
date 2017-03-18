@@ -50,10 +50,8 @@ GDB_DECLARE_HANDLER(SetThreadId)
     else if(ctx->commandData[0] == 'c')
     {
         // We can't stop/continue particular threads
-        if(memcmp(ctx->commandData + 1, "-1", 2) == 0)
-            return GDB_ReplyOk(ctx);
-        else
-            return GDB_ReplyErrno(ctx, EPERM);
+        // Ignore the request (that's uncompliant behavior)
+        return GDB_ReplyOk(ctx);
     }
     else
         return GDB_ReplyErrno(ctx, EPERM);

@@ -51,10 +51,11 @@ typedef struct GDBContext
 
     bool catchThreadEvents;
     bool processEnded, processExited;
-    
+
     DebugEventInfo pendingDebugEvents[0x10], latestDebugEvent;
     u32 nbPendingDebugEvents, nbDebugEvents;
-
+    DebugFlags continueFlags;
+    
     char buffer[GDB_BUF_LEN + 4];
     char *commandData;
 } GDBContext;

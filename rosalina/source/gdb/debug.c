@@ -37,10 +37,8 @@ GDB_DECLARE_HANDLER(Continue)
         addrStart = ctx->commandData;
     else
     {
+        // Note: we can't wake up individual threads. This is uncompliant behavior
         addrStart = NULL;
-        if(strncmp(ctx->commandData, "c", 5) != 0 && strncmp(ctx->commandData, "c:-1", 5) != 0)
-            // enforce vCont;c = vCont;c:-1
-            return GDB_ReplyErrno(ctx, EPERM);
     }
 
     if(addrStart != NULL && *addrStart != 0  && ctx->currentThreadId != 0)
@@ -67,9 +65,7 @@ GDB_DECLARE_HANDLER(Continue)
 
     else
     {
-        DebugEventInfo dummy;
-        while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
-        while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS)));
+        svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
         ctx->nbDebugEvents = 0;
         ctx->flags |= GDB_FLAG_PROCESS_CONTINUING;
         ctx->currentThreadId = 0;
@@ -104,9 +100,13 @@ static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, bool isUndefIns
     r = svcGetDebugThreadParam(&dummy, &core, ctx->debug, ctx->currentThreadId, DBGTHREAD_PARAMETER_CPU_IDEAL);
 
     if(R_FAILED(r))
-        return sprintf(out, "thread:%x;d:%x;e:%x;f:%x;19:%x", threadId, regs.cpu_registers.sp, regs.cpu_registers.lr, regs.cpu_registers.pc, regs.cpu_registers.cpsr);
+        return sprintf(out, "thread:%x;d:%08x;e:%08x;f:%08x;19:%08x", threadId,
+                       __builtin_bswap32(regs.cpu_registers.sp), __builtin_bswap32(regs.cpu_registers.lr), __builtin_bswap32(regs.cpu_registers.pc),
+                       __builtin_bswap32(regs.cpu_registers.cpsr));
     else
-        return sprintf(out, "thread:%x;d:%x;e:%x;f:%x;19:%x;core:%x", threadId, regs.cpu_registers.sp, regs.cpu_registers.lr, regs.cpu_registers.pc, regs.cpu_registers.cpsr, core);
+        return sprintf(out, "thread:%x;core:%x;d:%08x;e:%08x;f:%08x;19:%08x", threadId, core,
+        __builtin_bswap32(regs.cpu_registers.sp), __builtin_bswap32(regs.cpu_registers.lr), __builtin_bswap32(regs.cpu_registers.pc),
+        __builtin_bswap32(regs.cpu_registers.cpsr));
 }
 
 int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
@@ -123,7 +123,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
             if(info->attach_thread.creator_thread_id == 0 || !ctx->catchThreadEvents)
                 break; // Dismissed
 
-            return GDB_SendPacket(ctx, "T05create:;", 11);
+            return GDB_SendPacket(ctx, "T05create:;", 10);
         }
 
         case DBGEVENT_EXIT_THREAD:
@@ -186,7 +186,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
                             /*
                             GDB_ParseCommonThreadInfo(buffer, ctx, info->thread_id, false);
-                            return GDB_SendFormattedPacket(ctx, "T05%s;swbreak:", buffer);
+                            return GDB_SendFormattedPacket(ctx, "T05%s;swbreak:;", buffer);
                             */
                             break;
                         }
@@ -254,14 +254,14 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
         {
             ctx->currentThreadId = info->thread_id;
             GDB_ParseCommonThreadInfo(buffer, ctx, false);
-            return GDB_SendFormattedPacket(ctx, "T05%s;syscall_entry:%02x;", buffer, info->syscall.syscall);
+            return GDB_SendFormattedPacket(ctx, "T05syscall_entry:%02x;%s;", info->syscall.syscall, buffer);
         }
 
         case DBGEVENT_SYSCALL_OUT:
         {
             ctx->currentThreadId = info->thread_id;
             GDB_ParseCommonThreadInfo(buffer, ctx, false);
-            return GDB_SendFormattedPacket(ctx, "T05%s;syscall_return:%02x;", buffer, info->syscall.syscall);
+            return GDB_SendFormattedPacket(ctx, "T05syscall_return:%02x;%s;", info->syscall.syscall, buffer);
         }
 
         case DBGEVENT_OUTPUT_STRING:
@@ -293,26 +293,15 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
     return 0;
 }
 
-void GDB_BreakProcessAndSinkDebugEvents(GDBContext *ctx, DebugFlags flags)
-{
-    Result r = svcBreakDebugProcess(ctx->debug);
-    if(R_FAILED(r))
-        ctx->nbDebugEvents = ctx->nbPendingDebugEvents;
-    else
-        ctx->nbDebugEvents = ctx->nbPendingDebugEvents + 1;
-
-    for(u32 i = 0; i < ctx->nbDebugEvents - 1; i++)
-        svcContinueDebugEvent(ctx->debug, flags);
-}
-
 int GDB_HandleDebugEvents(GDBContext *ctx)
 {
     if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
         return 0;
 
     DebugEventInfo info;
-    Result r = svcGetProcessDebugEvent(&info, ctx->debug);
-    if(R_FAILED(r))
+    Result rdbg = svcGetProcessDebugEvent(&info, ctx->debug);
+
+    if(R_FAILED(rdbg))
         return -1;
 
     int ret = 0;
@@ -327,20 +316,26 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
     {
         ret = GDB_SendStopReply(ctx, &info);
         if(info.type == DBGEVENT_EXIT_PROCESS || (info.flags & 1))
-            svcContinueDebugEvent(ctx->debug, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
+            svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
         return -ret - 1;
     }
+
     else
     {
         if(ctx->processEnded)
             return 0;
+        
+        Result r = svcBreakDebugProcess(ctx->debug);
         do
         {
-            ctx->pendingDebugEvents[ctx->nbPendingDebugEvents++] = info;
+            if(R_FAILED(r) || info.type != DBGEVENT_EXCEPTION || info.exception.type != EXCEVENT_DEBUGGER_BREAK)
+            {
+                ctx->pendingDebugEvents[ctx->nbPendingDebugEvents++] = info;
+                if(info.type != DBGEVENT_EXCEPTION || info.exception.type != EXCEVENT_DEBUGGER_BREAK || (info.type != DBGEVENT_EXIT_PROCESS && !(info.flags & 1)))
+                    svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
+            }
         }
         while(R_SUCCEEDED(svcGetProcessDebugEvent(&info, ctx->debug)));
-
-        GDB_BreakProcessAndSinkDebugEvents(ctx, DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
 
         if(ctx->nbPendingDebugEvents > 0)
         {

@@ -69,7 +69,9 @@ int GDB_AcceptClient(sock_ctx *socketCtx)
         if(R_SUCCEEDED(r))
         {
             ctx->state = GDB_STATE_CONNECTED;
-            while(R_SUCCEEDED(svcGetProcessDebugEvent(&ctx->latestDebugEvent, ctx->debug)));
+            while(R_SUCCEEDED(svcGetProcessDebugEvent(&ctx->latestDebugEvent, ctx->debug)) &&
+                 (ctx->latestDebugEvent.type != DBGEVENT_EXCEPTION || ctx->latestDebugEvent.exception.type != EXCEVENT_ATTACH_BREAK))
+                svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
         }
         else
         {
@@ -91,11 +93,10 @@ int GDB_CloseClient(sock_ctx *socketCtx)
     RecursiveLock_Lock(&ctx->lock);
     svcClearEvent(ctx->clientAcceptedEvent);
     ctx->eventToWaitFor = ctx->clientAcceptedEvent;
-    RecursiveLock_Unlock(&ctx->lock);
-
     DebugEventInfo dummy;
     while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
     while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, (DebugFlags)0)));
+    RecursiveLock_Unlock(&ctx->lock);
 
     return 0;
 }
@@ -135,6 +136,7 @@ void GDB_ReleaseClient(sock_server *socketSrv, sock_ctx *socketCtx)
     ctx->state = GDB_STATE_DISCONNECTED;
 
     ctx->eventToWaitFor = ctx->clientAcceptedEvent;
+    ctx->continueFlags = (DebugFlags)(DBG_SIGNAL_FAULT_EXCEPTION_EVENTS | DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
     ctx->pid = 0;
     ctx->currentThreadId = ctx->selectedThreadId = 0;
 
@@ -196,11 +198,6 @@ static inline GDBCommandHandler GDB_GetCommandHandler(char c)
 
         case 'k':
             return GDB_HandleKill;
-
-        case 'r': // shouldn't be supported/reboot the system, remove this in released code
-            svcKernelSetState(7);
-            return 0;
-
 
         default:
             return GDB_HandleUnsupported;

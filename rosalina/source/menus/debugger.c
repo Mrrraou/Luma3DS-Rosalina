@@ -117,7 +117,7 @@ void debuggerDebugThreadMain(void)
             GDBContext *ctx = &server.ctxs[i];
             handles[2 + i] = ctx->eventToWaitFor;
             if(ctx->state != GDB_STATE_DISCONNECTED && ctx->state != GDB_STATE_CLOSING && !ctx->processEnded)
-            handles[2 + MAX_DEBUG + nbProcessHandles++] = ctx->process;
+                handles[2 + MAX_DEBUG + nbProcessHandles++] = ctx->process;
         }
 
         s32 idx = -1;
@@ -156,17 +156,39 @@ void debuggerDebugThreadMain(void)
         {
             u32 i;
             for(i = 0; i < MAX_DEBUG && server.ctxs[i].process != handles[idx]; i++);
+            if(i == MAX_DEBUG)
+                continue;
+
             GDBContext *ctx = &server.ctxs[i];
+            if(ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_CLOSING)
+                continue;
 
-            if(ctx == NULL || ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_CLOSING) continue;
-
-            svcSleepThread(25 * 1000 * 1000LL); // wait a bit and see if we can net some thread exit debug events
             RecursiveLock_Lock(&ctx->lock);
+
             ctx->processEnded = true;
             ctx->catchThreadEvents = false; // don't report them
-            for(u32 i = 0; i < 0x7F; i++)
-                GDB_HandleDebugEvents(ctx);
-            GDB_SendPacket(ctx, ctx->processExited ? "W00" : "X0f", 3); // GDB will close the connection when receiving this
+
+            if(!(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
+            {
+                // if the process ends when it's being debugged, it is because it has been terminated
+                DebugEventInfo info;
+                info.type = DBGEVENT_EXIT_PROCESS;
+                info.exit_process.reason = EXITPROCESS_EVENT_TERMINATE;
+                ctx->pendingDebugEvents[ctx->nbPendingDebugEvents++] = info;
+            }
+
+            else
+            {
+                svcSleepThread(25 * 1000 * 1000LL); // wait a bit and see if we can net some thread exit debug events
+
+                for(u32 i = 0; i < 0x7F; i++)
+                    GDB_HandleDebugEvents(ctx);
+                GDB_SendPacket(ctx, ctx->processExited ? "W00" : "X0f", 3); // GDB will close the connection when receiving this
+            }
+
+            svcClearEvent(ctx->clientAcceptedEvent);
+            ctx->eventToWaitFor = ctx->clientAcceptedEvent; // GDB will disconnect when receiving the termination signal
+
             RecursiveLock_Unlock(&ctx->lock);
         }
     }

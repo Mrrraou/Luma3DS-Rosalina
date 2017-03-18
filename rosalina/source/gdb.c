@@ -11,6 +11,7 @@ void GDB_InitializeContext(GDBContext *ctx)
 	svcCreateEvent(&ctx->clientAcceptedEvent, RESET_STICKY);
 
 	ctx->eventToWaitFor = ctx->clientAcceptedEvent;
+	ctx->continueFlags = (DebugFlags)(DBG_SIGNAL_FAULT_EXCEPTION_EVENTS | DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
 
 	RecursiveLock_Unlock(&ctx->lock);
 
