@@ -6,6 +6,8 @@
 #include "gdb/debug.h"
 #include "gdb/regs.h"
 #include "gdb/mem.h"
+#include "gdb/watchpoints.h"
+#include "gdb/stop_point.h"
 
 void GDB_InitializeServer(GDBServer *server)
 {
@@ -26,6 +28,8 @@ void GDB_InitializeServer(GDBServer *server)
 
     for(u32 i = 0; i < sizeof(server->ctxs) / sizeof(GDBContext); i++)
         GDB_InitializeContext(server->ctxs + i);
+
+    GDB_ResetWatchpoints();
 }
 
 void GDB_FinalizeServer(GDBServer *server)
@@ -198,6 +202,10 @@ static inline GDBCommandHandler GDB_GetCommandHandler(char c)
 
         case 'k':
             return GDB_HandleKill;
+
+        case 'z':
+        case 'Z':
+            return GDB_HandleToggleStopPoint;
 
         default:
             return GDB_HandleUnsupported;

@@ -45,7 +45,7 @@ GDB_DECLARE_HANDLER(VerboseCommand)
 
 GDB_DECLARE_VERBOSE_HANDLER(ContinueSupported)
 {
-    return GDB_SendPacket(ctx, "c", 1);
+    return GDB_SendPacket(ctx, "vCont;c;C", 9);
 }
 
 GDB_DECLARE_VERBOSE_HANDLER(Continue)

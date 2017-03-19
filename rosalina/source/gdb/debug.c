@@ -2,6 +2,7 @@
 #include "gdb/net.h"
 #include "gdb/thread.h"
 #include "gdb/mem.h"
+#include "gdb/watchpoints.h"
 #include "fmt.h"
 
 GDB_DECLARE_HANDLER(Detach)
@@ -177,6 +178,8 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
                 case EXCEVENT_STOP_POINT:
                 {
+                    ctx->currentThreadId = info->thread_id;
+
                     switch(exc.stop_point.type)
                     {
                         case STOPPOINT_SVC_FF:
@@ -185,21 +188,21 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                             //TODO: implement breakpoints
 
                             /*
-                            GDB_ParseCommonThreadInfo(buffer, ctx, info->thread_id, false);
+                            GDB_ParseCommonThreadInfo(buffer, ctx, false);
                             return GDB_SendFormattedPacket(ctx, "T05%s;swbreak:;", buffer);
                             */
                             break;
                         }
 
-
                         case STOPPOINT_WATCHPOINT:
                         {
-                            //TODO: implement watchpoints
+                            const char *kinds = "arwa";
+                            WatchpointKind kind = GDB_GetWatchpointKind(ctx, exc.stop_point.fault_information);
+                            if(kind == WATCHPOINT_DISABLED)
+                                GDB_SendDebugString(ctx, "Warning: unknown watchpoint encountered!\n");
 
-                            /*
-                            GDB_ParseCommonThreadInfo(buffer, ctx, info->thread_id, false);
-                            return GDB_SendFormattedPacket(ctx, "T05%s;%cwatch:%08x", buffer, kind, exc.stop_point.fault_information);
-                            */
+                            GDB_ParseCommonThreadInfo(buffer, ctx, false);
+                            return GDB_SendFormattedPacket(ctx, "T05%cwatch:%08x;%s;", kinds[(u32)kind], exc.stop_point.fault_information, buffer);
                             break;
                         }
 
@@ -324,7 +327,7 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
     {
         if(ctx->processEnded)
             return 0;
-        
+
         Result r = svcBreakDebugProcess(ctx->debug);
         do
         {
