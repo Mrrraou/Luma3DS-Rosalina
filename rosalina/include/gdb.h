@@ -20,15 +20,14 @@ typedef enum GDBFlags
 {
     GDB_FLAG_USED  = 1,
     GDB_FLAG_PROCESS_CONTINUING = 2,
-    GDB_FLAG_TERMINATE_PROCESS = 4
+    GDB_FLAG_TERMINATE_PROCESS = 4,
+    GDB_FLAG_SKIP_ACKNOWLEDGEMENT = 8,
 } GDBFlags;
 
 typedef enum GDBState
 {
     GDB_STATE_DISCONNECTED,
     GDB_STATE_CONNECTED,
-    GDB_STATE_NOACK_SENT,
-    GDB_STATE_NOACK,
     GDB_STATE_CLOSING
 } GDBState;
 
@@ -55,7 +54,7 @@ typedef struct GDBContext
     DebugEventInfo pendingDebugEvents[0x10], latestDebugEvent;
     u32 nbPendingDebugEvents, nbDebugEvents;
     DebugFlags continueFlags;
-    
+
     char buffer[GDB_BUF_LEN + 4];
     char *commandData;
 } GDBContext;

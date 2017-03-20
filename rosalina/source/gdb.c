@@ -14,7 +14,6 @@ void GDB_InitializeContext(GDBContext *ctx)
 	ctx->continueFlags = (DebugFlags)(DBG_SIGNAL_FAULT_EXCEPTION_EVENTS | DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
 
 	RecursiveLock_Unlock(&ctx->lock);
-
 }
 
 void GDB_FinalizeContext(GDBContext *ctx)

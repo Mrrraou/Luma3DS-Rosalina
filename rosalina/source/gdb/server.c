@@ -215,101 +215,36 @@ static inline GDBCommandHandler GDB_GetCommandHandler(char c)
 int GDB_DoPacket(sock_ctx *socketCtx)
 {
     int ret;
-    Handle socket = socketCtx->sock;
     GDBContext *ctx = (GDBContext *)socketCtx;
 
     RecursiveLock_Lock(&ctx->lock);
     GDBFlags oldFlags = ctx->flags;
 
-    switch(ctx->state)
+    if(ctx->state != GDB_STATE_CONNECTED)
+        return -1;
+
+    int r = GDB_ReceivePacket(ctx);
+    if(r == -1)
+        ret = -1;
+    else if(ctx->buffer[0] == '\x03')
     {
-        // Both of these require a '+'.
-        case GDB_STATE_CONNECTED:
-        case GDB_STATE_NOACK_SENT:
-        {
-            int r = soc_recv(socket, ctx->buffer, 1, 0);
-            if(r != 1)
-            {
-                ret = -1;
-                goto unlock;
-            }
-            else
-            {
-                if(ctx->buffer[0] != '+')
-                {
-                    ret = -1;
-                    goto unlock;
-                }
-                else
-                {
-                    if(ctx->state == GDB_STATE_NOACK_SENT)
-                    {
-                        ctx->state = GDB_STATE_NOACK;
-                        ret = 0;
-                        goto unlock;
-                    }
-                }
-            }
-
-            r = soc_send(socket, "+", 1, 0); // Yes. :(
-            if(r == -1)
-            {
-                ret = -1;
-                goto unlock;
-            }
-        }
-
-        // lack of break is intentional
-        case GDB_STATE_NOACK:
-        {
-            char cksum[3];
-            cksum[2] = 0;
-            int r = soc_recv_until(socket, ctx->buffer, GDB_BUF_LEN, "#", 1, true);
-
-            // Bubbling -1 up to server will close the connection.
-            if(r <= 0)
-            {
-                ret = -1;
-                goto unlock;
-            }
-
-            else if(ctx->buffer[0] == '\x03')
-            {
-                GDB_HandleBreak(ctx);
-                ret = 0;
-                goto unlock;
-            }
-
-            else
-            {
-                soc_recv(socket, cksum, 2, 0);
-
-                ctx->buffer[r-1] = 0; // replace trailing '#' with 0
-
-                GDBCommandHandler handler = GDB_GetCommandHandler(ctx->buffer[1]);
-                if(handler != NULL)
-                {
-                    ctx->commandData = ctx->buffer + 2;
-                    int res = handler(ctx);
-                    if(res == -1)
-                    {
-                        ret = GDB_ReplyEmpty(ctx); // Handler failed!
-                        goto unlock;
-                    }
-                    ret = res;
-                }
-                else
-                    ret = GDB_HandleUnsupported(ctx); // We don't have a handler!
-            }
-
-            break;
-        }
-
-        default:
-            break;
+        GDB_HandleBreak(ctx);
+        ret = 0;
     }
+    else if(ctx->buffer[0] == '$')
+    {
+        GDBCommandHandler handler = GDB_GetCommandHandler(ctx->buffer[1]);
+        if(handler != NULL)
+        {
+            ctx->commandData = ctx->buffer + 2;
+            ret = handler(ctx);
+        }
+        else
+            ret = GDB_HandleUnsupported(ctx); // We don't have a handler!
+    }
+    else
+        ret = 0;
 
-    unlock:
     RecursiveLock_Unlock(&ctx->lock);
     if(ctx->state == GDB_STATE_CLOSING)
     {

@@ -67,6 +67,78 @@ int GDB_UnescapeBinaryData(void *dst, const void *src, u32 len)
     return len;
 }
 
+int GDB_ReceivePacket(GDBContext *ctx)
+{
+    memset_(ctx->buffer, 0, sizeof(ctx->buffer));
+    int r = soc_recv(ctx->super.sock, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
+
+    if(r < 1)
+        return -1;
+
+    if(ctx->buffer[0] == '+') // GDB acknowleges TCP acknowledgment packets (yes...)
+    {
+        if(ctx->flags & GDB_FLAG_SKIP_ACKNOWLEDGEMENT)
+            return -1;
+
+        // Consume it
+        r = soc_recv(ctx->super.sock, ctx->buffer, 1, 0);
+        if(r != 1)
+            return -1;
+
+        // Acknowledge the acknowledgment to the acknowledgment x_x
+        // Can be an acknowledgment to responses, too x_x
+        r = soc_send(ctx->super.sock, "+", 1, 0);
+        if(r != 1)
+            return -1;
+
+        ctx->buffer[0] = 0;
+
+        r = soc_recv(ctx->super.sock, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
+
+        if(r == -1)
+            return -1;
+    }
+
+    int maxlen = r > (int)sizeof(ctx->buffer) ? (int)sizeof(ctx->buffer) : r;
+
+    if(ctx->buffer[0] == '$') // normal packet
+    {
+        char *pos;
+        for(pos = ctx->buffer; pos < ctx->buffer + maxlen && *pos != '#'; pos++);
+
+        if(pos == ctx->buffer + maxlen) // malformed packet
+        {
+            soc_recv(ctx->super.sock, ctx->buffer, maxlen, 0);
+            return -1;
+        }
+
+        else
+        {
+            u8 checksum;
+            r = soc_recv(ctx->super.sock, ctx->buffer, 3 + pos - ctx->buffer, 0);
+            if(r != 3 + pos - ctx->buffer || GDB_DecodeHex(&checksum, pos + 1, 1) != 1)
+                return -1;
+            else if(GDB_ComputeChecksum(ctx->buffer + 1, pos - ctx->buffer - 1) != checksum)
+                return -1;
+
+            *pos = 0; // replace trailing '#' by a NUL character
+        }
+    }
+    else if(ctx->buffer[0] == '\x03')
+    {
+        r = soc_recv(ctx->super.sock, ctx->buffer, 1, 0);
+        if(r != 1)
+            return -1;
+    }
+
+    return r;
+}
+
+static int GDB_DoSendPacket(GDBContext *ctx, u32 len)
+{
+    return soc_send(ctx->super.sock, ctx->buffer, len, 0);
+}
+
 int GDB_SendPacket(GDBContext *ctx, const char *packetData, u32 len)
 {
     ctx->buffer[0] = '$';
@@ -77,7 +149,7 @@ int GDB_SendPacket(GDBContext *ctx, const char *packetData, u32 len)
     *checksumLoc++ = '#';
 
     hexItoa(GDB_ComputeChecksum(packetData, len), checksumLoc, 2, false);
-    return soc_send(ctx->super.sock, ctx->buffer, 4 + len, 0);
+    return GDB_DoSendPacket(ctx, 4 + len);
 }
 
 int GDB_SendFormattedPacket(GDBContext *ctx, const char *packetDataFmt, ...)
@@ -89,7 +161,7 @@ int GDB_SendFormattedPacket(GDBContext *ctx, const char *packetDataFmt, ...)
     int n = vsprintf(buf, packetDataFmt, args);
     va_end(args);
 
-    if(n < 0) return n;
+    if(n < 0) return -1;
     else return GDB_SendPacket(ctx, buf, (u32)n);
 }
 
@@ -105,7 +177,7 @@ int GDB_SendHexPacket(GDBContext *ctx, const void *packetData, u32 len)
     *checksumLoc++ = '#';
 
     hexItoa(GDB_ComputeChecksum(ctx->buffer + 1, 2 * len), checksumLoc, 2, false);
-    return soc_send(ctx->super.sock, ctx->buffer, 4 + 2 * len, 0);
+    return GDB_DoSendPacket(ctx, 4 + 2 * len);
 }
 
 int GDB_SendDebugString(GDBContext *ctx, const char *fmt, ...) // unsecure
@@ -129,22 +201,23 @@ int GDB_SendDebugString(GDBContext *ctx, const char *fmt, ...) // unsecure
     *checksumLoc++ = '#';
 
     hexItoa(GDB_ComputeChecksum(ctx->buffer + 1, 2 * n + 1), checksumLoc, 2, false);
-    return soc_send(ctx->super.sock, ctx->buffer, 5 + 2 * n, 0);
+
+    return GDB_DoSendPacket(ctx, 5 + 2 * n);
 }
 
 int GDB_ReplyEmpty(GDBContext *ctx)
 {
-    return soc_send(ctx->super.sock, "$#00", 4, 0);
+    return GDB_SendPacket(ctx, "", 0);
 }
 
 int GDB_ReplyOk(GDBContext *ctx)
 {
-    return soc_send(ctx->super.sock, "$OK#9a", 6, 0);
+    return GDB_SendPacket(ctx, "OK", 2);
 }
 
 int GDB_ReplyErrno(GDBContext *ctx, int no)
 {
     char buf[] = "E01";
-    hexItoa(no, buf + 1, 2, false);
+    hexItoa((u8)no, buf + 1, 2, false);
     return GDB_SendPacket(ctx, buf, 3);
 }

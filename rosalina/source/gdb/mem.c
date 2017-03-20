@@ -41,7 +41,7 @@ int GDB_WriteProcessMemory(GDBContext *ctx, const void *buf, u32 addr, u32 len)
     if(R_FAILED(r))
         return GDB_ReplyErrno(ctx, EFAULT);
     else
-        return GDB_SendHexPacket(ctx, buf, len);
+        return GDB_ReplyOk(ctx);
 }
 
 GDB_DECLARE_HANDLER(ReadMemory)

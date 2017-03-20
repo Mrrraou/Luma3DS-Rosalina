@@ -2,6 +2,7 @@
 #include "gdb/xfer.h"
 #include "gdb/thread.h"
 #include "gdb/net.h"
+#include "minisoc.h"
 
 typedef enum GDBQueryDirection
 {
@@ -65,13 +66,26 @@ int GDB_HandleWriteQuery(GDBContext *ctx)
 
 GDB_DECLARE_QUERY_HANDLER(Supported)
 {
-    return GDB_SendFormattedPacket(ctx, "PacketSize=%d;qXfer:features:read+;QThreadEvents+;QStartNoAckMode+", sizeof(ctx->buffer));
+    return GDB_SendFormattedPacket(ctx, "PacketSize=%d;qXfer:features:read+;QStartNoAckMode+;QThreadEvents+;vContSupported+;swbreak+", sizeof(ctx->buffer));
 }
 
 GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)
 {
-    ctx->state = GDB_STATE_NOACK_SENT;
-    return GDB_ReplyOk(ctx);
+    int r = GDB_ReplyOk(ctx);
+    if(r <= 0)
+        return r;
+
+    char ack;
+    r = soc_recv(ctx->super.sock, &ack, 1, 0);
+
+    if(r <= 0)
+        return r;
+    else if(ack == '-')
+        return GDB_HandleQueryStartNoAckMode(ctx);
+
+    if(r > 0)
+        ctx->flags |= GDB_FLAG_SKIP_ACKNOWLEDGEMENT;
+    return r;
 }
 
 GDB_DECLARE_QUERY_HANDLER(Attached)
