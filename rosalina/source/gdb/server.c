@@ -220,7 +220,7 @@ int GDB_DoPacket(sock_ctx *socketCtx)
     RecursiveLock_Lock(&ctx->lock);
     GDBFlags oldFlags = ctx->flags;
 
-    if(ctx->state != GDB_STATE_CONNECTED)
+    if(ctx->state == GDB_STATE_DISCONNECTED)
         return -1;
 
     int r = GDB_ReceivePacket(ctx);

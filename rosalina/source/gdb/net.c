@@ -75,9 +75,12 @@ int GDB_ReceivePacket(GDBContext *ctx)
     if(r < 1)
         return -1;
 
+    // We don't support acknowledgment correctly with GDB, please accept to use no-ack mode
+    // IDA works fine
     if(ctx->buffer[0] == '+') // GDB acknowleges TCP acknowledgment packets (yes...)
     {
-        if(ctx->flags & GDB_FLAG_SKIP_ACKNOWLEDGEMENT)
+
+        if(ctx->state == GDB_STATE_NOACK)
             return -1;
 
         // Consume it
@@ -85,11 +88,16 @@ int GDB_ReceivePacket(GDBContext *ctx)
         if(r != 1)
             return -1;
 
-        // Acknowledge the acknowledgment to the acknowledgment x_x
-        // Can be an acknowledgment to responses, too x_x
-        r = soc_send(ctx->super.sock, "+", 1, 0);
-        if(r != 1)
-            return -1;
+        if(ctx->state == GDB_STATE_NOACK_SENT)
+            ctx->state = GDB_STATE_NOACK;
+        else
+        {
+            // Acknowledge the acknowledgment to the acknowledgment x_x
+            // Can be an acknowledgment to responses, too x_x
+            r = soc_send(ctx->super.sock, "+", 1, 0);
+            if(r != 1)
+                return -1;
+        }
 
         ctx->buffer[0] = 0;
 
@@ -136,7 +144,10 @@ int GDB_ReceivePacket(GDBContext *ctx)
 
 static int GDB_DoSendPacket(GDBContext *ctx, u32 len)
 {
-    return soc_send(ctx->super.sock, ctx->buffer, len, 0);
+    int r = soc_send(ctx->super.sock, ctx->buffer, len, 0);
+    // We don't support acknowledgment correctly with GDB, please accept to use no-ack mode
+    // IDA works fine
+    return r;
 }
 
 int GDB_SendPacket(GDBContext *ctx, const char *packetData, u32 len)

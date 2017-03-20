@@ -71,21 +71,8 @@ GDB_DECLARE_QUERY_HANDLER(Supported)
 
 GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)
 {
-    int r = GDB_ReplyOk(ctx);
-    if(r <= 0)
-        return r;
-
-    char ack;
-    r = soc_recv(ctx->super.sock, &ack, 1, 0);
-
-    if(r <= 0)
-        return r;
-    else if(ack == '-')
-        return GDB_HandleQueryStartNoAckMode(ctx);
-
-    if(r > 0)
-        ctx->flags |= GDB_FLAG_SKIP_ACKNOWLEDGEMENT;
-    return r;
+    ctx->state = GDB_STATE_NOACK_SENT;
+    return GDB_ReplyOk(ctx);
 }
 
 GDB_DECLARE_QUERY_HANDLER(Attached)
