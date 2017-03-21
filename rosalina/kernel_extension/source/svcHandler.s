@@ -52,6 +52,7 @@ svcHandler:
         b _fallback_end
 
     _fallback:
+        mov r0, r9
         ldr r8, =svcFallbackHandler
         ldr r8, [r8]
         blx r8

@@ -168,7 +168,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                                 (exc.type == EXCEVENT_UNDEFINED_SYSCALL ? 12 : 11); // SIGSYS, SIGSEGV
 
                     ctx->currentThreadId = info->thread_id;
-                    GDB_ParseCommonThreadInfo(buffer, ctx, exc.type == EXCEVENT_UNDEFINED_SYSCALL);
+                    GDB_ParseCommonThreadInfo(buffer, ctx, exc.type == EXCEVENT_UNDEFINED_INSTRUCTION);
                     return GDB_SendFormattedPacket(ctx, "T%02x%s;", signum, buffer);
                 }
 
