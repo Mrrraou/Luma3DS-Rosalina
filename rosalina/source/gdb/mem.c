@@ -1,5 +1,6 @@
 #include "gdb/mem.h"
 #include "gdb/net.h"
+#include "gdb/breakpoints.h"
 #include "minisoc.h"
 
 int GDB_SendProcessMemory(GDBContext *ctx, const char *prefix, u32 prefixLen, u32 addr, u32 len)
@@ -21,15 +22,17 @@ int GDB_SendProcessMemory(GDBContext *ctx, const char *prefix, u32 prefixLen, u3
         // if the requested memory is split inside two pages, with the second one being not accessible...
         u32 newlen = 0x1000 - (addr & 0xFFF);
         if(newlen >= len || R_FAILED(svcReadProcessMemory(membuf, ctx->debug, addr, newlen)))
-            return prefix == NULL ? GDB_ReplyErrno(ctx, EFAULT) : -2;
+            return prefix == NULL ? GDB_ReplyErrno(ctx, EFAULT) : -EFAULT;
         else
         {
+            GDB_HideBreakpoints(ctx, membuf, newlen, addr);
             GDB_EncodeHex(buf + prefixLen, membuf, newlen);
             return GDB_SendPacket(ctx, buf, prefixLen + 2 * newlen);
         }
     }
     else
     {
+        GDB_HideBreakpoints(ctx, membuf, len, addr);
         GDB_EncodeHex(buf + prefixLen, membuf, len);
         return GDB_SendPacket(ctx, buf, prefixLen + 2 * len);
     }
@@ -41,7 +44,10 @@ int GDB_WriteProcessMemory(GDBContext *ctx, const void *buf, u32 addr, u32 len)
     if(R_FAILED(r))
         return GDB_ReplyErrno(ctx, EFAULT);
     else
+    {
+        GDB_UpdateBreakpoints(ctx, buf, len, addr);
         return GDB_ReplyOk(ctx);
+    }
 }
 
 GDB_DECLARE_HANDLER(ReadMemory)

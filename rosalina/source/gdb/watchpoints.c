@@ -92,6 +92,7 @@ int GDB_AddWatchpoint(GDBContext *ctx, u32 address, u32 size, WatchpointKind kin
         watchpoint->size = size;
         watchpoint->kind = kind;
         watchpoint->debug = ctx->debug;
+        ctx->watchpoints[ctx->nbWatchpoints++] = address;
         RecursiveLock_Unlock(&watchpointManagerLock);
         return 0;
     }
@@ -121,6 +122,18 @@ int GDB_RemoveWatchpoint(GDBContext *ctx, u32 address, WatchpointKind kind)
 
         memset_(&manager.watchpoints[id], 0, sizeof(Watchpoint));
         manager.total--;
+
+        if(ctx->watchpoints[0] == address)
+        {
+            ctx->watchpoints[0] = ctx->watchpoints[1];
+            ctx->watchpoints[1] = 0;
+            ctx->nbWatchpoints--;
+        }
+        else if(ctx->watchpoints[1] == address)
+        {
+            ctx->watchpoints[1] = 0;
+            ctx->nbWatchpoints--;
+        }
 
         RecursiveLock_Unlock(&watchpointManagerLock);
 

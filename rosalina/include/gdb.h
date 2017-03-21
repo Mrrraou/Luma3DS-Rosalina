@@ -9,12 +9,20 @@
 #include "memory.h"
 
 #define MAX_DEBUG 3
-#define MAX_THREAD 32
+#define MAX_BREAKPOINT 256
 #define GDB_BUF_LEN 512
 
 #define GDB_DECLARE_HANDLER(name) int GDB_Handle##name(GDBContext *ctx)
 #define GDB_DECLARE_QUERY_HANDLER(name) GDB_DECLARE_HANDLER(Query##name)
 #define GDB_DECLARE_VERBOSE_HANDLER(name) GDB_DECLARE_HANDLER(Verbose##name)
+
+typedef struct Breakpoint
+{
+    u32 address;
+    u32 savedInstruction;
+    u8 instructionSize;
+    bool persistent;
+} Breakpoint;
 
 typedef enum GDBFlags
 {
@@ -53,9 +61,15 @@ typedef struct GDBContext
     bool processEnded, processExited;
 
     DebugEventInfo pendingDebugEvents[0x10], latestDebugEvent;
-    u32 nbPendingDebugEvents, nbDebugEvents;
+    u32 nbPendingDebugEvents;
     DebugFlags continueFlags;
 
+    u32 nbBreakpoints;
+    Breakpoint breakpoints[MAX_BREAKPOINT];
+
+    u32 nbWatchpoints;
+    u32 watchpoints[2];
+    
     char buffer[GDB_BUF_LEN + 4];
     char *commandData;
 } GDBContext;

@@ -67,7 +67,6 @@ GDB_DECLARE_HANDLER(Continue)
     else
     {
         svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
-        ctx->nbDebugEvents = 0;
         ctx->flags |= GDB_FLAG_PROCESS_CONTINUING;
         ctx->currentThreadId = 0;
     }
@@ -183,14 +182,17 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                     switch(exc.stop_point.type)
                     {
                         case STOPPOINT_SVC_FF:
-                        case STOPPOINT_BREAKPOINT:
                         {
-                            //TODO: implement breakpoints
-
-                            /*
                             GDB_ParseCommonThreadInfo(buffer, ctx, false);
                             return GDB_SendFormattedPacket(ctx, "T05%s;swbreak:;", buffer);
-                            */
+                            break;
+                        }
+
+                        case STOPPOINT_BREAKPOINT:
+                        {
+                            // /!\ Not actually implemented (and will never be)
+                            GDB_ParseCommonThreadInfo(buffer, ctx, false);
+                            return GDB_SendFormattedPacket(ctx, "T05%s;hwbreak:;", buffer);
                             break;
                         }
 

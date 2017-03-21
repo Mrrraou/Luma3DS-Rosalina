@@ -7,6 +7,7 @@
 #include "gdb/regs.h"
 #include "gdb/mem.h"
 #include "gdb/watchpoints.h"
+#include "gdb/breakpoints.h"
 #include "gdb/stop_point.h"
 
 void GDB_InitializeServer(GDBServer *server)
@@ -65,7 +66,6 @@ int GDB_AcceptClient(sock_ctx *socketCtx)
     GDBContext *ctx = (GDBContext *)socketCtx;
 
     RecursiveLock_Lock(&ctx->lock);
-
     Result r = svcOpenProcess(&ctx->process, ctx->pid);
     if(R_SUCCEEDED(r))
     {
@@ -73,6 +73,7 @@ int GDB_AcceptClient(sock_ctx *socketCtx)
         if(R_SUCCEEDED(r))
         {
             ctx->state = GDB_STATE_CONNECTED;
+            ctx->processExited = ctx->processEnded = false;
             while(R_SUCCEEDED(svcGetProcessDebugEvent(&ctx->latestDebugEvent, ctx->debug)) &&
                  (ctx->latestDebugEvent.type != DBGEVENT_EXCEPTION || ctx->latestDebugEvent.exception.type != EXCEVENT_ATTACH_BREAK))
                 svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
@@ -95,6 +96,22 @@ int GDB_CloseClient(sock_ctx *socketCtx)
     GDBContext *ctx = (GDBContext *)socketCtx;
 
     RecursiveLock_Lock(&ctx->lock);
+
+    for(u32 i = 0; i < ctx->nbBreakpoints; i++)
+    {
+        if(!ctx->breakpoints[i].persistent)
+            GDB_DisableBreakpointById(ctx, i);
+    }
+    memset_(&ctx->breakpoints, 0, sizeof(ctx->breakpoints));
+    ctx->nbBreakpoints = 0;
+
+    for(u32 i = 0; i < ctx->nbWatchpoints; i++)
+    {
+        GDB_RemoveWatchpoint(ctx, ctx->watchpoints[i], WATCHPOINT_DISABLED);
+        ctx->watchpoints[i] = 0;
+    }
+    ctx->nbWatchpoints = 0;
+
     svcClearEvent(ctx->clientAcceptedEvent);
     ctx->eventToWaitFor = ctx->clientAcceptedEvent;
     DebugEventInfo dummy;
@@ -136,6 +153,9 @@ void GDB_ReleaseClient(sock_server *socketSrv, sock_ctx *socketCtx)
 
     svcCloseHandle(ctx->debug);
     svcCloseHandle(ctx->process);
+    ctx->debug = 0;
+    ctx->process = 0;
+
     ctx->flags = (GDBFlags)0;
     ctx->state = GDB_STATE_DISCONNECTED;
 
@@ -144,8 +164,8 @@ void GDB_ReleaseClient(sock_server *socketSrv, sock_ctx *socketCtx)
     ctx->pid = 0;
     ctx->currentThreadId = ctx->selectedThreadId = 0;
 
-    ctx->catchThreadEvents = ctx->processExited = ctx->processEnded = false;
-    ctx->nbPendingDebugEvents = ctx->nbDebugEvents = 0;
+    ctx->catchThreadEvents = false;
+    ctx->nbPendingDebugEvents = 0;
 
     RecursiveLock_Unlock(&ctx->lock);
 }

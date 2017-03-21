@@ -1,0 +1,115 @@
+#include "gdb/breakpoints.h"
+#include <errno.h>
+
+// We'll actually use SVC 0xFF for breakpoints :P
+#define BREAKPOINT_INSTRUCTION_ARM      0xEF0000FF
+#define BREAKPOINT_INSTRUCTION_THUMB    0xDFFF
+
+u32 GDB_FindClosestBreakpointSlot(GDBContext *ctx, u32 address)
+{
+    if(address <= ctx->breakpoints[0].address)
+        return 0;
+    else if(address > ctx->breakpoints[ctx->nbBreakpoints - 1].address)
+        return ctx->nbBreakpoints;
+
+    u32 a = 0, b = ctx->breakpoints[ctx->nbBreakpoints].address, m;
+
+    do
+    {
+        m = (a + b) / 2;
+        if(ctx->breakpoints[m].address < address)
+            a = m;
+        else if(ctx->breakpoints[m].address > address)
+            b = m;
+        else
+            return m;
+    }
+    while(b - a > 1);
+
+    return b;
+}
+
+int GDB_AddBreakpoint(GDBContext *ctx, u32 address, bool thumb, bool persist)
+{
+    u32 id = GDB_FindClosestBreakpointSlot(ctx, address);
+
+    if(id != ctx->nbBreakpoints && ctx->breakpoints[id].instructionSize != 0 && ctx->breakpoints[id].address == address)
+        return -EINVAL;
+    else if(ctx->nbBreakpoints == MAX_BREAKPOINT)
+        return -EBUSY;
+
+    for(u32 i = ctx->nbBreakpoints; i > id && i != 0; i--)
+        ctx->breakpoints[i] = ctx->breakpoints[i - 1];
+
+    ctx->nbBreakpoints++;
+
+    Breakpoint *bkpt = &ctx->breakpoints[id];
+    u32 instr = thumb ? BREAKPOINT_INSTRUCTION_THUMB : BREAKPOINT_INSTRUCTION_ARM;
+    if(R_FAILED(svcReadProcessMemory(&bkpt->savedInstruction, ctx->debug, address, thumb ? 2 : 4)) ||
+       R_FAILED(svcWriteProcessMemory(ctx->debug, &instr, address, thumb ? 2 : 4)))
+    {
+        for(u32 i = id; i < ctx->nbBreakpoints - 1; i++)
+            ctx->breakpoints[i] = ctx->breakpoints[i + 1];
+
+        memset_(&ctx->breakpoints[ctx->nbBreakpoints--], 0, sizeof(Breakpoint));
+        return -EFAULT;
+    }
+
+    bkpt->instructionSize = thumb ? 2 : 4;
+    bkpt->address = address;
+    bkpt->persistent = persist;
+
+    return 0;
+}
+
+int GDB_DisableBreakpointById(GDBContext *ctx, u32 id)
+{
+    Breakpoint *bkpt = &ctx->breakpoints[id];
+    if(R_FAILED(svcWriteProcessMemory(ctx->debug, &bkpt->savedInstruction, bkpt->address, bkpt->instructionSize)))
+        return -EFAULT;
+    else return 0;
+}
+
+int GDB_RemoveBreakpoint(GDBContext *ctx, u32 address)
+{
+    u32 id = GDB_FindClosestBreakpointSlot(ctx, address);
+    if(id == ctx->nbBreakpoints || ctx->breakpoints[id].address != address)
+        return -EINVAL;
+
+    int r = GDB_DisableBreakpointById(ctx, id);
+    if(r != 0)
+        return r;
+    else
+    {
+        for(u32 i = id; i < ctx->nbBreakpoints - 1; i++)
+            ctx->breakpoints[i] = ctx->breakpoints[i + 1];
+
+        memset_(&ctx->breakpoints[ctx->nbBreakpoints--], 0, sizeof(Breakpoint));
+
+        return 0;
+    }
+}
+
+void GDB_HideBreakpoints(GDBContext *ctx, void *buf, u32 len, u32 addr)
+{
+    u8 *buf8 = (u8 *)buf;
+
+    if(addr >= ctx->breakpoints[0].address && addr <= ctx->breakpoints[ctx->nbBreakpoints - 1].address)
+    {
+        for(u32 id = GDB_FindClosestBreakpointSlot(ctx, addr); id != ctx->nbBreakpoints && ctx->breakpoints[id].address < addr + len;
+                id = GDB_FindClosestBreakpointSlot(ctx, ctx->breakpoints[id].address + ctx->breakpoints[id].instructionSize))
+            memcpy(buf8 + ctx->breakpoints[id].address - addr, &ctx->breakpoints[id].savedInstruction, ctx->breakpoints[id].instructionSize);
+    }
+}
+
+void GDB_UpdateBreakpoints(GDBContext *ctx, const void *buf, u32 len, u32 addr)
+{
+    const u8 *buf8 = (const u8 *)buf;
+
+    if(addr >= ctx->breakpoints[0].address && addr <= ctx->breakpoints[ctx->nbBreakpoints - 1].address)
+    {
+        for(u32 id = GDB_FindClosestBreakpointSlot(ctx, addr); id != ctx->nbBreakpoints && ctx->breakpoints[id].address < addr + len;
+                id = GDB_FindClosestBreakpointSlot(ctx, ctx->breakpoints[id].address + ctx->breakpoints[id].instructionSize))
+            memcpy(&ctx->breakpoints[id].savedInstruction, buf8 + ctx->breakpoints[id].address - addr, ctx->breakpoints[id].instructionSize);
+    }
+}
