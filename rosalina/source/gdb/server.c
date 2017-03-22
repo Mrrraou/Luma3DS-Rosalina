@@ -83,11 +83,16 @@ int GDB_AcceptClient(sock_ctx *socketCtx)
             //TODO: clean up
             svcCloseHandle(ctx->process);
         }
+
+        svcSignalEvent(ctx->clientAcceptedEvent);
+    }
+    else
+    {
+        // Clean up
     }
 
     RecursiveLock_Unlock(&ctx->lock);
 
-    svcSignalEvent(ctx->clientAcceptedEvent);
     return 0;
 }
 
@@ -223,6 +228,7 @@ static inline GDBCommandHandler GDB_GetCommandHandler(char c)
         case 'k':
             return GDB_HandleKill;
 
+        case 'B':
         case 'z':
         case 'Z':
             return GDB_HandleToggleStopPoint;
@@ -244,7 +250,9 @@ int GDB_DoPacket(sock_ctx *socketCtx)
         return -1;
 
     int r = GDB_ReceivePacket(ctx);
-    if(r == -1)
+    if(r == 0)
+        ret = 0;
+    else if(r == -1)
         ret = -1;
     else if(ctx->buffer[0] == '\x03')
     {

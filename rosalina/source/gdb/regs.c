@@ -8,6 +8,7 @@ GDB_DECLARE_HANDLER(ReadRegisters)
 
     ThreadContext regs;
     Result r = svcGetDebugThreadContext(&regs, ctx->debug, ctx->selectedThreadId, THREADCONTEXT_CONTROL_ALL);
+
     if(R_FAILED(r))
         return GDB_ReplyErrno(ctx, EPERM);
 

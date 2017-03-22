@@ -40,11 +40,11 @@ svcHandler:
 
         blx r8
 
-        push {r0-r7, r12, lr}
+        push {r0-r12, lr}
         mov r0, #10             @ DBGEVT_SYSCALL_OUT
         mov r1, r9
         blx r10
-        pop {r0-r7, r12, lr}
+        pop {r0-r12, lr}
 
         cpsid i
 

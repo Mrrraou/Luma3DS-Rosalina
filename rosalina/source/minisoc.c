@@ -330,30 +330,3 @@ ssize_t soc_send(Handle sockfd, const void *buf, size_t len, int flags)
 {
     return soc_sendto(sockfd, buf, len, flags, NULL, 0);
 }
-
-#define PEEK_SIZE 512
-char peek_buffer[PEEK_SIZE];
-int soc_recv_until(Handle fd, char *buf, size_t buf_len, char *sig, size_t sig_len, bool handle_ctrlc)
-{
-    int r = soc_recvfrom(fd, peek_buffer, PEEK_SIZE, MSG_PEEK, NULL, 0);
-    if(r == 0 || r == -1)
-        return r;
-    else if(handle_ctrlc && peek_buffer[0] == '\x03')
-    {
-        buf[0] = peek_buffer[0];
-        peek_buffer[0] = 0;
-        return soc_recvfrom(fd, buf, 1, 0, NULL, 0);
-    }
-    else
-    {
-        char *ptr = (char*) memsearch((u8*)peek_buffer, sig, PEEK_SIZE, sig_len);
-        if(ptr == NULL)
-            return -1; // Line too long!
-        size_t len = ptr - peek_buffer;
-        len += sig_len;
-        if(len > buf_len)
-            return -1;
-        memset_(peek_buffer, 0, len);
-        return soc_recvfrom(fd, buf, len, 0, NULL, 0);
-    }
-}

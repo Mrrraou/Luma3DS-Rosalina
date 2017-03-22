@@ -28,8 +28,6 @@ int socClose(Handle sockfd);
 ssize_t soc_recv(Handle sockfd, void *buf, size_t len, int flags);
 ssize_t soc_send(Handle sockfd, const void *buf, size_t len, int flags);
 
-int soc_recv_until(Handle fd, char *buf, size_t buf_len, char *sig, size_t sig_len, bool handle_ctrlc);
-
 // actually provided by ctrulib
 ssize_t soc_recvfrom(Handle sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
 ssize_t soc_sendto(Handle sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen);

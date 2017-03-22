@@ -8,7 +8,7 @@ GDB_DECLARE_HANDLER(ToggleStopPoint)
     if(ctx->commandData[1] == 0 || ctx->commandData[0] < '0' || ctx->commandData[0] > '4')
         return GDB_ReplyErrno(ctx, EILSEQ);
 
-    bool add = *(ctx->commandData - 1) == 'Z';
+    bool add = ctx->commandData[-1] == 'Z';
 
     u32 kind = ctx->commandData[0] - '0';
     char *addrStart = ctx->commandData + 2;

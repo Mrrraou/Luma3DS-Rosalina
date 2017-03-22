@@ -25,7 +25,7 @@ void GDB_UpdateCurrentThreadFromList(GDBContext *ctx, u32 *threadIds, u32 nbThre
     {
         Handle thread;
         s32 dynaPrio = 64;
-        svcOpenThread(&thread, scheduledThreadIds[i], ctx->process);
+        svcOpenThread(&thread, ctx->process, scheduledThreadIds[i]);
         svcGetThreadPriority(&dynaPrio, thread);
         svcCloseHandle(thread);
         if(dynaPrio < maxDynaPrio)
@@ -89,8 +89,8 @@ GDB_DECLARE_QUERY_HANDLER(CurrentThreadId)
 
 GDB_DECLARE_QUERY_HANDLER(FThreadInfo)
 {
-    u32 threadIds[0x7F];
-    s32 nbThreads;
+    u32 threadIds[0x7F], aliveThreadIds[0x7F];
+    s32 nbThreads, nbAliveThreads = 0;
 
     char buf[GDB_BUF_LEN + 1];
 
@@ -98,12 +98,25 @@ GDB_DECLARE_QUERY_HANDLER(FThreadInfo)
     if(R_FAILED(r))
         return GDB_SendPacket(ctx, "l", 1);
 
+    for(s32 i = 0; i < nbThreads; i++)
+    {
+        s64 dummy;
+        u32 mask;
+
+        Result r2 = svcGetDebugThreadParam(&dummy, &mask, ctx->debug, threadIds[i], DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
+        if(R_SUCCEEDED(r2) && mask != 2)
+            aliveThreadIds[nbAliveThreads++] = threadIds[i];
+    }
+
+    if(nbAliveThreads == 0)
+        return GDB_SendPacket(ctx, "l", 1);
+
     char *bufptr = buf;
 
-    for(s32 i = 0; i < nbThreads && bufptr < buf + GDB_BUF_LEN - 9; i++)
+    for(s32 i = 0; i < nbAliveThreads && bufptr < buf + GDB_BUF_LEN - 9; i++)
     {
         *bufptr++ = ',';
-        bufptr += sprintf(bufptr, "%x", threadIds[i]);
+        bufptr += sprintf(bufptr, "%x", aliveThreadIds[i]);
     }
     buf[0] = 'm';
 

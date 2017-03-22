@@ -29,12 +29,12 @@ GDB_DECLARE_HANDLER(Continue)
     char *addrStart;
     u32 addr = 0;
 
-    if(*(ctx->commandData - 1) == 'C' && *(ctx->commandData - 2) == '$')
+    if(ctx->commandData[-1] == 'C' && ctx->commandData[-2] == '$')
     {
         for(addrStart = ctx->commandData; *addrStart != ';' && *addrStart != 0; addrStart++);
         addrStart++;
     }
-    else if(*(ctx->commandData - 2) == '$')
+    else if(ctx->commandData[-2] == '$')
         addrStart = ctx->commandData;
     else
     {
