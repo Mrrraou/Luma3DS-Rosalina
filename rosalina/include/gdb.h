@@ -10,7 +10,9 @@
 
 #define MAX_DEBUG 3
 #define MAX_BREAKPOINT 256
-#define GDB_BUF_LEN 512
+// This is the ideal size as IDA will try to read exactly 0x100 bytes at a time. Add 4 to this, for $#<checksum>, see below.
+// IDA seems to want additional bytes as well.
+#define GDB_BUF_LEN (512 + 24)
 
 #define GDB_DECLARE_HANDLER(name) int GDB_Handle##name(GDBContext *ctx)
 #define GDB_DECLARE_QUERY_HANDLER(name) GDB_DECLARE_HANDLER(Query##name)
