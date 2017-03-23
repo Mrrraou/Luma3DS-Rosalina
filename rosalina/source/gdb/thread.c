@@ -40,7 +40,7 @@ GDB_DECLARE_HANDLER(SetThreadId)
 {
     if(ctx->commandData[0] == 'g')
     {
-        if(memcmp(ctx->commandData + 1, "-1", 2) == 0)
+        if(strncmp(ctx->commandData + 1, "-1", 2) == 0)
             return GDB_ReplyErrno(ctx, EPERM); // a thread must be specified
 
         u32 id = atoi_(ctx->commandData + 1, 16);
@@ -49,8 +49,13 @@ GDB_DECLARE_HANDLER(SetThreadId)
     }
     else if(ctx->commandData[0] == 'c')
     {
-        // We can't stop/continue particular threads
-        // Ignore the request (that's uncompliant behavior)
+        // We can't stop/continue particular threads (uncompliant behavior)
+        if(strncmp(ctx->commandData + 1, "-1", 2) == 0)
+            ctx->selectedThreadIdForContinuing = 0;
+
+        u32 id = atoi_(ctx->commandData + 1, 16);
+        ctx->selectedThreadIdForContinuing = id;
+
         return GDB_ReplyOk(ctx);
     }
     else

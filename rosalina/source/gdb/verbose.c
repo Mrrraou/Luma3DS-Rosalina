@@ -47,11 +47,3 @@ GDB_DECLARE_VERBOSE_HANDLER(ContinueSupported)
 {
     return GDB_SendPacket(ctx, "vCont;c;C", 9);
 }
-
-GDB_DECLARE_VERBOSE_HANDLER(Continue)
-{
-    if(ctx->commandData[0] == 'c' || ctx->commandData[0] == 'C')
-        return GDB_HandleContinue(ctx);
-    else
-        return GDB_ReplyErrno(ctx, EPERM);
-}

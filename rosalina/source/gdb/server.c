@@ -167,7 +167,7 @@ void GDB_ReleaseClient(sock_server *socketSrv, sock_ctx *socketCtx)
     ctx->eventToWaitFor = ctx->clientAcceptedEvent;
     ctx->continueFlags = (DebugFlags)(DBG_SIGNAL_FAULT_EXCEPTION_EVENTS | DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
     ctx->pid = 0;
-    ctx->currentThreadId = ctx->selectedThreadId = 0;
+    ctx->currentThreadId = ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
 
     ctx->catchThreadEvents = false;
     ctx->nbPendingDebugEvents = 0;
@@ -228,7 +228,6 @@ static inline GDBCommandHandler GDB_GetCommandHandler(char c)
         case 'k':
             return GDB_HandleKill;
 
-        case 'B':
         case 'z':
         case 'Z':
             return GDB_HandleToggleStopPoint;

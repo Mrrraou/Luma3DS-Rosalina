@@ -1,9 +1,16 @@
 #include "gdb/debug.h"
+#include "gdb/verbose.h"
 #include "gdb/net.h"
 #include "gdb/thread.h"
 #include "gdb/mem.h"
 #include "gdb/watchpoints.h"
 #include "fmt.h"
+
+/*
+    Since we can't select particular threads to continue (and that's uncompliant behavior):
+        - if we continue the current thread, continue all threads
+        - otherwise, leaves all threads stopped but make the client believe it's continuing
+*/
 
 GDB_DECLARE_HANDLER(Detach)
 {
@@ -20,40 +27,17 @@ GDB_DECLARE_HANDLER(Kill)
 
 GDB_DECLARE_HANDLER(Break)
 {
-    ctx->flags &= ~GDB_FLAG_PROCESS_CONTINUING;
-    return 0;
-}
-
-GDB_DECLARE_HANDLER(Continue)
-{
-    char *addrStart;
-    u32 addr = 0;
-
-    if(ctx->commandData[-1] == 'C' && ctx->commandData[-2] == '$')
-    {
-        for(addrStart = ctx->commandData; *addrStart != ';' && *addrStart != 0; addrStart++);
-        addrStart++;
-    }
-    else if(ctx->commandData[-2] == '$')
-        addrStart = ctx->commandData;
+    if(!(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
+        return GDB_SendPacket(ctx, "S02", 3);
     else
     {
-        // Note: we can't wake up individual threads. This is uncompliant behavior
-        addrStart = NULL;
+        ctx->flags &= ~GDB_FLAG_PROCESS_CONTINUING;
+        return 0;
     }
+}
 
-    if(addrStart != NULL && *addrStart != 0  && ctx->currentThreadId != 0)
-    {
-        ThreadContext regs;
-        addr = (u32)atoi_(++addrStart, 16);
-        Result r = svcGetDebugThreadContext(&regs, ctx->debug, ctx->currentThreadId, THREADCONTEXT_CONTROL_CPU_SPRS);
-        if(R_SUCCEEDED(r))
-        {
-            regs.cpu_registers.pc = addr;
-            r = svcSetDebugThreadContext(ctx->debug, ctx->currentThreadId, &regs, THREADCONTEXT_CONTROL_CPU_SPRS);
-        }
-    }
-
+static int GDB_ContinueExecution(GDBContext *ctx)
+{
     int ret = 0;
     if(ctx->nbPendingDebugEvents > 0)
     {
@@ -72,6 +56,73 @@ GDB_DECLARE_HANDLER(Continue)
     }
 
     return ret;
+}
+
+GDB_DECLARE_HANDLER(Continue)
+{
+    char *addrStart;
+    u32 addr = 0;
+
+    if(ctx->selectedThreadIdForContinuing != 0 && ctx->selectedThreadIdForContinuing != ctx->currentThreadId)
+        return 0;
+
+    if(ctx->commandData[-1] == 'C')
+    {
+        for(addrStart = ctx->commandData; *addrStart != ';' && *addrStart != 0; addrStart++);
+        addrStart++;
+    }
+    else
+        addrStart = ctx->commandData;
+
+    if(addrStart != NULL && *addrStart != 0  && ctx->currentThreadId != 0)
+    {
+        ThreadContext regs;
+        addr = (u32)atoi_(++addrStart, 16);
+        Result r = svcGetDebugThreadContext(&regs, ctx->debug, ctx->currentThreadId, THREADCONTEXT_CONTROL_CPU_SPRS);
+        if(R_SUCCEEDED(r))
+        {
+            regs.cpu_registers.pc = addr;
+            r = svcSetDebugThreadContext(ctx->debug, ctx->currentThreadId, &regs, THREADCONTEXT_CONTROL_CPU_SPRS);
+        }
+    }
+
+    return GDB_ContinueExecution(ctx);
+}
+
+GDB_DECLARE_VERBOSE_HANDLER(Continue)
+{
+    char *pos = ctx->commandData;
+    bool currentThreadFound = false;
+    while(pos != NULL && *pos != 0 && !currentThreadFound)
+    {
+        if(*pos != 'c' && *pos != 'C')
+            return GDB_ReplyErrno(ctx, EPERM);
+
+        pos += *pos == 'C' ? 3 : 1;
+
+        if(*pos++ != ':') // default action found
+        {
+            currentThreadFound = true;
+            break;
+        }
+
+        char *nextpos = (char *)strchr(pos, ';');
+        if(nextpos != NULL)
+            *nextpos++ = 0;
+        if(strncmp(pos, "-1", 2) == 0)
+            currentThreadFound = true;
+        else
+        {
+            currentThreadFound = currentThreadFound || (u32)atoi_(pos, 16) == ctx->currentThreadId;
+        }
+
+        pos = nextpos;
+    }
+
+    if(ctx->currentThreadId == 0 || currentThreadFound)
+        return GDB_ContinueExecution(ctx);
+    else
+        return 0; // Ignore
 }
 
 GDB_DECLARE_HANDLER(GetStopReason)
@@ -173,7 +224,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                 }
 
                 case EXCEVENT_ATTACH_BREAK:
-                    return GDB_SendPacket(ctx, "S02", 3);
+                    return GDB_SendPacket(ctx, "S00", 3);
 
                 case EXCEVENT_STOP_POINT:
                 {

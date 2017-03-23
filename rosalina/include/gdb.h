@@ -52,7 +52,7 @@ typedef struct GDBContext
     Handle process;
     Handle debug;
 
-    u32 currentThreadId, selectedThreadId;
+    u32 currentThreadId, selectedThreadId, selectedThreadIdForContinuing;
 
     Handle clientAcceptedEvent, continuedEvent;
     Handle eventToWaitFor;
@@ -69,7 +69,7 @@ typedef struct GDBContext
 
     u32 nbWatchpoints;
     u32 watchpoints[2];
-    
+
     char buffer[GDB_BUF_LEN + 4];
     char *commandData;
 } GDBContext;
