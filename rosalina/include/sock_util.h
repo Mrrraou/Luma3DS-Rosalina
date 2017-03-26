@@ -53,11 +53,11 @@ typedef struct sock_server
 
     sock_alloc_func alloc;
     sock_free_func free;
+
+    Handle shall_terminate_event;
 } sock_server;
 
-void server_init(struct sock_server *serv);
+Result server_init(struct sock_server *serv);
 void server_bind(struct sock_server *serv, u16 port);
 void server_run(struct sock_server *serv);
-void server_stop(struct sock_server *serv);
-void server_close_ctx(struct sock_server *serv, struct sock_ctx *ctx);
-struct sock_ctx *server_alloc_server_ctx(struct sock_server *serv);
+void server_finalize(struct sock_server *serv);

@@ -10,37 +10,50 @@
 #include "gdb/breakpoints.h"
 #include "gdb/stop_point.h"
 
-void GDB_InitializeServer(GDBServer *server)
+Result GDB_InitializeServer(GDBServer *server)
 {
-    server_init(&server->super);
+    Result ret = server_init(&server->super);
+    if(ret != 0)
+        return ret;
 
     server->super.host = 0;
 
-    server->super.accept_cb = GDB_AcceptClient;
-    server->super.data_cb   = GDB_DoPacket;
-    server->super.close_cb  = GDB_CloseClient;
+    server->super.accept_cb = (sock_accept_cb)GDB_AcceptClient;
+    server->super.data_cb   = (sock_data_cb)  GDB_DoPacket;
+    server->super.close_cb  = (sock_close_cb) GDB_CloseClient;
 
-    server->super.alloc     = GDB_GetClient;
-    server->super.free      = GDB_ReleaseClient;
+    server->super.alloc     = (sock_alloc_func)   GDB_GetClient;
+    server->super.free      = (sock_free_func)    GDB_ReleaseClient;
 
     server->super.clients_per_server = 1;
 
+    server->referenceCount = 0;
     svcCreateEvent(&server->statusUpdated, RESET_ONESHOT);
 
     for(u32 i = 0; i < sizeof(server->ctxs) / sizeof(GDBContext); i++)
         GDB_InitializeContext(server->ctxs + i);
 
     GDB_ResetWatchpoints();
+
+    return 0;
 }
 
 void GDB_FinalizeServer(GDBServer *server)
 {
-    //server_finalize(&server->super);
+    server_finalize(&server->super);
 
     svcCloseHandle(server->statusUpdated);
+}
 
-    for(u32 i = 0; i < sizeof(server->ctxs) / sizeof(GDBContext); i++)
-        GDB_FinalizeContext(server->ctxs + i);
+void GDB_IncrementServerReferenceCount(GDBServer *server)
+{
+    AtomicPostIncrement(&server->referenceCount);
+}
+
+void GDB_DecrementServerReferenceCount(GDBServer *server)
+{
+    if(AtomicDecrement(&server->referenceCount) == 0)
+        GDB_FinalizeServer(server);
 }
 
 #ifndef GDB_PORT_BASE
@@ -56,15 +69,8 @@ void GDB_RunServer(GDBServer *server)
     server_run(&server->super);
 }
 
-void GDB_StopServer(GDBServer *server)
+int GDB_AcceptClient(GDBContext *ctx)
 {
-    server_stop(&server->super);
-}
-
-int GDB_AcceptClient(sock_ctx *socketCtx)
-{
-    GDBContext *ctx = (GDBContext *)socketCtx;
-
     RecursiveLock_Lock(&ctx->lock);
     Result r = svcOpenProcess(&ctx->process, ctx->pid);
     if(R_SUCCEEDED(r))
@@ -80,15 +86,17 @@ int GDB_AcceptClient(sock_ctx *socketCtx)
         }
         else
         {
-            //TODO: clean up
             svcCloseHandle(ctx->process);
+            RecursiveLock_Unlock(&ctx->lock);
+            return -1;
         }
 
         svcSignalEvent(ctx->clientAcceptedEvent);
     }
     else
     {
-        // Clean up
+        RecursiveLock_Unlock(&ctx->lock);
+        return -1;
     }
 
     RecursiveLock_Unlock(&ctx->lock);
@@ -96,10 +104,8 @@ int GDB_AcceptClient(sock_ctx *socketCtx)
     return 0;
 }
 
-int GDB_CloseClient(sock_ctx *socketCtx)
+int GDB_CloseClient(GDBContext *ctx)
 {
-    GDBContext *ctx = (GDBContext *)socketCtx;
-
     RecursiveLock_Lock(&ctx->lock);
 
     for(u32 i = 0; i < ctx->nbBreakpoints; i++)
@@ -127,10 +133,8 @@ int GDB_CloseClient(sock_ctx *socketCtx)
     return 0;
 }
 
-sock_ctx *GDB_GetClient(sock_server *socketSrv)
+GDBContext *GDB_GetClient(GDBServer *server)
 {
-    GDBServer *server = (GDBServer *)socketSrv;
-
     for(u32 i = 0; i < sizeof(server->ctxs) / sizeof(GDBContext); i++)
     {
         if(!(server->ctxs[i].flags & GDB_FLAG_USED))
@@ -140,18 +144,15 @@ sock_ctx *GDB_GetClient(sock_server *socketSrv)
             server->ctxs[i].state = GDB_STATE_CONNECTED;
             RecursiveLock_Unlock(&server->ctxs[i].lock);
 
-            return &server->ctxs[i].super;
+            return &server->ctxs[i];
         }
     }
 
     return NULL;
 }
 
-void GDB_ReleaseClient(sock_server *socketSrv, sock_ctx *socketCtx)
+void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
 {
-    GDBContext *ctx = (GDBContext *)socketCtx;
-    GDBServer *server = (GDBServer *)socketSrv;
-
     svcSignalEvent(server->statusUpdated);
 
     RecursiveLock_Lock(&ctx->lock);
@@ -166,7 +167,7 @@ void GDB_ReleaseClient(sock_server *socketSrv, sock_ctx *socketCtx)
 
     ctx->eventToWaitFor = ctx->clientAcceptedEvent;
     ctx->continueFlags = (DebugFlags)(DBG_SIGNAL_FAULT_EXCEPTION_EVENTS | DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
-    ctx->pid = 0;
+    //ctx->pid = 0;
     ctx->currentThreadId = ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
 
     ctx->catchThreadEvents = false;
@@ -237,10 +238,9 @@ static inline GDBCommandHandler GDB_GetCommandHandler(char c)
     }
 }
 
-int GDB_DoPacket(sock_ctx *socketCtx)
+int GDB_DoPacket(GDBContext *ctx)
 {
     int ret;
-    GDBContext *ctx = (GDBContext *)socketCtx;
 
     RecursiveLock_Lock(&ctx->lock);
     GDBFlags oldFlags = ctx->flags;

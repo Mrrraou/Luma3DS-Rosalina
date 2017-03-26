@@ -12,14 +12,17 @@ Result ConnectToPortHook(Handle *out, const char *name)
     res = ConnectToPort(out, name);
     if(res != 0)
         return res;
-    
+
     if(strncmp(portName, "srv:", 4) == 0)
     {
         KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
         KAutoObject *session = KProcessHandleTable__ToKAutoObject(handleTable, *out);
         if(session != NULL)
         {
-            TracedService_Add(&srvPort, session);
+            if(memcmp(portName, "srv:pm", 6) == 0)
+                TracedService_Add(&srvPmService, session);
+            else
+                TracedService_Add(&srvPort, session);
             session->vtable->DecrementReferenceCount(session);
         }
     }

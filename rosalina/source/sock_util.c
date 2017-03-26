@@ -1,13 +1,21 @@
 #include <sys/socket.h>
+#include <3ds/result.h>
+#include <3ds/svc.h>
+#include <3ds/synchronization.h>
 #include "memory.h"
 #include "minisoc.h"
 #include "sock_util.h"
-#include "menu.h"
+
+extern Handle terminationRequestEvent;
+extern bool terminationRequest;
+
+static u32 soc_block_addr;
+static size_t soc_block_size;
 
 // soc's poll function is odd, and doesn't like -1 as fd.
 // so this compacts everything together
 
-void compact(struct sock_server *serv)
+static void compact(struct sock_server *serv)
 {
     int new_fds[MAX_CTXS];
     struct sock_ctx *new_ctxs[MAX_CTXS];
@@ -33,14 +41,27 @@ void compact(struct sock_server *serv)
     serv->compact_needed = false;
 }
 
-void server_close_ctx(struct sock_server *serv, struct sock_ctx *ctx)
+static struct sock_ctx *server_alloc_server_ctx(struct sock_server *serv)
+{
+    for(int i = 0; i < MAX_PORTS; i++)
+    {
+        if(serv->serv_ctxs[i].type == SOCK_NONE)
+            return &serv->serv_ctxs[i];
+    }
+
+    return NULL;
+}
+
+static void server_close_ctx(struct sock_server *serv, struct sock_ctx *ctx)
 {
     serv->compact_needed = true;
 
     Handle sock = serv->poll_fds[ctx->i].fd;
     if(ctx->type == SOCK_CLIENT)
     {
-        if(serv->close_cb != NULL) serv->close_cb(ctx);
+        serv->close_cb(ctx);
+        serv->free(serv, ctx);
+        ctx->serv->n--;
     }
 
     socClose(sock);
@@ -49,14 +70,34 @@ void server_close_ctx(struct sock_server *serv, struct sock_ctx *ctx)
     serv->poll_fds[ctx->i].revents = 0;
 
     ctx->type = SOCK_NONE;
-
-    serv->free(serv, ctx);
-
-    ctx->serv->n--;
 }
 
-void server_init(struct sock_server *serv)
+static s32 miniSocRefCount = 0;
+Result server_init(struct sock_server *serv)
 {
+    if(AtomicPostIncrement(&miniSocRefCount) == 0)
+    {
+        soc_block_addr = 0x08000000;
+        soc_block_size = 0x30000;
+
+        u32 tmp = 0;
+        Result ret = svcControlMemory(&tmp, soc_block_addr, 0, soc_block_size, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
+        if(ret != 0)
+        {
+            AtomicDecrement(&miniSocRefCount);
+            return ret;
+        }
+
+        soc_block_addr = tmp;
+        ret = miniSocInit((u32 *)soc_block_addr, soc_block_size);
+
+        if(ret != 0)
+        {
+            svcControlMemory(&tmp, soc_block_addr, soc_block_addr, soc_block_size, MEMOP_FREE, MEMPERM_DONTCARE);
+            AtomicPostIncrement(&miniSocRefCount);
+        }
+    }
+
     memset_(serv, 0, sizeof(struct sock_server));
 
     for(int i = 0; i < MAX_PORTS; i++)
@@ -64,16 +105,21 @@ void server_init(struct sock_server *serv)
 
     for(int i = 0; i < MAX_CTXS; i++)
         serv->ctx_ptrs[i] = NULL;
+
+    return svcCreateEvent(&serv->shall_terminate_event, RESET_STICKY);
 }
 
 void server_bind(struct sock_server *serv, u16 port)
 {
     Handle server_sock;
-
+    Handle handles[2] = { terminationRequestEvent, serv->shall_terminate_event };
+    s32 idx = -1;
     Result res = socSocket(&server_sock, AF_INET, SOCK_STREAM, 0);
+
     while(R_FAILED(res))
     {
-        svcSleepThread(100000000LL);
+        if(svcWaitSynchronizationN(&idx, handles, 2, false, 100 * 1000 * 1000LL) == 0)
+            return;
 
         res = socSocket(&server_sock, AF_INET, SOCK_STREAM, 0);
     }
@@ -108,32 +154,28 @@ void server_bind(struct sock_server *serv, u16 port)
     }
 }
 
-struct sock_ctx *server_alloc_server_ctx(struct sock_server *serv)
-{
-    for(int i = 0; i < MAX_PORTS; i++)
-    {
-        if(serv->serv_ctxs[i].type == SOCK_NONE)
-            return &serv->serv_ctxs[i];
-    }
-
-    return NULL;
-}
-
 void server_run(struct sock_server *serv)
 {
     struct pollfd *fds = serv->poll_fds;
     serv->running = true;
 
+    Handle handles[2] = { terminationRequestEvent, serv->shall_terminate_event };
+
     while(serv->running && !terminationRequest)
     {
+        s32 idx = -1;
+        if(svcWaitSynchronizationN(&idx, handles, 2, false, 0LL) == 0)
+            goto cleanup;
+
         if(serv->nfds == 0)
         {
-            svcSleepThread(50 * 1000 * 1000);
-            continue;
+            if(svcWaitSynchronizationN(&idx, handles, 2, false, 12 * 1000 * 1000LL) == 0)
+                goto cleanup;
+            else
+                continue;
         }
 
         int res = socPoll(fds, serv->nfds, 50); // 50ms
-        if(res == 0) continue; // timeout reached, no activity.
 
         for(unsigned int i = 0; i < serv->nfds; i++)
         {
@@ -146,28 +188,37 @@ void server_run(struct sock_server *serv)
                     Handle client_sock = 0;
                     res = socAccept(fds[i].fd, &client_sock, NULL, 0);
 
-                    if(curr_ctx->n == serv->clients_per_server || serv->nfds == MAX_CTXS)
+                    if(svcWaitSynchronizationN(&idx, handles, 2, false, 0LL) == 0)
+                        goto cleanup;
+
+                    if(res < 0 || curr_ctx->n == serv->clients_per_server || serv->nfds == MAX_CTXS)
                         socClose(client_sock);
 
                     else
                     {
-                        fds[serv->nfds].fd = client_sock;
-                        fds[serv->nfds].events = POLLIN | POLLHUP;
-
-                        int new_idx = serv->nfds;
-                        serv->nfds++;
-                        curr_ctx->n++;
-
                         struct sock_ctx *new_ctx = serv->alloc(serv);
-                        new_ctx->type = SOCK_CLIENT;
-                        new_ctx->sock = client_sock;
-                        new_ctx->serv = curr_ctx;
-                        new_ctx->i = new_idx;
-                        new_ctx->n = 0;
+                        if(new_ctx == NULL)
+                            socClose(client_sock);
+                        else
+                        {
+                            fds[serv->nfds].fd = client_sock;
+                            fds[serv->nfds].events = POLLIN | POLLHUP;
 
-                        serv->ctx_ptrs[new_idx] = new_ctx;
+                            int new_idx = serv->nfds;
+                            serv->nfds++;
+                            curr_ctx->n++;
 
-                        serv->accept_cb(new_ctx);
+                            new_ctx->type = SOCK_CLIENT;
+                            new_ctx->sock = client_sock;
+                            new_ctx->serv = curr_ctx;
+                            new_ctx->i = new_idx;
+                            new_ctx->n = 0;
+
+                            serv->ctx_ptrs[new_idx] = new_ctx;
+
+                            if(serv->accept_cb(new_ctx) == -1)
+                                server_close_ctx(serv, new_ctx);
+                        }
                     }
                 }
                 else
@@ -184,19 +235,29 @@ void server_run(struct sock_server *serv)
             compact(serv);
     }
 
+cleanup:
     // Clean up.
     for(unsigned int i = 0; i < serv->nfds; i++)
     {
         if(fds[i].fd != -1)
             socClose(fds[i].fd);
     }
-}
-
-void server_stop(struct sock_server *serv)
-{
-    for(nfds_t i = 0; i < serv->nfds; i++)
-        server_close_ctx(serv, serv->ctx_ptrs[i]);
-    compact(serv);
 
     serv->running = false;
+}
+
+void server_finalize(struct sock_server *serv)
+{
+    if(AtomicDecrement(&miniSocRefCount) == 0)
+    {
+        u32 tmp;
+        miniSocExit();
+        svcControlMemory(&tmp, soc_block_addr, soc_block_addr, soc_block_size, MEMOP_FREE, MEMPERM_DONTCARE);
+    }
+
+    for(nfds_t i = 0; i < serv->nfds; i++)
+        server_close_ctx(serv, serv->ctx_ptrs[i]);
+
+    svcClearEvent(serv->shall_terminate_event);
+    svcCloseHandle(serv->shall_terminate_event);
 }

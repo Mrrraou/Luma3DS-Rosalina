@@ -42,6 +42,7 @@ void __ctru_exit()
 {
     __appExit();
     __sync_fini();
+    svcSleepThread(-1LL); // kernel-loaded sysmodules except PXI are not supposed to terminate anyways
     svcExitProcess();
 }
 
@@ -58,7 +59,7 @@ Handle terminationRequestEvent;
 
 int main(void)
 {
-    Result ret = 0;
+    Result res = 0;
     Handle notificationHandle;
 
     MyThread *menuThread = menuCreateThread(), *errDispThread = errDispCreateThread();
@@ -71,10 +72,14 @@ int main(void)
 
     do
     {
-        svcWaitSynchronization(notificationHandle, -1LL);
+        res =  svcWaitSynchronization(notificationHandle, -1LL);
+
+        if(R_FAILED(res))
+            continue;
+
         u32 notifId = 0;
 
-        if(R_FAILED(ret = srvReceiveNotification(&notifId)))
+        if(R_FAILED(srvReceiveNotification(&notifId)))
           svcBreak(USERBREAK_ASSERT);
 
         if(notifId == 0x100)
@@ -88,6 +93,7 @@ int main(void)
 
     MyThread_Join(menuThread, -1LL);
     MyThread_Join(errDispThread, -1LL);
+
     svcCloseHandle(notificationHandle);
     return 0;
 }

@@ -14,6 +14,8 @@ Result (*GetSystemInfo)(s64 *out, s32 type, s32 param);
 Result (*GetProcessInfo)(s64 *out, Handle processHandle, u32 type);
 Result (*GetThreadInfo)(s64 *out, Handle threadHandle, u32 type);
 Result (*ConnectToPort)(Handle *out, const char *name);
+Result (*OpenProcess)(Handle *out, u32 processId);
+Result (*GetProcessId)(u32 *out, Handle process);
 Result (*DebugActiveProcess)(Handle *out, u32 processId);
 
 void (*KTimerAndWDTManager__Sanitize)(KTimerAndWDTManager *this);

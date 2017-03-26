@@ -10,11 +10,25 @@ Result SendSyncRequestHook(Handle handle)
     TracedService *traced = NULL;
     u32 *cmdbuf = (u32 *)((u8 *)currentCoreContext->objectContext.currentThread->threadLocalStorage + 0x80);
     bool skip = false;
+    Result res = 0;
 
     if(session != NULL)
     {
         switch (cmdbuf[0])
         {
+            case 0x10042:
+            case 0x4010042:
+            {
+                u32 index = TracedService_Lookup(&srvPmService, session);
+                if(index < 2)
+                {
+                    res = doPublishToProcessHook(handle, cmdbuf);
+                    skip = true;
+                }
+
+                break;
+            }
+
             case 0x10082:
             {
                 if(cmdbuf[1] != 1 || cmdbuf[2] != 0xA0002 || cmdbuf[3] != 0x1C) break;
@@ -76,7 +90,7 @@ Result SendSyncRequestHook(Handle handle)
         session->vtable->DecrementReferenceCount(session);
     }
 
-    Result res = skip ? 0 : ((Result (*)(Handle))officialSVCs[0x32])(handle);
+    res = skip ? res : ((Result (*)(Handle))officialSVCs[0x32])(handle);
     if(res == 0 && traced != NULL)
     {
         session = KProcessHandleTable__ToKAutoObject(handleTable, (Handle)cmdbuf[3]);

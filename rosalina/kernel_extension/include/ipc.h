@@ -24,12 +24,15 @@ typedef struct LangemuAttributes
 extern KAutoObject *srvSessions[0x40];
 extern TracedService srvPort;
 
+extern KAutoObject *srvPmSessions[2];
+extern TracedService srvPmService;
+
 extern KAutoObject *fsREGSessions[2];
 extern KAutoObject *cfgUSessions[25], *cfgSSessions[25], *cfgISessions[25];
 extern TracedService fsREGService;
 extern TracedService cfgUService, cfgSService, cfgIService;
 
-extern TracedService *tracedServices[4];
+extern TracedService *tracedServices[5];
 
 extern KObjectMutex processLangemuObjectMutex;
 extern LangemuAttributes processLangemuAttributes[0x40];
@@ -71,3 +74,4 @@ static inline bool TracedService_Remove(TracedService *this, const KAutoObject *
 }
 
 bool doLangEmu(bool region, u32 *cmdbuf);
+Result doPublishToProcessHook(Handle handle, u32 *cmdbuf);

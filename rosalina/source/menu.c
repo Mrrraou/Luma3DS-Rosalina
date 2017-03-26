@@ -61,7 +61,7 @@ static u8 batteryLevel = 255;
 
 MyThread *menuCreateThread(void)
 {
-    MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, THREAD_STACK_SIZE, 4, CORE_SYSTEM);
+    MyThread_Create(&menuThread, menuThreadMain, menuThreadStack, THREAD_STACK_SIZE, 0x18, CORE_SYSTEM);
     return &menuThread;
 }
 

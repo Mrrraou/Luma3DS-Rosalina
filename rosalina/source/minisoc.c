@@ -4,9 +4,6 @@
 #include <3ds/os.h>
 #include "memory.h"
 
-static u32 soc_block_addr;
-static size_t soc_block_size;
-
 static Result SOCU_Initialize(Handle memhandle, u32 memsize)
 {
     Result ret = 0;
@@ -43,19 +40,9 @@ static Result SOCU_Shutdown(void)
     return cmdbuf[1];
 }
 
-Result miniSocInit(u32 context_size)
+Result miniSocInit(u32 *context_addr, u32 context_size)
 {
-    Result ret = 0;
-
-    soc_block_addr = 0x08000000;
-    soc_block_size = context_size;
-
-    u32 tmp = 0;
-    ret = svcControlMemory(&tmp, soc_block_addr, 0, context_size, MEMOP_ALLOC, MEMPERM_READ | MEMPERM_WRITE);
-    if(ret != 0) return ret;
-    soc_block_addr = tmp;
-
-    ret = svcCreateMemoryBlock(&socMemhandle, soc_block_addr, context_size, 0, 3);
+    Result ret = svcCreateMemoryBlock(&socMemhandle, (u32)context_addr, context_size, 0, 3);
     if(ret != 0) return ret;
 
     ret = srvGetServiceHandle(&SOCU_handle, "soc:U");
@@ -84,10 +71,8 @@ Result miniSocExit(void)
     Result ret = 0;
 
     svcCloseHandle(socMemhandle);
-    socMemhandle = 0;
 
-    u32 tmp;
-    svcControlMemory(&tmp, soc_block_addr, soc_block_addr, soc_block_size, MEMOP_FREE, 0);
+    socMemhandle = 0;
 
     ret = SOCU_Shutdown();
 

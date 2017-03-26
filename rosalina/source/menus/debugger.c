@@ -56,7 +56,8 @@ void Debugger_Enable(void)
         hexItoa(0x02C00000 - amt, msg1, 8, false);
         draw_string(msg1, 10, 20, COLOR_WHITE);
 
-        Result res = miniSocInit(0x30000);
+        Result res = GDB_InitializeServer(&server);
+
         if(R_FAILED(res))
         {
             char msg2[] = "00000000 err";
@@ -65,7 +66,6 @@ void Debugger_Enable(void)
         }
         else
         {
-            GDB_InitializeServer(&server);
             debuggerCreateSocketThread();
             debuggerCreateDebugThread();
             draw_string("Debugger started successfully.", 10, 10, COLOR_TITLE);
@@ -82,13 +82,10 @@ void Debugger_Disable(void)
     draw_clearFramebuffer();
     draw_flushFramebuffer();
 
-    GDB_StopServer(&server);
-    GDB_FinalizeServer(&server);
-
-    MyThread_Join(&debuggerSocketThread, -1);
+    svcSignalEvent(server.super.shall_terminate_event);
     MyThread_Join(&debuggerDebugThread, -1);
+    MyThread_Join(&debuggerSocketThread, -1);
 
-    miniSocExit();
     draw_string("Debugger disabled.", 10, 10, COLOR_TITLE);
     draw_flushFramebuffer();
 
@@ -97,17 +94,22 @@ void Debugger_Disable(void)
 
 void debuggerSocketThreadMain(void)
 {
+    GDB_IncrementServerReferenceCount(&server);
     GDB_RunServer(&server);
+    GDB_DecrementServerReferenceCount(&server);
 }
 
 void debuggerDebugThreadMain(void)
 {
-    Handle handles[2 + 2 * MAX_DEBUG];
+    Handle handles[3 + 2 * MAX_DEBUG];
 
     Result r = 0;
 
+    GDB_IncrementServerReferenceCount(&server);
+
     handles[0] = terminationRequestEvent;
-    handles[1] = server.statusUpdated;
+    handles[1] = server.super.shall_terminate_event;
+    handles[2] = server.statusUpdated;
 
     do
     {
@@ -115,21 +117,21 @@ void debuggerDebugThreadMain(void)
         for(int i = 0; i < MAX_DEBUG; i++)
         {
             GDBContext *ctx = &server.ctxs[i];
-            handles[2 + i] = ctx->eventToWaitFor;
+            handles[3 + i] = ctx->eventToWaitFor;
             if(ctx->state != GDB_STATE_DISCONNECTED && ctx->state != GDB_STATE_CLOSING && !ctx->processEnded)
-                handles[2 + MAX_DEBUG + nbProcessHandles++] = ctx->process;
+                handles[3 + MAX_DEBUG + nbProcessHandles++] = ctx->process;
         }
 
         s32 idx = -1;
-        r = svcWaitSynchronizationN(&idx, handles, 2 + MAX_DEBUG + nbProcessHandles, false, -1LL);
+        r = svcWaitSynchronizationN(&idx, handles, 3 + MAX_DEBUG + nbProcessHandles, false, -1LL);
 
-        if(R_SUCCEEDED(r) && idx == 0)
+        if(R_FAILED(r) || idx < 2)
             break;
-        else if(idx < 2)
+        else if(idx == 2)
             continue;
-        else if(idx < 2 + MAX_DEBUG)
+        else if(idx < 3 + MAX_DEBUG)
         {
-            GDBContext *ctx = &server.ctxs[idx - 2];
+            GDBContext *ctx = &server.ctxs[idx - 3];
 
             RecursiveLock_Lock(&ctx->lock);
             if(ctx->state == GDB_STATE_DISCONNECTED || ctx->state == GDB_STATE_CLOSING)
@@ -193,4 +195,6 @@ void debuggerDebugThreadMain(void)
         }
     }
     while(!terminationRequest && server.super.running);
+
+    GDB_DecrementServerReferenceCount(&server);
 }
