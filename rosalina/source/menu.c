@@ -5,6 +5,7 @@
 #include "ifile.h"
 #include "menus.h"
 #include "utils.h"
+#include "menus/n3ds.h"
 
 u32 waitInput(void)
 {
@@ -76,6 +77,8 @@ void menuThreadMain(void)
         for(u32 i = 3; i <= menu_rosalina.items; i++)
             menu_rosalina.item[i] = menu_rosalina.item[i+1];
     }
+    else
+        updateN3DSMenuStatus();
 
     while(!terminationRequest)
     {

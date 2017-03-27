@@ -3,10 +3,9 @@
 #include "memory.h"
 #include "menu.h"
 
-
 Menu menu_n3ds = {
     "New 3DS menu",
-    .items = 4,
+    .items = 2,
     {
         {"Enable L2 cache", METHOD, .method = &N3DS_EnableDisableL2Cache},
         {"Set clock rate to 804MHz", METHOD, .method = &N3DS_ChangeClockRate}
@@ -15,7 +14,7 @@ Menu menu_n3ds = {
 
 s64 clkRate = 0, L2CacheEnabled = 0;
 
-static void updateStatus(void)
+void updateN3DSMenuStatus(void)
 {
     svcGetProcessInfo(&clkRate, 0x10001, 0);
     svcGetProcessInfo(&L2CacheEnabled, 0x10001, 1);
@@ -26,24 +25,24 @@ static void updateStatus(void)
 
 void N3DS_ChangeClockRate(void)
 {
-    updateStatus();
+    updateN3DSMenuStatus();
 
     if(clkRate == 268)
         svcKernelSetState(10, !L2CacheEnabled ? 0b10 : 0b11);
     else
         svcKernelSetState(10, !L2CacheEnabled ? 0b00 : 0b01);
 
-    updateStatus();
+    updateN3DSMenuStatus();
 }
 
 void N3DS_EnableDisableL2Cache(void)
 {
-    updateStatus();
+    updateN3DSMenuStatus();
 
     if(!L2CacheEnabled)
         svcKernelSetState(10, clkRate == 268 ? 0b01 : 0b11);
     else
         svcKernelSetState(10, clkRate == 268 ? 0b00 : 0b10);
 
-    updateStatus();
+    updateN3DSMenuStatus();
 }
