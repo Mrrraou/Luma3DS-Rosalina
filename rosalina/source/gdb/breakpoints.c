@@ -34,7 +34,7 @@ int GDB_AddBreakpoint(GDBContext *ctx, u32 address, bool thumb, bool persist)
     u32 id = GDB_FindClosestBreakpointSlot(ctx, address);
 
     if(id != ctx->nbBreakpoints && ctx->breakpoints[id].instructionSize != 0 && ctx->breakpoints[id].address == address)
-        return -EINVAL;
+        return 0;
     else if(ctx->nbBreakpoints == MAX_BREAKPOINT)
         return -EBUSY;
 
@@ -87,29 +87,5 @@ int GDB_RemoveBreakpoint(GDBContext *ctx, u32 address)
         memset_(&ctx->breakpoints[ctx->nbBreakpoints--], 0, sizeof(Breakpoint));
 
         return 0;
-    }
-}
-
-void GDB_HideBreakpoints(GDBContext *ctx, void *buf, u32 len, u32 addr)
-{
-    u8 *buf8 = (u8 *)buf;
-
-    if(addr >= ctx->breakpoints[0].address && addr <= ctx->breakpoints[ctx->nbBreakpoints - 1].address)
-    {
-        for(u32 id = GDB_FindClosestBreakpointSlot(ctx, addr); id != ctx->nbBreakpoints && ctx->breakpoints[id].address < addr + len;
-                id = GDB_FindClosestBreakpointSlot(ctx, ctx->breakpoints[id].address + ctx->breakpoints[id].instructionSize))
-            memcpy(buf8 + ctx->breakpoints[id].address - addr, &ctx->breakpoints[id].savedInstruction, ctx->breakpoints[id].instructionSize);
-    }
-}
-
-void GDB_UpdateBreakpoints(GDBContext *ctx, const void *buf, u32 len, u32 addr)
-{
-    const u8 *buf8 = (const u8 *)buf;
-
-    if(addr >= ctx->breakpoints[0].address && addr <= ctx->breakpoints[ctx->nbBreakpoints - 1].address)
-    {
-        for(u32 id = GDB_FindClosestBreakpointSlot(ctx, addr); id != ctx->nbBreakpoints && ctx->breakpoints[id].address < addr + len;
-                id = GDB_FindClosestBreakpointSlot(ctx, ctx->breakpoints[id].address + ctx->breakpoints[id].instructionSize))
-            memcpy(&ctx->breakpoints[id].savedInstruction, buf8 + ctx->breakpoints[id].address - addr, ctx->breakpoints[id].instructionSize);
     }
 }
