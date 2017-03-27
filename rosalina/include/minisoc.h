@@ -23,6 +23,7 @@ Result socBind(Handle sockfd, const struct sockaddr *addr, socklen_t addrlen);
 Result socListen(Handle sockfd, int max_connections);
 Result socAccept(Handle sockfd, Handle *out, struct sockaddr *addr, socklen_t *addrlen);
 Result socPoll(struct pollfd *fds, nfds_t nfds, int timeout);
+int socSetsockopt(Handle sockfd, int level, int optname, const void *optval, socklen_t optlen);
 int socClose(Handle sockfd);
 
 ssize_t soc_recv(Handle sockfd, void *buf, size_t len, int flags);

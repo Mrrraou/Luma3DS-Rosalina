@@ -72,7 +72,7 @@ int main(void)
 
     do
     {
-        res =  svcWaitSynchronization(notificationHandle, -1LL);
+        res = svcWaitSynchronization(notificationHandle, -1LL);
 
         if(R_FAILED(res))
             continue;

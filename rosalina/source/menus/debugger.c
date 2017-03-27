@@ -195,6 +195,5 @@ void debuggerDebugThreadMain(void)
         }
     }
     while(!terminationRequest && server.super.running);
-
     GDB_DecrementServerReferenceCount(&server);
 }

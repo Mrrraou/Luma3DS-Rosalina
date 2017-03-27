@@ -154,6 +154,8 @@ void server_bind(struct sock_server *serv, u16 port)
     }
 }
 
+int socSetsockopt(Handle sockfd, int level, int optname, const void *optval, socklen_t optlen);
+
 void server_run(struct sock_server *serv)
 {
     struct pollfd *fds = serv->poll_fds;
@@ -165,12 +167,12 @@ void server_run(struct sock_server *serv)
     {
         s32 idx = -1;
         if(svcWaitSynchronizationN(&idx, handles, 2, false, 0LL) == 0)
-            goto cleanup;
+            goto abort_connections;
 
         if(serv->nfds == 0)
         {
             if(svcWaitSynchronizationN(&idx, handles, 2, false, 12 * 1000 * 1000LL) == 0)
-                goto cleanup;
+                goto abort_connections;
             else
                 continue;
         }
@@ -189,7 +191,7 @@ void server_run(struct sock_server *serv)
                     res = socAccept(fds[i].fd, &client_sock, NULL, 0);
 
                     if(svcWaitSynchronizationN(&idx, handles, 2, false, 0LL) == 0)
-                        goto cleanup;
+                        goto abort_connections;
 
                     if(res < 0 || curr_ctx->n == serv->clients_per_server || serv->nfds == MAX_CTXS)
                         socClose(client_sock);
@@ -235,7 +237,6 @@ void server_run(struct sock_server *serv)
             compact(serv);
     }
 
-cleanup:
     // Clean up.
     for(unsigned int i = 0; i < serv->nfds; i++)
     {
@@ -244,19 +245,35 @@ cleanup:
     }
 
     serv->running = false;
+    return;
+
+abort_connections:
+    for(unsigned int i = 0; i < serv->nfds; i++)
+    {
+        struct linger linger;
+        linger.l_onoff = 1;
+        linger.l_linger = 0;
+
+        socSetsockopt(fds[i].fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+        socClose(fds[i].fd);
+    }
+    serv->running = false;
 }
 
 void server_finalize(struct sock_server *serv)
 {
+    for(nfds_t i = 0; i < MAX_CTXS; i++)
+    {
+        if(serv->ctx_ptrs[i] != NULL)
+            server_close_ctx(serv, serv->ctx_ptrs[i]);
+    }
+
     if(AtomicDecrement(&miniSocRefCount) == 0)
     {
         u32 tmp;
-        miniSocExit();
         svcControlMemory(&tmp, soc_block_addr, soc_block_addr, soc_block_size, MEMOP_FREE, MEMPERM_DONTCARE);
+        miniSocExit();
     }
-
-    for(nfds_t i = 0; i < serv->nfds; i++)
-        server_close_ctx(serv, serv->ctx_ptrs[i]);
 
     svcClearEvent(serv->shall_terminate_event);
     svcCloseHandle(serv->shall_terminate_event);
