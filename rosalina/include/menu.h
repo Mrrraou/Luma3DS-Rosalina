@@ -46,6 +46,7 @@ typedef struct Menu {
 extern bool terminationRequest;
 extern Handle terminationRequestEvent;
 
+u32 waitInputWithTimeout(u32 msec);
 u32 waitInput(void);
 
 MyThread *menuCreateThread(void);

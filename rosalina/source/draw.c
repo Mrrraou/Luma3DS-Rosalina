@@ -5,7 +5,7 @@
 #include "menu.h"
 #include "utils.h"
 
-u8 framebuffer_cache[FB_BOTTOM_SIZE]; // 'top' because screenshots
+u8 framebuffer_cache[FB_BOTTOM_SIZE];
 
 static u32 gpu_cache_fb, gpu_cache_sel, gpu_cache_fmt, gpu_cache_stride;
 
@@ -45,7 +45,7 @@ void draw_fillFramebuffer(u32 value)
 
 void draw_character(char character, u32 posX, u32 posY, u32 color)
 {
-    u16 *const fb = (u16 *const)FB_BOTTOM_VRAM;
+    volatile u16 *const fb = (volatile u16 *const)FB_BOTTOM_VRAM;
 
     s32 y;
     for(y = 0; y < 10; y++)
@@ -56,7 +56,8 @@ void draw_character(char character, u32 posX, u32 posY, u32 color)
         for(x = 6; x >= 1; x--)
         {
             u32 screenPos = (posX * SCREEN_BOT_HEIGHT * 2 + (SCREEN_BOT_HEIGHT - y - posY - 1) * 2) + (5 - x) * 2 * SCREEN_BOT_HEIGHT;
-            fb[screenPos/2] = ((charPos >> x) & 1) ? color : COLOR_BLACK;
+            u32 pixelColor = ((charPos >> x) & 1) ? color : COLOR_BLACK;
+            fb[screenPos / 2] = pixelColor;
         }
     }
 }

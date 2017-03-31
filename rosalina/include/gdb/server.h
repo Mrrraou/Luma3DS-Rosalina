@@ -2,6 +2,10 @@
 
 #include "gdb.h"
 
+#ifndef GDB_PORT_BASE
+#define GDB_PORT_BASE 4000
+#endif
+
 typedef struct GDBServer
 {
     sock_server super;

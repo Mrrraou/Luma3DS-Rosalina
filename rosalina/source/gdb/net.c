@@ -70,7 +70,7 @@ int GDB_UnescapeBinaryData(void *dst, const void *src, u32 len)
 int GDB_ReceivePacket(GDBContext *ctx)
 {
     memset_(ctx->buffer, 0, sizeof(ctx->buffer));
-    int r = soc_recv(ctx->super.sock, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
+    int r = soc_recv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
 
     if(r < 1)
         return -1;
@@ -81,13 +81,13 @@ int GDB_ReceivePacket(GDBContext *ctx)
             return -1;
 
         // Consume it
-        r = soc_recv(ctx->super.sock, ctx->buffer, 1, 0);
+        r = soc_recv(ctx->super.sockfd, ctx->buffer, 1, 0);
         if(r != 1)
             return -1;
 
         ctx->buffer[0] = 0;
 
-        r = soc_recv(ctx->super.sock, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
+        r = soc_recv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
 
         if(r == -1)
             goto packet_error;
@@ -102,14 +102,14 @@ int GDB_ReceivePacket(GDBContext *ctx)
 
         if(pos == ctx->buffer + maxlen) // malformed packet
         {
-            soc_recv(ctx->super.sock, ctx->buffer, maxlen, 0);
+            soc_recv(ctx->super.sockfd, ctx->buffer, maxlen, 0);
             goto packet_error;
         }
 
         else
         {
             u8 checksum;
-            r = soc_recv(ctx->super.sock, ctx->buffer, 3 + pos - ctx->buffer, 0);
+            r = soc_recv(ctx->super.sockfd, ctx->buffer, 3 + pos - ctx->buffer, 0);
             if(r != 3 + pos - ctx->buffer || GDB_DecodeHex(&checksum, pos + 1, 1) != 1)
                 goto packet_error;
             else if(GDB_ComputeChecksum(ctx->buffer + 1, pos - ctx->buffer - 1) != checksum)
@@ -120,14 +120,14 @@ int GDB_ReceivePacket(GDBContext *ctx)
     }
     else if(ctx->buffer[0] == '\x03')
     {
-        r = soc_recv(ctx->super.sock, ctx->buffer, 1, 0);
+        r = soc_recv(ctx->super.sockfd, ctx->buffer, 1, 0);
         if(r != 1)
             goto packet_error;
     }
 
     if(ctx->state >= GDB_STATE_CONNECTED && ctx->state < GDB_STATE_NOACK)
     {
-        int r2 = soc_send(ctx->super.sock, "+", 1, 0);
+        int r2 = soc_send(ctx->super.sockfd, "+", 1, 0);
         if(r2 != 1)
             return -1;
     }
@@ -140,7 +140,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
 packet_error:
     if(ctx->state >= GDB_STATE_CONNECTED && ctx->state < GDB_STATE_NOACK)
     {
-        r = soc_send(ctx->super.sock, "-", 1, 0);
+        r = soc_send(ctx->super.sockfd, "-", 1, 0);
         if(r != 1)
             return -1;
         else
@@ -152,7 +152,7 @@ packet_error:
 
 static int GDB_DoSendPacket(GDBContext *ctx, u32 len)
 {
-    int r = soc_send(ctx->super.sock, ctx->buffer, len, 0);
+    int r = soc_send(ctx->super.sockfd, ctx->buffer, len, 0);
     // We don't support acknowledgment correctly with GDB, please accept to use no-ack mode
     // IDA works fine
     return r;

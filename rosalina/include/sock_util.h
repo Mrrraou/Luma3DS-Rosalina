@@ -1,6 +1,7 @@
 #pragma once
 #include <3ds/types.h>
 #include <poll.h>
+#include <netinet/in.h>
 
 #define MAX_PORTS 3
 #define MAX_CTXS  (2 * MAX_PORTS)
@@ -25,7 +26,9 @@ typedef enum socket_type
 typedef struct sock_ctx
 {
     enum socket_type type;
-    Handle sock;
+    bool should_close;
+    int sockfd;
+    struct sockaddr_in addr_in;
     struct sock_ctx *serv;
     int n;
     int i;
@@ -44,6 +47,7 @@ typedef struct sock_server
 
     nfds_t nfds;
     bool running;
+    Handle started_event;
     bool compact_needed;
 
     // callbacks

@@ -7,19 +7,33 @@
 #include "utils.h"
 #include "menus/n3ds.h"
 
-u32 waitInput(void)
+u32 waitInputWithTimeout(u32 msec)
 {
     bool pressedKey = false;
     u32 key = 0;
+    u32 n = 0;
 
     //Wait for no keys to be pressed
-    while(HID_PAD && !terminationRequest) svcSleepThread(25 * 1000 * 1000);
+    while(HID_PAD && !terminationRequest && (msec == 0 || n < msec))
+    {
+        svcSleepThread(1 * 1000 * 1000LL);
+        n++;
+    }
+
+    if(terminationRequest || (msec != 0 && n >= msec))
+        return 0;
 
     do
     {
         //Wait for a key to be pressed
-        while(!HID_PAD && !terminationRequest) svcSleepThread(25 * 1000 * 1000);
-        if(terminationRequest) return 0;
+        while(!HID_PAD && !terminationRequest && (msec == 0 || n < msec))
+        {
+            svcSleepThread(1 * 1000 * 1000LL);
+            n++;
+        }
+
+        if(terminationRequest || (msec != 0 && n >= msec))
+            return 0;
 
         key = HID_PAD;
 
@@ -33,6 +47,11 @@ u32 waitInput(void)
     while(!pressedKey);
 
     return key;
+}
+
+u32 waitInput(void)
+{
+    return waitInputWithTimeout(0);
 }
 
 static Result _MCUHWC_GetBatteryLevel(u8 *out)

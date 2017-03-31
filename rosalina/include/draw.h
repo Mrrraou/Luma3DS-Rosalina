@@ -13,7 +13,7 @@
 #define GPU_FB_BOTTOM_1_SEL         REG32(0x10400578)
 #define GPU_FB_BOTTOM_1_STRIDE      REG32(0x10400590)
 
-#define FB_BOTTOM_VRAM              ((void*)0x1F48F000) // cached
+#define FB_BOTTOM_VRAM              ((void *)0x1F48F000) // cached
 #define FB_BOTTOM_VRAM_PA           0x1848F000
 #define FB_BOTTOM_SIZE              (320 * 240 * 2)
 

@@ -65,6 +65,8 @@ static void server_close_ctx(struct sock_server *serv, struct sock_ctx *ctx)
     }
 
     socClose(sock);
+    ctx->should_close = false;
+
     serv->poll_fds[ctx->i].fd = -1;
     serv->poll_fds[ctx->i].events = 0;
     serv->poll_fds[ctx->i].revents = 0;
@@ -75,6 +77,8 @@ static void server_close_ctx(struct sock_server *serv, struct sock_ctx *ctx)
 static s32 miniSocRefCount = 0;
 Result server_init(struct sock_server *serv)
 {
+    Result ret = 0;
+
     if(AtomicPostIncrement(&miniSocRefCount) == 0)
     {
         soc_block_addr = 0x08000000;
@@ -94,7 +98,8 @@ Result server_init(struct sock_server *serv)
         if(ret != 0)
         {
             svcControlMemory(&tmp, soc_block_addr, soc_block_addr, soc_block_size, MEMOP_FREE, MEMPERM_DONTCARE);
-            AtomicPostIncrement(&miniSocRefCount);
+            AtomicDecrement(&miniSocRefCount);
+            return ret;
         }
     }
 
@@ -106,46 +111,51 @@ Result server_init(struct sock_server *serv)
     for(int i = 0; i < MAX_CTXS; i++)
         serv->ctx_ptrs[i] = NULL;
 
+    ret = svcCreateEvent(&serv->started_event, RESET_STICKY);
+    if(R_FAILED(ret))
+        return ret;
     return svcCreateEvent(&serv->shall_terminate_event, RESET_STICKY);
 }
 
 void server_bind(struct sock_server *serv, u16 port)
 {
-    Handle server_sock;
+    int server_sockfd;
     Handle handles[2] = { terminationRequestEvent, serv->shall_terminate_event };
     s32 idx = -1;
-    Result res = socSocket(&server_sock, AF_INET, SOCK_STREAM, 0);
+    server_sockfd = socSocket(AF_INET, SOCK_STREAM, 0);
+    int res;
 
-    while(R_FAILED(res))
+    while(server_sockfd == -1)
     {
         if(svcWaitSynchronizationN(&idx, handles, 2, false, 100 * 1000 * 1000LL) == 0)
             return;
 
-        res = socSocket(&server_sock, AF_INET, SOCK_STREAM, 0);
+        server_sockfd = socSocket(AF_INET, SOCK_STREAM, 0);
     }
 
-    if(R_SUCCEEDED(res))
+    if(server_sockfd != -1)
     {
         struct sockaddr_in saddr;
         saddr.sin_family = AF_INET;
         saddr.sin_port = (port & 0xff00) >> 8 | (port & 0xff) << 8;
         saddr.sin_addr.s_addr = gethostid();
 
-        res = socBind(server_sock, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
+        res = socBind(server_sockfd, (struct sockaddr*)&saddr, sizeof(struct sockaddr_in));
 
-        if(R_SUCCEEDED(res))
+        if(res == 0)
         {
-            res = socListen(server_sock, 2);
-            if(R_SUCCEEDED(res))
+            res = socListen(server_sockfd, 2);
+            if(res == 0)
             {
                 int idx = serv->nfds;
                 serv->nfds++;
-                serv->poll_fds[idx].fd = server_sock;
+                serv->poll_fds[idx].fd = server_sockfd;
                 serv->poll_fds[idx].events = POLLIN | POLLHUP;
 
                 struct sock_ctx *new_ctx = server_alloc_server_ctx(serv);
+                memcpy(&new_ctx->addr_in, &saddr, sizeof(struct sockaddr_in));
                 new_ctx->type = SOCK_SERVER;
-                new_ctx->sock = server_sock;
+                new_ctx->sockfd = server_sockfd;
                 new_ctx->n = 0;
                 new_ctx->i = idx;
                 serv->ctx_ptrs[idx] = new_ctx;
@@ -154,14 +164,14 @@ void server_bind(struct sock_server *serv, u16 port)
     }
 }
 
-int socSetsockopt(Handle sockfd, int level, int optname, const void *optval, socklen_t optlen);
-
 void server_run(struct sock_server *serv)
 {
     struct pollfd *fds = serv->poll_fds;
-    serv->running = true;
-
     Handle handles[2] = { terminationRequestEvent, serv->shall_terminate_event };
+
+
+    serv->running = true;
+    svcSignalEvent(serv->started_event);
 
     while(serv->running && !terminationRequest)
     {
@@ -177,33 +187,37 @@ void server_run(struct sock_server *serv)
                 continue;
         }
 
-        int res = socPoll(fds, serv->nfds, 50); // 50ms
+        socPoll(fds, serv->nfds, 50); // 50ms
 
         for(unsigned int i = 0; i < serv->nfds; i++)
         {
             struct sock_ctx *curr_ctx = serv->ctx_ptrs[i];
 
-            if((fds[i].revents & POLLIN) == POLLIN)
+            if(fds[i].revents & POLLHUP || fds[i].revents & POLLERR || curr_ctx->should_close)
+                server_close_ctx(serv, curr_ctx);
+
+            else if((fds[i].revents & POLLIN) == POLLIN)
             {
                 if(curr_ctx->type == SOCK_SERVER) // Listening socket?
                 {
-                    Handle client_sock = 0;
-                    res = socAccept(fds[i].fd, &client_sock, NULL, 0);
+                    struct sockaddr_in saddr;
+                    socklen_t len = sizeof(struct sockaddr_in);
+                    int client_sockfd = socAccept(fds[i].fd, (struct sockaddr *)&saddr, &len);
 
                     if(svcWaitSynchronizationN(&idx, handles, 2, false, 0LL) == 0)
                         goto abort_connections;
 
-                    if(res < 0 || curr_ctx->n == serv->clients_per_server || serv->nfds == MAX_CTXS)
-                        socClose(client_sock);
+                    if(client_sockfd < 0 || curr_ctx->n == serv->clients_per_server || serv->nfds == MAX_CTXS)
+                        socClose(client_sockfd);
 
                     else
                     {
                         struct sock_ctx *new_ctx = serv->alloc(serv);
                         if(new_ctx == NULL)
-                            socClose(client_sock);
+                            socClose(client_sockfd);
                         else
                         {
-                            fds[serv->nfds].fd = client_sock;
+                            fds[serv->nfds].fd = client_sockfd;
                             fds[serv->nfds].events = POLLIN | POLLHUP;
 
                             int new_idx = serv->nfds;
@@ -211,7 +225,7 @@ void server_run(struct sock_server *serv)
                             curr_ctx->n++;
 
                             new_ctx->type = SOCK_CLIENT;
-                            new_ctx->sock = client_sock;
+                            new_ctx->sockfd = client_sockfd;
                             new_ctx->serv = curr_ctx;
                             new_ctx->i = new_idx;
                             new_ctx->n = 0;
@@ -220,6 +234,8 @@ void server_run(struct sock_server *serv)
 
                             if(serv->accept_cb(new_ctx) == -1)
                                 server_close_ctx(serv, new_ctx);
+
+                            memcpy(&new_ctx->addr_in, &saddr, sizeof(struct sockaddr_in));
                         }
                     }
                 }
@@ -229,8 +245,6 @@ void server_run(struct sock_server *serv)
                         server_close_ctx(serv, curr_ctx);
                 }
             }
-            else if(fds[i].revents & POLLHUP || fds[i].revents & POLLERR) // For some reason, this never gets hit?
-                server_close_ctx(serv, curr_ctx);
         }
 
         if(serv->compact_needed)
@@ -245,6 +259,7 @@ void server_run(struct sock_server *serv)
     }
 
     serv->running = false;
+    svcClearEvent(serv->started_event);
     return;
 
 abort_connections:
@@ -254,10 +269,12 @@ abort_connections:
         linger.l_onoff = 1;
         linger.l_linger = 0;
 
-        socSetsockopt(fds[i].fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+        socSetsockopt(fds[i].fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(struct linger));
         socClose(fds[i].fd);
     }
+
     serv->running = false;
+    svcClearEvent(serv->started_event);
 }
 
 void server_finalize(struct sock_server *serv)
@@ -271,10 +288,12 @@ void server_finalize(struct sock_server *serv)
     if(AtomicDecrement(&miniSocRefCount) == 0)
     {
         u32 tmp;
-        svcControlMemory(&tmp, soc_block_addr, soc_block_addr, soc_block_size, MEMOP_FREE, MEMPERM_DONTCARE);
         miniSocExit();
+        svcControlMemory(&tmp, soc_block_addr, soc_block_addr, soc_block_size, MEMOP_FREE, MEMPERM_DONTCARE);
     }
 
     svcClearEvent(serv->shall_terminate_event);
     svcCloseHandle(serv->shall_terminate_event);
+    svcClearEvent(serv->started_event);
+    svcCloseHandle(serv->started_event);
 }

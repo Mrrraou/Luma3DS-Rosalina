@@ -87,6 +87,8 @@ GDB_DECLARE_QUERY_HANDLER(CurrentThreadId)
             return GDB_ReplyErrno(ctx, EPERM);
 
         GDB_UpdateCurrentThreadFromList(ctx, threadIds, nbThreads);
+        if(ctx->currentThreadId == 0)
+            ctx->currentThreadId = threadIds[0];
     }
 
     return GDB_SendFormattedPacket(ctx, "QC%x", ctx->currentThreadId);

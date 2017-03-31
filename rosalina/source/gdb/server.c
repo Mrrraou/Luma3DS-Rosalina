@@ -56,13 +56,9 @@ void GDB_DecrementServerReferenceCount(GDBServer *server)
         GDB_FinalizeServer(server);
 }
 
-#ifndef GDB_PORT_BASE
-#define GDB_PORT_BASE 4000
-#endif
-
 void GDB_RunServer(GDBServer *server)
 {
-    server->ctxs[0].pid = 0x10;
+    //server->ctxs[0].pid = 1;
     server_bind(&server->super, GDB_PORT_BASE);
     server_bind(&server->super, GDB_PORT_BASE + 1);
     server_bind(&server->super, GDB_PORT_BASE + 2);
@@ -137,7 +133,7 @@ GDBContext *GDB_GetClient(GDBServer *server)
 {
     for(u32 i = 0; i < sizeof(server->ctxs) / sizeof(GDBContext); i++)
     {
-        if(!(server->ctxs[i].flags & GDB_FLAG_USED))
+        if(!(server->ctxs[i].flags & GDB_FLAG_USED) && (server->ctxs[i].flags & GDB_FLAG_SELECTED))
         {
             RecursiveLock_Lock(&server->ctxs[i].lock);
             server->ctxs[i].flags |= GDB_FLAG_USED;
@@ -167,7 +163,7 @@ void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
 
     ctx->eventToWaitFor = ctx->clientAcceptedEvent;
     ctx->continueFlags = (DebugFlags)(DBG_SIGNAL_FAULT_EXCEPTION_EVENTS | DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
-    //ctx->pid = 0;
+    ctx->pid = 0;
     ctx->currentThreadId = ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
 
     ctx->catchThreadEvents = false;

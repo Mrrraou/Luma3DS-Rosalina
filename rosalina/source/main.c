@@ -37,19 +37,23 @@ void __appExit()
 
 Result __sync_init(void);
 Result __sync_fini(void);
+void __libc_init_array(void);
+void __libc_fini_array(void);
 
 void __ctru_exit()
 {
     __appExit();
     __sync_fini();
+    __libc_fini_array();
     svcSleepThread(-1LL); // kernel-loaded sysmodules except PXI are not supposed to terminate anyways
     svcExitProcess();
 }
 
+
 void initSystem()
 {
+    __libc_init_array();
     installKernelExtension();
-
     __sync_init();
     __appInit();
 }

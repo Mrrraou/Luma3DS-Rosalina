@@ -79,7 +79,7 @@ char *strncpy(char *dest, const char *src, u32 size)
 s32 strnlen(const char *string, s32 maxlen)
 {
     s32 size;
-    for(size = 0; *string && size < maxlen; string++, size++);
+    for(size = 0; size < maxlen && *string; string++, size++);
 
     return size;
 }

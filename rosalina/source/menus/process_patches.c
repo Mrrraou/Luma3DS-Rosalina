@@ -105,7 +105,8 @@ static void ProcessPatches_PatchProcess(const char *processName, DestructuredPat
     do
     {
         draw_lock();
-        draw_string(res != NULL ? success : (patch->applied ? "Patch already applied." : failure), 10, 10, COLOR_WHITE);
+        draw_string("Process patches menu", 10, 10, COLOR_TITLE);
+        draw_string(res != NULL ? success : (patch->applied ? "Patch already applied." : failure), 10, 30, COLOR_WHITE);
         draw_flushFramebuffer();
         draw_unlock();
     }

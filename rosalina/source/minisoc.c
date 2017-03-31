@@ -4,6 +4,8 @@
 #include <3ds/os.h>
 #include "memory.h"
 
+s32 _net_convert_error(s32 sock_retval);
+
 static Result SOCU_Initialize(Handle memhandle, u32 memsize)
 {
     Result ret = 0;
@@ -17,9 +19,7 @@ static Result SOCU_Initialize(Handle memhandle, u32 memsize)
 
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0)
-    {
         return ret;
-    }
 
     return cmdbuf[1];
 }
@@ -33,9 +33,7 @@ static Result SOCU_Shutdown(void)
 
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0)
-    {
         return ret;
-    }
 
     return cmdbuf[1];
 }
@@ -82,7 +80,7 @@ Result miniSocExit(void)
     return ret;
 }
 
-Result socSocket(Handle *out, int domain, int type, int protocol)
+int socSocket(int domain, int type, int protocol)
 {
     int ret = 0;
 
@@ -110,6 +108,7 @@ Result socSocket(Handle *out, int domain, int type, int protocol)
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0)
     {
+        errno = SYNC_ERROR;
         return ret;
     }
 
@@ -117,16 +116,15 @@ Result socSocket(Handle *out, int domain, int type, int protocol)
     if(ret == 0) ret = cmdbuf[2];
     if(ret < 0)
     {
-        return ret;
+        if(cmdbuf[1] == 0)errno = _net_convert_error(ret);
+        if(cmdbuf[1] != 0)errno = SYNC_ERROR;
+        return -1;
     }
     else
-    {
-        *out = cmdbuf[2];
-        return 0;
-    }
+        return cmdbuf[2];
 }
 
-Result socBind(Handle sockfd, const struct sockaddr *addr, socklen_t addrlen)
+int socBind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
     Result ret = 0;
     socklen_t tmp_addrlen = 0;
@@ -142,6 +140,7 @@ Result socBind(Handle sockfd, const struct sockaddr *addr, socklen_t addrlen)
 
     if(addrlen < tmp_addrlen)
     {
+        errno = EINVAL;
         return -1;
     }
 
@@ -157,17 +156,24 @@ Result socBind(Handle sockfd, const struct sockaddr *addr, socklen_t addrlen)
     cmdbuf[6] = (u32)tmpaddr;
 
     ret = svcSendSyncRequest(SOCU_handle);
-    if(ret != 0)
-    {
+    if(ret != 0) {
+        errno = SYNC_ERROR;
         return ret;
     }
 
     ret = (int)cmdbuf[1];
+    if(ret == 0)
+        ret = _net_convert_error(cmdbuf[2]);
+
+    if(ret < 0) {
+        errno = -ret;
+        return -1;
+    }
 
     return ret;
 }
 
-Result socListen(Handle sockfd, int max_connections)
+int socListen(int sockfd, int max_connections)
 {
     Result ret = 0;
     u32 *cmdbuf = getThreadCommandBuffer();
@@ -180,15 +186,23 @@ Result socListen(Handle sockfd, int max_connections)
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0)
     {
+        errno = SYNC_ERROR;
         return ret;
     }
 
-    ret = cmdbuf[1];
+    ret = (int)cmdbuf[1];
+    if(ret == 0)
+        ret = _net_convert_error(cmdbuf[2]);
 
-    return ret;
+    if(ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+
+    return 0;
 }
 
-Result socAccept(Handle sockfd, Handle *out, struct sockaddr *addr, socklen_t *addrlen)
+int socAccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
     Result ret = 0;
     int tmp_addrlen = 0x1c;
@@ -223,6 +237,9 @@ Result socAccept(Handle sockfd, Handle *out, struct sockaddr *addr, socklen_t *a
     if(ret == 0)
         ret = _net_convert_error(cmdbuf[2]);
 
+    if(ret < 0)
+        errno = -ret;
+
     if(ret >= 0 && addr != NULL)
     {
         addr->sa_family = tmpaddr[1];
@@ -231,13 +248,13 @@ Result socAccept(Handle sockfd, Handle *out, struct sockaddr *addr, socklen_t *a
         memcpy(addr->sa_data, &tmpaddr[2], *addrlen - 2);
     }
 
-    if(ret >= 0)
-        *out = (Handle)ret;
+    if(ret < 0)
+        return -1;
 
     return ret;
 }
 
-Result socPoll(struct pollfd *fds, nfds_t nfds, int timeout)
+int socPoll(struct pollfd *fds, nfds_t nfds, int timeout)
 {
     int ret = 0;
     nfds_t i;
@@ -281,13 +298,14 @@ Result socPoll(struct pollfd *fds, nfds_t nfds, int timeout)
         ret = _net_convert_error(cmdbuf[2]);
 
     if(ret < 0) {
+        errno = -ret;
         return -1;
     }
 
     return ret;
 }
 
-int socClose(Handle sockfd)
+int socClose(int sockfd)
 {
     int ret = 0;
     u32 *cmdbuf = getThreadCommandBuffer();
@@ -298,15 +316,23 @@ int socClose(Handle sockfd)
 
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0) {
+        errno = SYNC_ERROR;
         return ret;
     }
 
     ret = (int)cmdbuf[1];
+    if(ret == 0)
+        ret =_net_convert_error(cmdbuf[2]);
 
-    return ret;
+    if(ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+
+    return 0;
 }
 
-int socSetsockopt(Handle sockfd, int level, int optname, const void *optval, socklen_t optlen)
+int socSetsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen)
 {
     int ret = 0;
     u32 *cmdbuf = getThreadCommandBuffer();
@@ -330,18 +356,19 @@ int socSetsockopt(Handle sockfd, int level, int optname, const void *optval, soc
         ret = _net_convert_error(cmdbuf[2]);
 
     if(ret < 0) {
+        errno = -ret;
         return -1;
     }
 
     return ret;
 }
 
-ssize_t soc_recv(Handle sockfd, void *buf, size_t len, int flags)
+ssize_t soc_recv(int sockfd, void *buf, size_t len, int flags)
 {
     return soc_recvfrom(sockfd, buf, len, flags, NULL, 0);
 }
 
-ssize_t soc_send(Handle sockfd, const void *buf, size_t len, int flags)
+ssize_t soc_send(int sockfd, const void *buf, size_t len, int flags)
 {
     return soc_sendto(sockfd, buf, len, flags, NULL, 0);
 }

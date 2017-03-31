@@ -28,9 +28,10 @@ typedef struct Breakpoint
 
 typedef enum GDBFlags
 {
-    GDB_FLAG_USED  = 1,
-    GDB_FLAG_PROCESS_CONTINUING = 2,
-    GDB_FLAG_TERMINATE_PROCESS = 4,
+    GDB_FLAG_SELECTED = 1,
+    GDB_FLAG_USED  = 2,
+    GDB_FLAG_PROCESS_CONTINUING = 4,
+    GDB_FLAG_TERMINATE_PROCESS = 8,
 } GDBFlags;
 
 typedef enum GDBState
