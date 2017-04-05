@@ -35,7 +35,7 @@ revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-
 commit := $(shell git rev-parse --short=8 HEAD)
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
-		$(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \*
+		$(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
 		$(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
