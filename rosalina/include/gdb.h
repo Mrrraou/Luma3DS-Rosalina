@@ -9,7 +9,7 @@
 #include "memory.h"
 
 #define MAX_DEBUG           3
-#define MAX_DEBUG_THREAD    3
+#define MAX_DEBUG_THREAD    127
 #define MAX_BREAKPOINT      256
 // This is the ideal size as IDA will try to read exactly 0x100 bytes at a time. Add 4 to this, for $#<checksum>, see below.
 // IDA seems to want additional bytes as well.
