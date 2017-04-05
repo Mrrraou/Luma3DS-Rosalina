@@ -27,7 +27,7 @@ INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 ARCH := -march=armv6k -mcpu=mpcore -mfloat-abi=hard
 ASFLAGS := -g $(ARCH)
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -mtp=soft -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
-	  -ffunction-sections -fdata-sections $(INCLUDE) -I$(dir_include) -DARM11 -D_3DS
+		-fomit-frame-pointer -ffunction-sections -fdata-sections $(INCLUDE) -I$(dir_include) -DARM11 -D_3DS
 LDFLAGS := -specs=3dsx.specs -g $(ARCH) -mtp=soft -Wl,--section-start,.text=0x14000000 -Wl,--gc-sections
 
 # Luma3DS CFW info
@@ -35,8 +35,8 @@ revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-
 commit := $(shell git rev-parse --short=8 HEAD)
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
-					$(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
-          $(call rwildcard, $(dir_source), *.s *.c)))
+		$(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \*
+		$(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
 all: $(name).cxi

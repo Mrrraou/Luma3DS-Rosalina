@@ -69,12 +69,13 @@ int GDB_UnescapeBinaryData(void *dst, const void *src, u32 len)
 
 int GDB_ReceivePacket(GDBContext *ctx)
 {
+    char backupbuf[GDB_BUF_LEN + 4];
+    memcpy(backupbuf, ctx->buffer, ctx->latestSentPacketSize);
     memset_(ctx->buffer, 0, sizeof(ctx->buffer));
-    int r = soc_recv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
 
+    int r = soc_recv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
     if(r < 1)
         return -1;
-
     if(ctx->buffer[0] == '+') // GDB sometimes acknowleges TCP acknowledgment packets (yes...). IDA does it properly
     {
         if(ctx->state == GDB_STATE_NOACK)
@@ -92,7 +93,11 @@ int GDB_ReceivePacket(GDBContext *ctx)
         if(r == -1)
             goto packet_error;
     }
-
+    else if(ctx->buffer[0] == '-')
+    {
+        soc_send(ctx->super.sockfd, backupbuf, ctx->latestSentPacketSize, 0);
+        return 0;
+    }
     int maxlen = r > (int)sizeof(ctx->buffer) ? (int)sizeof(ctx->buffer) : r;
 
     if(ctx->buffer[0] == '$') // normal packet
@@ -101,10 +106,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
         for(pos = ctx->buffer; pos < ctx->buffer + maxlen && *pos != '#'; pos++);
 
         if(pos == ctx->buffer + maxlen) // malformed packet
-        {
-            soc_recv(ctx->super.sockfd, ctx->buffer, maxlen, 0);
-            goto packet_error;
-        }
+            return -1;
 
         else
         {
@@ -153,8 +155,9 @@ packet_error:
 static int GDB_DoSendPacket(GDBContext *ctx, u32 len)
 {
     int r = soc_send(ctx->super.sockfd, ctx->buffer, len, 0);
-    // We don't support acknowledgment correctly with GDB, please accept to use no-ack mode
-    // IDA works fine
+
+    if(r > 0)
+        ctx->latestSentPacketSize = r;
     return r;
 }
 

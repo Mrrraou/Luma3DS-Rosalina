@@ -8,8 +8,9 @@
 #include "macros.h"
 #include "memory.h"
 
-#define MAX_DEBUG 3
-#define MAX_BREAKPOINT 256
+#define MAX_DEBUG           3
+#define MAX_DEBUG_THREAD    3
+#define MAX_BREAKPOINT      256
 // This is the ideal size as IDA will try to read exactly 0x100 bytes at a time. Add 4 to this, for $#<checksum>, see below.
 // IDA seems to want additional bytes as well.
 #define GDB_BUF_LEN (512 + 24)
@@ -43,6 +44,12 @@ typedef enum GDBState
     GDB_STATE_CLOSING
 } GDBState;
 
+typedef struct ThreadInfo
+{
+    u32 id;
+    u32 tls;
+} ThreadInfo;
+
 typedef struct GDBContext
 {
     sock_ctx super;
@@ -52,8 +59,9 @@ typedef struct GDBContext
     GDBState state;
 
     u32 pid;
-    Handle process;
     Handle debug;
+    ThreadInfo threadInfos[MAX_DEBUG_THREAD];
+    u32 nbThreads;
 
     u32 currentThreadId, selectedThreadId, selectedThreadIdForContinuing;
 
@@ -73,8 +81,9 @@ typedef struct GDBContext
     u32 nbWatchpoints;
     u32 watchpoints[2];
 
-    char buffer[GDB_BUF_LEN + 4];
     char *commandData;
+    int latestSentPacketSize;
+    char buffer[GDB_BUF_LEN + 4];
 } GDBContext;
 
 typedef int (*GDBCommandHandler)(GDBContext *ctx);

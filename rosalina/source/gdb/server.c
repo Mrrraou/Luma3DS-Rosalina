@@ -58,7 +58,6 @@ void GDB_DecrementServerReferenceCount(GDBServer *server)
 
 void GDB_RunServer(GDBServer *server)
 {
-    //server->ctxs[0].pid = 1;
     server_bind(&server->super, GDB_PORT_BASE);
     server_bind(&server->super, GDB_PORT_BASE + 1);
     server_bind(&server->super, GDB_PORT_BASE + 2);
@@ -68,26 +67,29 @@ void GDB_RunServer(GDBServer *server)
 int GDB_AcceptClient(GDBContext *ctx)
 {
     RecursiveLock_Lock(&ctx->lock);
-    Result r = svcOpenProcess(&ctx->process, ctx->pid);
+    Result r = svcDebugActiveProcess(&ctx->debug, ctx->pid);
     if(R_SUCCEEDED(r))
     {
-        r = svcDebugActiveProcess(&ctx->debug, ctx->pid);
-        if(R_SUCCEEDED(r))
+        DebugEventInfo *info = &ctx->latestDebugEvent;
+        ctx->state = GDB_STATE_CONNECTED;
+        ctx->processExited = ctx->processEnded = false;
+        ctx->latestSentPacketSize = 0;
+        while(R_SUCCEEDED(svcGetProcessDebugEvent(info, ctx->debug)) && info->type != DBGEVENT_EXCEPTION &&
+              info->exception.type != EXCEVENT_ATTACH_BREAK)
         {
-            ctx->state = GDB_STATE_CONNECTED;
-            ctx->processExited = ctx->processEnded = false;
-            while(R_SUCCEEDED(svcGetProcessDebugEvent(&ctx->latestDebugEvent, ctx->debug)) &&
-                 (ctx->latestDebugEvent.type != DBGEVENT_EXCEPTION || ctx->latestDebugEvent.exception.type != EXCEVENT_ATTACH_BREAK))
-                svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
-        }
-        else
-        {
-            svcCloseHandle(ctx->process);
-            RecursiveLock_Unlock(&ctx->lock);
-            return -1;
-        }
+            if(info->type == DBGEVENT_ATTACH_THREAD)
+            {
+                if(ctx->nbThreads == MAX_DEBUG_THREAD)
+                    svcBreak(USERBREAK_ASSERT);
+                else
+                {
+                    ctx->threadInfos[ctx->nbThreads].id = info->thread_id;
+                    ctx->threadInfos[ctx->nbThreads++].tls = info->attach_thread.thread_local_storage;
+                }
+            }
 
-        svcSignalEvent(ctx->clientAcceptedEvent);
+            svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
+        }
     }
     else
     {
@@ -95,6 +97,7 @@ int GDB_AcceptClient(GDBContext *ctx)
         return -1;
     }
 
+    svcSignalEvent(ctx->clientAcceptedEvent);
     RecursiveLock_Unlock(&ctx->lock);
 
     return 0;
@@ -121,9 +124,6 @@ int GDB_CloseClient(GDBContext *ctx)
 
     svcClearEvent(ctx->clientAcceptedEvent);
     ctx->eventToWaitFor = ctx->clientAcceptedEvent;
-    DebugEventInfo dummy;
-    while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
-    while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, (DebugFlags)0)));
     RecursiveLock_Unlock(&ctx->lock);
 
     return 0;
@@ -149,14 +149,32 @@ GDBContext *GDB_GetClient(GDBServer *server)
 
 void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
 {
+    DebugEventInfo dummy;
+
     svcSignalEvent(server->statusUpdated);
 
     RecursiveLock_Lock(&ctx->lock);
 
+    /*
+        There's a possibility of a race condition with a possible user exception handler, but you shouldn't
+        use 'kill' on APPLICATION titles in the first place (reboot hanging because the debugger is still running, etc).
+    */
+    if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
+        ctx->continueFlags = (DebugFlags)0;
+    while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
+    while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, ctx->continueFlags)));
+    if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
+    {
+        svcTerminateDebugProcess(ctx->debug);
+        ctx->processEnded = true;
+        ctx->processExited = false;
+    }
+
+    while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
+    while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, ctx->continueFlags)));
+
     svcCloseHandle(ctx->debug);
-    svcCloseHandle(ctx->process);
     ctx->debug = 0;
-    ctx->process = 0;
 
     ctx->flags = (GDBFlags)0;
     ctx->state = GDB_STATE_DISCONNECTED;
@@ -165,10 +183,11 @@ void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
     ctx->continueFlags = (DebugFlags)(DBG_SIGNAL_FAULT_EXCEPTION_EVENTS | DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
     ctx->pid = 0;
     ctx->currentThreadId = ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
-
+    ctx->nbThreads = 0;
+    memset_(ctx->threadInfos, 0, sizeof(ctx->threadInfos));
     ctx->catchThreadEvents = false;
     ctx->nbPendingDebugEvents = 0;
-
+    memset_(ctx->pendingDebugEvents, 0, sizeof(ctx->pendingDebugEvents));
     RecursiveLock_Unlock(&ctx->lock);
 }
 
@@ -270,15 +289,7 @@ int GDB_DoPacket(GDBContext *ctx)
 
     RecursiveLock_Unlock(&ctx->lock);
     if(ctx->state == GDB_STATE_CLOSING)
-    {
-        if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
-        {
-            svcTerminateDebugProcess(ctx->debug);
-            ctx->processEnded = true;
-        }
-
         return -1;
-    }
 
     if((oldFlags & GDB_FLAG_PROCESS_CONTINUING) && !(ctx->flags & GDB_FLAG_PROCESS_CONTINUING))
     {

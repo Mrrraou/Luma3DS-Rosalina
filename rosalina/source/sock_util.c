@@ -150,7 +150,7 @@ void server_bind(struct sock_server *serv, u16 port)
                 int idx = serv->nfds;
                 serv->nfds++;
                 serv->poll_fds[idx].fd = server_sockfd;
-                serv->poll_fds[idx].events = POLLIN | POLLHUP;
+                serv->poll_fds[idx].events = POLLIN | POLLHUP | POLLNVAL;
 
                 struct sock_ctx *new_ctx = server_alloc_server_ctx(serv);
                 memcpy(&new_ctx->addr_in, &saddr, sizeof(struct sockaddr_in));
@@ -187,13 +187,13 @@ void server_run(struct sock_server *serv)
                 continue;
         }
 
-        socPoll(fds, serv->nfds, 50); // 50ms
+        socPoll(fds, serv->nfds, 50);
 
         for(unsigned int i = 0; i < serv->nfds; i++)
         {
             struct sock_ctx *curr_ctx = serv->ctx_ptrs[i];
 
-            if(fds[i].revents & POLLHUP || fds[i].revents & POLLERR || curr_ctx->should_close)
+            if((fds[i].revents & POLLHUP) || (fds[i].revents & POLLERR) || (fds[i].revents & POLLNVAL) || curr_ctx->should_close)
                 server_close_ctx(serv, curr_ctx);
 
             else if((fds[i].revents & POLLIN) == POLLIN)
@@ -218,7 +218,7 @@ void server_run(struct sock_server *serv)
                         else
                         {
                             fds[serv->nfds].fd = client_sockfd;
-                            fds[serv->nfds].events = POLLIN | POLLHUP;
+                            fds[serv->nfds].events = POLLIN | POLLHUP | POLLNVAL;
 
                             int new_idx = serv->nfds;
                             serv->nfds++;
