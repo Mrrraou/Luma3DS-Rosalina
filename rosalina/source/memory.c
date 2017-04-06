@@ -133,28 +133,89 @@ void hexItoa(u64 number, char *out, u32 digits, bool uppercase)
     while(i < digits) out[digits - 1 - i++] = '0';
 }
 
-int atoi_(const char *str, int base)
+
+// Copied from newlib, without the reent stuff + some other stuff
+unsigned long int xstrtoul(const char *nptr, char **endptr, int base, bool allowPrefix, bool *ok)
 {
-    const char *end = str + strlen(str);
-    int res = 0;
-    int place = 1;
-    int n = 0;
+    register const unsigned char *s = (const unsigned char *)nptr;
+    register unsigned long acc;
+    register int c;
+    register unsigned long cutoff;
+    register int neg = 0, any, cutlim;
 
-    while(end-- != str)
-    {
-        char c = *end;
+    if(ok != NULL)
+        *ok = true;
+    /*
+     * See strtol for comments as to the logic used.
+     */
+    do {
+        c = *s++;
+    } while ((c >= 9 && c <= 13) || c == ' ');
+    if (c == '-') {
+        if(!allowPrefix) {
+            if(ok != NULL)
+                *ok = false;
+            return 0;
+        }
+        neg = 1;
+        c = *s++;
+    } else if (c == '+'){
+        if(!allowPrefix) {
+            if(ok != NULL)
+                *ok = false;
+            return 0;
+        }
 
-        if(base == 16 && c >= 'a')
-        {
-            n = (c - 'a') + 10;
-        }
-        else
-        {
-            n = c - '0';
-        }
-        res += n * place;
-        place *= base;
+        c = *s++;
     }
+    if ((base == 0 || base == 16) &&
+        c == '0' && (*s == 'x' || *s == 'X')) {
 
-    return res;
+        if(!allowPrefix) {
+            if(ok != NULL)
+                *ok = false;
+            return 0;
+        }
+        c = s[1];
+        s += 2;
+        base = 16;
+    }
+    if (base == 0) {
+        if(!allowPrefix) {
+            if(ok != NULL)
+                *ok = false;
+            return 0;
+        }
+
+        base = c == '0' ? 8 : 10;
+    }
+    cutoff = (unsigned long)(-1) / (unsigned long)base;
+    cutlim = (unsigned long)(-1) % (unsigned long)base;
+    for (acc = 0, any = 0;; c = *s++) {
+        if (c >= '0' && c <= '9')
+            c -= '0';
+        else if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
+            c -= c >= 'A' && c <= 'Z' ? 'A' - 10 : 'a' - 10;
+        else
+            break;
+        if (c >= base)
+            break;
+               if (any < 0 || acc > cutoff || (acc == cutoff && c > cutlim))
+            any = -1;
+        else {
+            any = 1;
+            acc *= base;
+            acc += c;
+        }
+    }
+    if (any < 0) {
+        acc = (unsigned long)-1;
+        if(ok != NULL)
+            *ok = false;
+//        rptr->_errno = ERANGE;
+    } else if (neg)
+        acc = -acc;
+    if (endptr != 0)
+        *endptr = (char *) (any ? (char *)s - 1 : nptr);
+    return (acc);
 }

@@ -1,5 +1,6 @@
 #include "gdb/net.h"
 #include <stdarg.h>
+#include <stdlib.h>
 #include "fmt.h"
 #include "minisoc.h"
 
@@ -65,6 +66,41 @@ int GDB_UnescapeBinaryData(void *dst, const void *src, u32 len)
     }
 
     return len;
+}
+
+const char *GDB_ParseIntegerList(u32 *dst, const char *src, u32 nb, char sep, char lastSep, u32 base, bool allowPrefix)
+{
+    const char *pos = src;
+    const char *endpos;
+    bool ok;
+
+    for(u32 i = 0; i < nb; i++)
+    {
+        u32 n = xstrtoul(pos, (char **)&endpos, (int) base, allowPrefix, &ok);
+        if(!ok || endpos == pos)
+            return NULL;
+
+        if(i != nb - 1)
+        {
+            if(*endpos != sep)
+                return NULL;
+            pos = endpos + 1;
+        }
+        else
+        {
+            if(*endpos != lastSep && *endpos != 0)
+                return NULL;
+        }
+
+        dst[i] = n;
+    }
+
+    return pos;
+}
+
+const char *GDB_ParseHexIntegerList(u32 *dst, const char *src, u32 nb, char lastSep)
+{
+    return GDB_ParseIntegerList(dst, src, nb, ',', lastSep, 16, false);
 }
 
 int GDB_ReceivePacket(GDBContext *ctx)

@@ -108,7 +108,7 @@ int socSocket(int domain, int type, int protocol)
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0)
     {
-        errno = SYNC_ERROR;
+        //errno = SYNC_ERROR;
         return ret;
     }
 
@@ -116,8 +116,8 @@ int socSocket(int domain, int type, int protocol)
     if(ret == 0) ret = cmdbuf[2];
     if(ret < 0)
     {
-        if(cmdbuf[1] == 0)errno = _net_convert_error(ret);
-        if(cmdbuf[1] != 0)errno = SYNC_ERROR;
+        //if(cmdbuf[1] == 0)errno = _net_convert_error(ret);
+        //if(cmdbuf[1] != 0)errno = SYNC_ERROR;
         return -1;
     }
     else
@@ -140,7 +140,7 @@ int socBind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 
     if(addrlen < tmp_addrlen)
     {
-        errno = EINVAL;
+        //errno = EINVAL;
         return -1;
     }
 
@@ -157,7 +157,7 @@ int socBind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0) {
-        errno = SYNC_ERROR;
+        //errno = SYNC_ERROR;
         return ret;
     }
 
@@ -166,7 +166,7 @@ int socBind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
         ret = _net_convert_error(cmdbuf[2]);
 
     if(ret < 0) {
-        errno = -ret;
+        //errno = -ret;
         return -1;
     }
 
@@ -186,7 +186,7 @@ int socListen(int sockfd, int max_connections)
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0)
     {
-        errno = SYNC_ERROR;
+        //errno = SYNC_ERROR;
         return ret;
     }
 
@@ -195,7 +195,7 @@ int socListen(int sockfd, int max_connections)
         ret = _net_convert_error(cmdbuf[2]);
 
     if(ret < 0) {
-        errno = -ret;
+        //errno = -ret;
         return -1;
     }
 
@@ -238,7 +238,7 @@ int socAccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
         ret = _net_convert_error(cmdbuf[2]);
 
     if(ret < 0)
-        errno = -ret;
+        //errno = -ret;
 
     if(ret >= 0 && addr != NULL)
     {
@@ -298,7 +298,7 @@ int socPoll(struct pollfd *fds, nfds_t nfds, int timeout)
         ret = _net_convert_error(cmdbuf[2]);
 
     if(ret < 0) {
-        errno = -ret;
+        //errno = -ret;
         return -1;
     }
 
@@ -316,7 +316,7 @@ int socClose(int sockfd)
 
     ret = svcSendSyncRequest(SOCU_handle);
     if(ret != 0) {
-        errno = SYNC_ERROR;
+        //errno = SYNC_ERROR;
         return ret;
     }
 
@@ -325,7 +325,7 @@ int socClose(int sockfd)
         ret =_net_convert_error(cmdbuf[2]);
 
     if(ret < 0) {
-        errno = -ret;
+        //errno = -ret;
         return -1;
     }
 
@@ -356,7 +356,7 @@ int socSetsockopt(int sockfd, int level, int optname, const void *optval, sockle
         ret = _net_convert_error(cmdbuf[2]);
 
     if(ret < 0) {
-        errno = -ret;
+        //errno = -ret;
         return -1;
     }
 

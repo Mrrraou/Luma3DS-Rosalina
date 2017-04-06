@@ -74,14 +74,12 @@ GDB_DECLARE_QUERY_HANDLER(Xfer)
     {
         if(strncmp(annexStart, "target.xml", strlen("target.xml")) == 0)
         {
-            char *offEnd = (char*)strchr(offStart, ',');
-            if(offEnd == NULL) return -1;
-            *offEnd = 0;
+            u32 lst[2];
+            if(GDB_ParseHexIntegerList(lst, offStart, 2, 0) == NULL)
+                return GDB_ReplyErrno(ctx, EILSEQ);
 
-            char *lenStart = offEnd + 1;
-
-            u32 off = atoi_(offStart, 16);
-            u32 len = atoi_(lenStart, 16);
+            u32 off = lst[0];
+            u32 len = lst[1];
 
             if(len > GDB_BUF_LEN - 5)
                 len = GDB_BUF_LEN - 5;

@@ -1,4 +1,5 @@
 #include "gdb/watchpoints.h"
+#define _REENT_ONLY
 #include <errno.h>
 
 /*

@@ -52,9 +52,11 @@ GDB_DECLARE_HANDLER(SetThreadId)
     if(ctx->commandData[0] == 'g')
     {
         if(strncmp(ctx->commandData + 1, "-1", 2) == 0)
-            return GDB_ReplyErrno(ctx, EPERM); // a thread must be specified
+            return GDB_ReplyErrno(ctx, EILSEQ); // a thread must be specified
 
-        u32 id = atoi_(ctx->commandData + 1, 16);
+        u32 id;
+        if(GDB_ParseHexIntegerList(&id, ctx->commandData + 1, 1, 0) == NULL)
+            return GDB_ReplyErrno(ctx, EILSEQ);
         ctx->selectedThreadId = id;
         return GDB_ReplyOk(ctx);
     }
@@ -64,7 +66,10 @@ GDB_DECLARE_HANDLER(SetThreadId)
         if(strncmp(ctx->commandData + 1, "-1", 2) == 0)
             ctx->selectedThreadIdForContinuing = 0;
 
-        u32 id = atoi_(ctx->commandData + 1, 16);
+        u32 id;
+        if(GDB_ParseHexIntegerList(&id, ctx->commandData + 1, 1, 0) == NULL)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+
         ctx->selectedThreadIdForContinuing = id;
 
         return GDB_ReplyOk(ctx);
@@ -75,9 +80,12 @@ GDB_DECLARE_HANDLER(SetThreadId)
 
 GDB_DECLARE_HANDLER(IsThreadAlive)
 {
-    u32 threadId = (u32)atoi_(ctx->commandData, 16);
+    u32 threadId;
     s64 dummy;
     u32 mask;
+
+    if(GDB_ParseHexIntegerList(&threadId, ctx->commandData, 1, 0) == NULL)
+        return GDB_ReplyErrno(ctx, EILSEQ);
 
     Result r = svcGetDebugThreadParam(&dummy, &mask, ctx->debug, threadId, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
     if(R_SUCCEEDED(r) && mask != 2)

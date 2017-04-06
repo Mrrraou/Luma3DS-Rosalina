@@ -68,10 +68,14 @@ GDB_DECLARE_HANDLER(ReadRegister)
 
     ThreadContext regs;
     ThreadContextControlFlags flags;
+    u32 gdbRegNum;
 
-    u32 n = GDB_ConvertRegisterNumber(&flags, (u32)atoi_(ctx->commandData, 16));
+    if(GDB_ParseHexIntegerList(&gdbRegNum, ctx->commandData, 1, 0) == NULL)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    u32 n = GDB_ConvertRegisterNumber(&flags, gdbRegNum);
     if(!flags)
-        return GDB_ReplyErrno(ctx, EPERM);
+        return GDB_ReplyErrno(ctx, EINVAL);
 
     Result r = svcGetDebugThreadContext(&regs, ctx->debug, ctx->selectedThreadId, flags);
 
@@ -95,21 +99,20 @@ GDB_DECLARE_HANDLER(WriteRegister)
 
     ThreadContext regs;
     ThreadContextControlFlags flags;
-    char *valueStart;
+    u32 gdbRegNum;
 
-    for(valueStart = ctx->commandData; *valueStart != '='; valueStart++)
-    {
-        if(*valueStart == 0)
-            return GDB_ReplyErrno(ctx, EPERM);
-    }
-    *valueStart++ = 0;
+    const char *valueStart = GDB_ParseHexIntegerList(&gdbRegNum, ctx->commandData, 1, '=');
+    if(valueStart == NULL || *valueStart != '=')
+        return GDB_ReplyErrno(ctx, EILSEQ);
 
-    u32 n = GDB_ConvertRegisterNumber(&flags, (u32)atoi_(ctx->commandData, 16));
+    valueStart++;
+
+    u32 n = GDB_ConvertRegisterNumber(&flags, gdbRegNum);
     u32 value;
     GDB_DecodeHex(&value, valueStart, 8);
 
     if(!flags)
-        return GDB_ReplyErrno(ctx, EPERM);
+        return GDB_ReplyErrno(ctx, EINVAL);
 
     Result r = svcGetDebugThreadContext(&regs, ctx->debug, ctx->selectedThreadId, flags);
 

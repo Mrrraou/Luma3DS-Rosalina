@@ -1,4 +1,6 @@
 #include "gdb/breakpoints.h"
+
+#define _REENT_ONLY
 #include <errno.h>
 
 // We'll actually use SVC 0xFF for breakpoints :P
@@ -51,7 +53,7 @@ int GDB_AddBreakpoint(GDBContext *ctx, u32 address, bool thumb, bool persist)
         for(u32 i = id; i < ctx->nbBreakpoints - 1; i++)
             ctx->breakpoints[i] = ctx->breakpoints[i + 1];
 
-        memset_(&ctx->breakpoints[--ctx->nbBreakpoints], 0, sizeof(Breakpoint));
+        memset_(&ctx->breakpoints[ctx->nbBreakpoints--], 0, sizeof(Breakpoint));
         return -EFAULT;
     }
 
@@ -84,7 +86,7 @@ int GDB_RemoveBreakpoint(GDBContext *ctx, u32 address)
         for(u32 i = id; i < ctx->nbBreakpoints - 1; i++)
             ctx->breakpoints[i] = ctx->breakpoints[i + 1];
 
-        memset_(&ctx->breakpoints[--ctx->nbBreakpoints], 0, sizeof(Breakpoint));
+        memset_(&ctx->breakpoints[ctx->nbBreakpoints--], 0, sizeof(Breakpoint));
 
         return 0;
     }

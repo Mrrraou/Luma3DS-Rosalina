@@ -46,32 +46,26 @@ int GDB_WriteProcessMemory(GDBContext *ctx, const void *buf, u32 addr, u32 len)
 
 GDB_DECLARE_HANDLER(ReadMemory)
 {
-    const char *addrStart = ctx->commandData;
-    char *addrEnd = (char*)strchr(addrStart, ',');
-    if(addrEnd == NULL) return -1;
+    u32 lst[2];
+    if(GDB_ParseHexIntegerList(lst, ctx->commandData, 2, 0) == NULL)
+        return GDB_ReplyErrno(ctx, EILSEQ);
 
-    *addrEnd = 0;
-    const char *lenStart = addrEnd + 1;
-    u32 addr = atoi_(addrStart, 16);
-    u32 len = atoi_(lenStart, 16);
+    u32 addr = lst[0];
+    u32 len = lst[1];
 
     return GDB_SendProcessMemory(ctx, NULL, 0, addr, len);
 }
 
 GDB_DECLARE_HANDLER(WriteMemory)
 {
-    char *addrStart = ctx->commandData;
-    char *addrEnd = (char*)strchr(addrStart, ',');
-    if(addrEnd == NULL) return -1;
+    u32 lst[2];
+    const char *dataStart = GDB_ParseHexIntegerList(lst, ctx->commandData, 2, ':');
+    if(dataStart == NULL || *dataStart != ':')
+        return GDB_ReplyErrno(ctx, EILSEQ);
 
-    char *lenStart = addrEnd + 1;
-    char *lenEnd = (char*)strchr(lenStart, ':');
-    char *dataStart = lenEnd + 1;
-
-    *addrEnd = 0;
-    *lenEnd = 0;
-    u32 addr = atoi_(addrStart, 16);
-    u32 len = atoi_(lenStart, 16);
+    dataStart++;
+    u32 addr = lst[0];
+    u32 len = lst[1];
 
     if(dataStart + 2 * len >= ctx->buffer + 4 + GDB_BUF_LEN)
         return GDB_ReplyErrno(ctx, ENOMEM);
@@ -84,18 +78,14 @@ GDB_DECLARE_HANDLER(WriteMemory)
 
 GDB_DECLARE_HANDLER(WriteMemoryRaw)
 {
-    char *addrStart = ctx->commandData;
-    char *addrEnd = (char*)strchr(addrStart, ',');
-    if(addrEnd == NULL) return -1;
+    u32 lst[2];
+    const char *dataStart = GDB_ParseHexIntegerList(lst, ctx->commandData, 2, ':');
+    if(dataStart == NULL || *dataStart != ':')
+        return GDB_ReplyErrno(ctx, EILSEQ);
 
-    char *lenStart = addrEnd + 1;
-    char *lenEnd = (char*)strchr(lenStart, ':');
-    char *dataStart = lenEnd + 1;
-
-    *addrEnd = 0;
-    *lenEnd = 0;
-    u32 addr = atoi_(addrStart, 16);
-    u32 len = atoi_(lenStart, 16);
+    dataStart++;
+    u32 addr = lst[0];
+    u32 len = lst[1];
 
     if(dataStart + 2 * len >= ctx->buffer + 4 + GDB_BUF_LEN)
         return GDB_ReplyErrno(ctx, ENOMEM);

@@ -1,12 +1,14 @@
 #pragma once
 
-#include <errno.h>
 #include <sys/socket.h>
 #include <3ds/types.h>
 #include <3ds/svc.h>
 #include <3ds/srv.h>
 #include <3ds/services/soc.h>
 #include <poll.h>
+
+#define _REENT_ONLY
+#include <errno.h>
 
 #define SYNC_ERROR ENODEV
 

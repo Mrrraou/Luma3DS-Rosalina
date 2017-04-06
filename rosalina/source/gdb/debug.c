@@ -60,7 +60,7 @@ static int GDB_ContinueExecution(GDBContext *ctx)
 
 GDB_DECLARE_HANDLER(Continue)
 {
-    char *addrStart;
+    char *addrStart = NULL;
     u32 addr = 0;
 
     if(ctx->selectedThreadIdForContinuing != 0 && ctx->selectedThreadIdForContinuing != ctx->currentThreadId)
@@ -68,16 +68,26 @@ GDB_DECLARE_HANDLER(Continue)
 
     if(ctx->commandData[-1] == 'C')
     {
-        for(addrStart = ctx->commandData; *addrStart != ';' && *addrStart != 0; addrStart++);
-        addrStart++;
+        if(ctx->commandData[0] == 0 || ctx->commandData[1] == 0 || (ctx->commandData[2] != 0 && ctx->commandData[2] == ';'))
+            return GDB_ReplyErrno(ctx, EILSEQ);
+
+        // Signal ignored...
+
+        if(ctx->commandData[2] == ';')
+            addrStart = ctx->commandData + 3;
     }
     else
-        addrStart = ctx->commandData;
+    {
+        if(ctx->commandData[0] != 0)
+            addrStart = ctx->commandData;
+    }
 
-    if(addrStart != NULL && *addrStart != 0  && ctx->currentThreadId != 0)
+    if(addrStart != NULL && ctx->currentThreadId != 0)
     {
         ThreadContext regs;
-        addr = (u32)atoi_(++addrStart, 16);
+        if(GDB_ParseHexIntegerList(&addr, ctx->commandData + 3, 1, 0) == NULL)
+            return GDB_ReplyErrno(ctx, EILSEQ);
+
         Result r = svcGetDebugThreadContext(&regs, ctx->debug, ctx->currentThreadId, THREADCONTEXT_CONTROL_CPU_SPRS);
         if(R_SUCCEEDED(r))
         {
@@ -107,13 +117,16 @@ GDB_DECLARE_VERBOSE_HANDLER(Continue)
         }
 
         char *nextpos = (char *)strchr(pos, ';');
-        if(nextpos != NULL)
-            *nextpos++ = 0;
+        /*if(nextpos != NULL)
+            *nextpos++ = 0;*/
         if(strncmp(pos, "-1", 2) == 0)
             currentThreadFound = true;
         else
         {
-            currentThreadFound = currentThreadFound || (u32)atoi_(pos, 16) == ctx->currentThreadId;
+            u32 threadId;
+            if(GDB_ParseHexIntegerList(&threadId, pos, 1, ';') == NULL)
+                return GDB_ReplyErrno(ctx, EILSEQ);
+            currentThreadFound = currentThreadFound || threadId == ctx->currentThreadId;
         }
 
         pos = nextpos;
@@ -198,7 +211,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
             {
                 for(u32 j = i; j < ctx->nbThreads - 1; j++)
                     memcpy(ctx->threadInfos + j, ctx->threadInfos + j + 1, sizeof(ThreadInfo));
-                memset_(ctx->threadInfos + --ctx->nbThreads, 0, sizeof(ThreadInfo));
+                memset_(ctx->threadInfos + ctx->nbThreads--, 0, sizeof(ThreadInfo));
             }
 
             if(ctx->catchThreadEvents)
