@@ -65,12 +65,13 @@ GDB_DECLARE_HANDLER(SetThreadId)
         // We can't stop/continue particular threads (uncompliant behavior)
         if(strncmp(ctx->commandData + 1, "-1", 2) == 0)
             ctx->selectedThreadIdForContinuing = 0;
-
-        u32 id;
-        if(GDB_ParseHexIntegerList(&id, ctx->commandData + 1, 1, 0) == NULL)
-            return GDB_ReplyErrno(ctx, EILSEQ);
-
-        ctx->selectedThreadIdForContinuing = id;
+        else
+        {
+            u32 id;
+            if(GDB_ParseHexIntegerList(&id, ctx->commandData + 1, 1, 0) == NULL)
+                return GDB_ReplyErrno(ctx, EILSEQ);
+            ctx->selectedThreadIdForContinuing = id;
+        }
 
         return GDB_ReplyOk(ctx);
     }
