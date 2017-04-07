@@ -211,7 +211,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
             {
                 for(u32 j = i; j < ctx->nbThreads - 1; j++)
                     memcpy(ctx->threadInfos + j, ctx->threadInfos + j + 1, sizeof(ThreadInfo));
-                memset_(ctx->threadInfos + ctx->nbThreads--, 0, sizeof(ThreadInfo));
+                memset_(ctx->threadInfos + --ctx->nbThreads, 0, sizeof(ThreadInfo));
             }
 
             if(ctx->catchThreadEvents)
