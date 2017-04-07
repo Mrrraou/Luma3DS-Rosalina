@@ -8,6 +8,29 @@
 
 // This allows us to always respond 'l' (end of list) in 'qsThreadInfo' queries, though
 
+static s32 GDB_GetDynamicThreadPriority(GDBContext *ctx, u32 threadId)
+{
+    Handle process, thread;
+    Result r;
+    s32 prio = 65;
+
+    r = svcOpenProcess(&process, ctx->pid);
+    if(R_FAILED(r))
+        return 65;
+
+    r = svcOpenThread(&thread, process, threadId);
+    if(R_FAILED(r))
+        goto cleanup;
+
+    r = svcGetThreadPriority(&prio, thread);
+
+cleanup:
+    svcCloseHandle(thread);
+    svcCloseHandle(process);
+
+    return prio;
+}
+
 struct ThreadIdWithDbg
 {
     Handle debug;
@@ -164,4 +187,53 @@ GDB_DECLARE_QUERY_HANDLER(ThreadEvents)
         default:
             return GDB_ReplyErrno(ctx, EPERM);
     }
+}
+
+GDB_DECLARE_QUERY_HANDLER(ThreadExtraInfo)
+{
+    u32 id;
+    s64 dummy;
+    u32 val;
+    Result r;
+    int n;
+
+    const char *sStatus;
+    char sThreadDynamicPriority[64], sThreadStaticPriority[64];
+    char sCoreIdeal[64], sCoreCreator[64];
+    char buf[512];
+
+    if(GDB_ParseHexIntegerList(&id, ctx->commandData, 1, 0) == NULL)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
+    sStatus = R_SUCCEEDED(r) ? (val == 1 ? "running, " : "idle, ") : "";
+
+    val = (u32)GDB_GetDynamicThreadPriority(ctx, id);
+    if(val == 65)
+        sThreadDynamicPriority[0] = 0;
+    else
+        sprintf(sThreadDynamicPriority, "dynamic priority: %d, ", (s32)val);
+
+    r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_PRIORITY);
+    if(R_FAILED(r))
+        sThreadStaticPriority[0] = 0;
+    else
+        sprintf(sThreadStaticPriority, "static priority: %d, ", (s32)val);
+
+    r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_CPU_IDEAL);
+    if(R_FAILED(r))
+        sCoreIdeal[0] = 0;
+    else
+        sprintf(sCoreIdeal, "ideal core: %u, ", val);
+
+    r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_CPU_CREATOR);
+    if(R_FAILED(r))
+        sCoreCreator[0] = 0;
+    else
+        sprintf(sCoreCreator, "created by core %u", val);
+
+    n = sprintf(buf, "%s%s%s%s%s", sStatus, sThreadDynamicPriority, sThreadStaticPriority,
+                sCoreIdeal, sCoreCreator);
+
+    return GDB_SendHexPacket(ctx, buf, (u32)n);
 }

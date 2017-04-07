@@ -26,17 +26,21 @@ static GDBQueryHandler queryHandlers[] =
     {"fThreadInfo", GDB_HandleQueryFThreadInfo, GDB_QUERY_DIRECTION_READ},
     {"sThreadInfo", GDB_HandleQuerySThreadInfo, GDB_QUERY_DIRECTION_READ},
     {"ThreadEvents", GDB_HandleQueryThreadEvents, GDB_QUERY_DIRECTION_WRITE},
+    {"ThreadExtraInfo", GDB_HandleQueryThreadExtraInfo, GDB_QUERY_DIRECTION_READ},
     {"C", GDB_HandleQueryCurrentThreadId, GDB_QUERY_DIRECTION_READ},
 };
 
 static int GDB_HandleQuery(GDBContext *ctx, GDBQueryDirection direction)
 {
     char *nameBegin = ctx->commandData; // w/o leading 'q'/'Q'
+    if(*nameBegin == 0)
+        return GDB_ReplyErrno(ctx, EILSEQ);
 
-    char *nameEnd = (char*)strchr(ctx->commandData, ':');
+    char *nameEnd;
     char *queryData = NULL;
 
-    if(nameEnd != NULL)
+    for(nameEnd = nameBegin; *nameEnd != 0 && *nameEnd != ':' && *nameEnd != ','; nameEnd++);
+    if(*nameEnd != 0)
     {
         *nameEnd = 0;
         queryData = nameEnd + 1;

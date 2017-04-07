@@ -19,7 +19,7 @@ GDB_DECLARE_HANDLER(VerboseCommand)
 {
     char *nameBegin = ctx->commandData; // w/o leading 'v'
     if(*nameBegin == 0)
-        return -1;
+        return GDB_ReplyErrno(ctx, EILSEQ);
 
     char *nameEnd;
     char *vData = NULL;
