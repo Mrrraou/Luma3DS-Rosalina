@@ -31,42 +31,47 @@ cleanup:
     return prio;
 }
 
-struct ThreadIdWithDbg
+struct ThreadIdWithCtx
 {
-    Handle debug;
+    GDBContext *ctx;
     u32 id;
 };
 
-static int compare_func(const void *a, const void *b)
+static int thread_compare_func(const void *a_, const void *b_)
 {
-    u32 maskA = 2, maskB = 2;
-    u32 prioA = 64, prioB = 64;
-    s64 dummy;
-    const struct ThreadIdWithDbg *a_ = (const struct ThreadIdWithDbg *)a;
-    const struct ThreadIdWithDbg *b_ = (const struct ThreadIdWithDbg *)b;
+    const struct ThreadIdWithCtx *a = (const struct ThreadIdWithCtx *)a_;
+    const struct ThreadIdWithCtx *b = (const struct ThreadIdWithCtx *)b_;
 
-    svcGetDebugThreadParam(&dummy, &maskA, a_->debug, a_->id, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
-    svcGetDebugThreadParam(&dummy, &maskB, b_->debug, b_->id, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
-    svcGetDebugThreadParam(&dummy, &prioA, a_->debug, a_->id, DBGTHREAD_PARAMETER_PRIORITY);
-    svcGetDebugThreadParam(&dummy, &prioB, b_->debug, b_->id, DBGTHREAD_PARAMETER_PRIORITY);
+    u32 maskA = 2, maskB = 2;
+    s32 prioAStatic = 65, prioBStatic = 65;
+    s32 prioADynamic = GDB_GetDynamicThreadPriority(a->ctx, a->id);
+    s32 prioBDynamic = GDB_GetDynamicThreadPriority(b->ctx, b->id);
+    s64 dummy;
+
+    svcGetDebugThreadParam(&dummy, &maskA, a->ctx->debug, a->id, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
+    svcGetDebugThreadParam(&dummy, &maskB, b->ctx->debug, b->id, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
+    svcGetDebugThreadParam(&dummy, (u32 *)&prioAStatic, a->ctx->debug, a->id, DBGTHREAD_PARAMETER_PRIORITY);
+    svcGetDebugThreadParam(&dummy, (u32 *)&prioBStatic, b->ctx->debug, b->id, DBGTHREAD_PARAMETER_PRIORITY);
 
     if(maskA == 1 && maskB != 1)
-        return 1;
-    else if(maskA != 1 && maskB == 1)
         return -1;
+    else if(maskA != 1 && maskB == 1)
+        return 1;
+    else if(prioADynamic != prioBDynamic)
+        return prioADynamic - prioBDynamic;
     else
-        return (int)(prioB - prioA);
+        return prioAStatic - prioBStatic;
 }
 
 void GDB_UpdateCurrentThreadFromList(GDBContext *ctx, u32 *threadIds, u32 nbThreads)
 {
-    struct ThreadIdWithDbg lst[MAX_DEBUG_THREAD];
+    struct ThreadIdWithCtx lst[MAX_DEBUG_THREAD];
     for(u32 i = 0; i < nbThreads; i++)
     {
-        lst[i].debug = ctx->debug;
+        lst[i].ctx = ctx;
         lst[i].id = threadIds[i];
     }
-    qsort(lst, nbThreads, sizeof(struct ThreadIdWithDbg), compare_func);
+    qsort(lst, nbThreads, sizeof(struct ThreadIdWithCtx), thread_compare_func);
     ctx->currentThreadId = lst[0].id;
 }
 
