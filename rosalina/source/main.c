@@ -6,7 +6,7 @@
 #include "errdisp.h"
 #include "utils.h"
 #include "MyThread.h"
-#include "kernel_extension.h"
+#include "kernel_extension_setup.h"
 #include "menus/process_patches.h"
 
 // this is called before main

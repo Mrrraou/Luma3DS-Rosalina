@@ -3,7 +3,6 @@
 #include "font.h"
 #include "memory.h"
 #include "menu.h"
-#include "utils.h"
 
 u8 framebuffer_cache[FB_BOTTOM_SIZE];
 

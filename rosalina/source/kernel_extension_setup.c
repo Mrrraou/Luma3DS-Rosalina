@@ -1,5 +1,5 @@
 #include "kernel_extension.h"
-#include "utils.h"
+#include "kernel_extension_setup.h"
 
 #define MPCORE_REGS_BASE        ((u32)PA_PTR(0x17E00000))
 #define MPCORE_GID_REGS_BASE    (MPCORE_REGS_BASE + 0x1000)

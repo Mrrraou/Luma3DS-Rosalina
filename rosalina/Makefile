@@ -24,15 +24,11 @@ LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
 INCLUDE	:= $(foreach dir,$(LIBDIRS),-I$(dir)/include)
 
-ARCH := -march=armv6k -mcpu=mpcore -mfloat-abi=hard
+ARCH := -mcpu=mpcore -mfloat-abi=hard
 ASFLAGS := -g $(ARCH)
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -mtp=soft -fno-builtin -std=c11 -O2 -flto -ffast-math -mword-relocations \
 		-fomit-frame-pointer -ffunction-sections -fdata-sections $(INCLUDE) -I$(dir_include) -DARM11 -D_3DS
 LDFLAGS := -specs=3dsx.specs -g $(ARCH) -mtp=soft -Wl,--section-start,.text=0x14000000 -Wl,--gc-sections
-
-# Luma3DS CFW info
-revision := $(shell git describe --tags --match v[0-9]* --abbrev=8 | sed 's/-[0-9]*-g/-/i')
-commit := $(shell git rev-parse --short=8 HEAD)
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 		$(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
@@ -46,6 +42,8 @@ clean:
 	@$(MAKE) -C $(dir_kernel_extension) clean
 	@rm -rf $(dir_build)
 
+.PHONY: $(dir_kernel_extension)
+
 $(name).cxi: $(dir_build)/$(name).elf
 	@makerom -f ncch -rsf rosalina.rsf -nocodepadding -o $@ -elf $<
 
@@ -57,13 +55,13 @@ $(dir_build)/kernel_extension.bin: $(dir_kernel_extension)
 	@$(MAKE) -C $<
 
 $(dir_build)/memory.o : CFLAGS += -O3
-$(dir_build)/luma.o : CFLAGS += -DREVISION=\"$(revision)\" -DCOMMIT_HASH="0x$(commit)"
+$(dir_build)/kernel_extension.o: $(dir_build)/kernel_extension.bin
 
-$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/kernel_extension.bin
+$(dir_build)/%.o: $(dir_source)/%.c
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
-$(dir_build)/%.o: $(dir_source)/%.s $(dir_build)/kernel_extension.bin
+$(dir_build)/%.o: $(dir_source)/%.s
 	@mkdir -p "$(@D)"
 	$(COMPILE.s) $(OUTPUT_OPTION) $<
 include $(call rwildcard, $(dir_build), *.d)

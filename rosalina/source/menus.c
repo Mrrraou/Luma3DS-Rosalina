@@ -7,7 +7,6 @@
 #include "menus/n3ds.h"
 #include "menus/debugger.h"
 #include "ifile.h"
-#include "utils.h"
 #include "memory.h"
 
 
