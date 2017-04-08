@@ -8,7 +8,5 @@ Result svc0x2F(void *function, ...); // custom backdoor before kernel ext. is in
 
 void *convertVAToPA(const void *VA);
 
-u32 getNumberOfCores(void);
-
 extern u8 kernel_extension[];
 extern u32 kernel_extension_size;
