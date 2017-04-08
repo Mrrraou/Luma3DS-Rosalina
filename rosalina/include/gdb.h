@@ -63,7 +63,7 @@ typedef struct GDBContext
     ThreadInfo threadInfos[MAX_DEBUG_THREAD];
     u32 nbThreads;
 
-    u32 currentThreadId, selectedThreadId, selectedThreadIdForContinuing;
+    u32 previousThreadId, currentThreadId, selectedThreadId, selectedThreadIdForContinuing;
 
     Handle clientAcceptedEvent, continuedEvent;
     Handle eventToWaitFor;

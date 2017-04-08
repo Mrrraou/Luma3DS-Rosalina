@@ -9,6 +9,7 @@ GDB_DECLARE_HANDLER(Continue);
 GDB_DECLARE_VERBOSE_HANDLER(Continue);
 GDB_DECLARE_HANDLER(GetStopReason);
 
+DebugEventInfo GDB_PreprocessDebugEvent(GDBContext *ctx, const DebugEventInfo *info);
 int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info);
 int GDB_HandleDebugEvents(GDBContext *ctx);
 void GDB_BreakProcessAndSinkDebugEvents(GDBContext *ctx, DebugFlags flags);

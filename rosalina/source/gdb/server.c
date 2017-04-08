@@ -77,17 +77,7 @@ int GDB_AcceptClient(GDBContext *ctx)
         while(R_SUCCEEDED(svcGetProcessDebugEvent(info, ctx->debug)) && info->type != DBGEVENT_EXCEPTION &&
               info->exception.type != EXCEVENT_ATTACH_BREAK)
         {
-            if(info->type == DBGEVENT_ATTACH_THREAD)
-            {
-                if(ctx->nbThreads == MAX_DEBUG_THREAD)
-                    svcBreak(USERBREAK_ASSERT);
-                else
-                {
-                    ctx->threadInfos[ctx->nbThreads].id = info->thread_id;
-                    ctx->threadInfos[ctx->nbThreads++].tls = info->attach_thread.thread_local_storage;
-                }
-            }
-
+            GDB_PreprocessDebugEvent(ctx, info);
             svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
         }
     }
@@ -182,7 +172,7 @@ void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
     ctx->eventToWaitFor = ctx->clientAcceptedEvent;
     ctx->continueFlags = (DebugFlags)(DBG_SIGNAL_FAULT_EXCEPTION_EVENTS | DBG_INHIBIT_USER_CPU_EXCEPTION_HANDLERS);
     ctx->pid = 0;
-    ctx->currentThreadId = ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
+    ctx->previousThreadId = ctx->currentThreadId = ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
     ctx->nbThreads = 0;
     memset_(ctx->threadInfos, 0, sizeof(ctx->threadInfos));
     ctx->catchThreadEvents = false;

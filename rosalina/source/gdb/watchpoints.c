@@ -138,6 +138,19 @@ int GDB_RemoveWatchpoint(GDBContext *ctx, u32 address, WatchpointKind kind)
 
         RecursiveLock_Unlock(&watchpointManagerLock);
 
+        // Delete pending events accordingly
+        DebugEventInfo pendingDebugEvents[0x10];
+        u32 nbPendingDebugEvents = 0;
+        for(u32 i = 0; i < ctx->nbPendingDebugEvents && i < 0x10; i++)
+        {
+            DebugEventInfo *info = &ctx->pendingDebugEvents[i];
+            if(!(info->type == DBGEVENT_EXCEPTION && info->exception.type == EXCEVENT_STOP_POINT && info->exception.stop_point.type == STOPPOINT_WATCHPOINT &&
+                info->exception.stop_point.fault_information == address))
+                pendingDebugEvents[nbPendingDebugEvents++] = *info;
+        }
+        memcpy(ctx->pendingDebugEvents, pendingDebugEvents, nbPendingDebugEvents);
+        ctx->nbPendingDebugEvents = nbPendingDebugEvents;
+
         return 0;
     }
 }

@@ -88,6 +88,19 @@ int GDB_RemoveBreakpoint(GDBContext *ctx, u32 address)
 
         memset_(&ctx->breakpoints[--ctx->nbBreakpoints], 0, sizeof(Breakpoint));
 
+        // Delete pending events accordingly
+        DebugEventInfo pendingDebugEvents[0x10];
+        u32 nbPendingDebugEvents = 0;
+        for(u32 i = 0; i < ctx->nbPendingDebugEvents && i < 0x10; i++)
+        {
+            DebugEventInfo *info = &ctx->pendingDebugEvents[i];
+            if(!(info->type == DBGEVENT_EXCEPTION && info->exception.type == EXCEVENT_STOP_POINT && info->exception.stop_point.type == STOPPOINT_SVC_FF &&
+                info->exception.address == address))
+                pendingDebugEvents[nbPendingDebugEvents++] = *info;
+        }
+        memcpy(ctx->pendingDebugEvents, pendingDebugEvents, nbPendingDebugEvents);
+        ctx->nbPendingDebugEvents = nbPendingDebugEvents;
+
         return 0;
     }
 }
