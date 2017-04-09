@@ -25,10 +25,10 @@ void (*invalidateInstructionCacheRange)(void *addr, u32 len);
 
 bool (*usrToKernelMemcpy8)(void *dst, const void *src, u32 len);
 bool (*usrToKernelMemcpy32)(u32 *dst, const u32 *src, u32 len);
-bool (*usrToKernelStrncpy)(char *dst, const char *src, u32 len);
+s32 (*usrToKernelStrncpy)(char *dst, const char *src, u32 len);
 bool (*kernelToUsrMemcpy8)(void *dst, const void *src, u32 len);
 bool (*kernelToUsrMemcpy32)(u32 *dst, const u32 *src, u32 len);
-bool (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
+s32 (*kernelToUsrStrncpy)(char *dst, const char *src, u32 len);
 
 Result (*CustomBackdoor)(void *function, ...);
 

@@ -74,6 +74,7 @@ typedef struct GDBContext
     DebugEventInfo pendingDebugEvents[0x10], latestDebugEvent;
     u32 nbPendingDebugEvents;
     DebugFlags continueFlags;
+    u32 svcMask[8];
 
     u32 nbBreakpoints;
     Breakpoint breakpoints[MAX_BREAKPOINT];

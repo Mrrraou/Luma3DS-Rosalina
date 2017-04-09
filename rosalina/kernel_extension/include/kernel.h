@@ -257,22 +257,20 @@ typedef struct KThreadLinkedList
   KThread *last;
 } KThreadLinkedList;
 
-/* 96 */
-typedef enum DebugEventType
-{
-  DBGEVT_ATTACH_PROCESS = 0x0,
-  DBGEVT_ATTACH_THREAD = 0x1,
-  DBGEVT_EXIT_THREAD = 0x2,
-  DBGEVT_EXIT_PROCESS = 0x3,
-  DBGEVT_EXCEPTION = 0x4,
-  DBGEVT_DLL_LOAD = 0x5,
-  DBGEVT_DLL_UNLOAD = 0x6,
-  DBGEVT_SCHEDULE_IN = 0x7,
-  DBGEVT_SCHEDULE_OUT = 0x8,
-  DBGEVT_SYSCALL_IN = 0x9,
-  DBGEVT_SYSCALL_OUT = 0xA,
-  DBGEVT_OUTPUT_STRING = 0xB,
-  DBGEVT_MAP = 0xC,
+typedef enum {
+  DBGEVENT_ATTACH_PROCESS = 0,  ///< Process attached event.
+  DBGEVENT_ATTACH_THREAD  = 1,  ///< Thread attached event.
+  DBGEVENT_EXIT_THREAD    = 2,  ///< Thread exit event.
+  DBGEVENT_EXIT_PROCESS   = 3,  ///< Process exit event.
+  DBGEVENT_EXCEPTION      = 4,  ///< Exception event.
+  DBGEVENT_DLL_LOAD       = 5,  ///< DLL load event.
+  DBGEVENT_DLL_UNLOAD     = 6,  ///< DLL unload event.
+  DBGEVENT_SCHEDULE_IN    = 7,  ///< Schedule in event.
+  DBGEVENT_SCHEDULE_OUT   = 8,  ///< Schedule out event.
+  DBGEVENT_SYSCALL_IN     = 9,  ///< Syscall in event.
+  DBGEVENT_SYSCALL_OUT    = 10, ///< Syscall out event.
+  DBGEVENT_OUTPUT_STRING  = 11, ///< Output string event.
+  DBGEVENT_MAP            = 12, ///< Map event.
 } DebugEventType;
 
 /* 80 */
@@ -282,19 +280,17 @@ typedef struct KRecursiveLock
   u32 lockCount;
 } KRecursiveLock;
 
-/* 97 */
-typedef enum ExceptionDebugEventType
-{
-  EXCEVT_UNDEFINED_INSTRUCTION = 0x0,
-  EXCEVT_PREFETCH_ABORT = 0x1,
-  EXCEVT_DATA_ABORT = 0x2,
-  EXCEVT_UNALIGNED_MEMORY_ACCESS = 0x3,
-  EXCEVT_ATTACH_BREAK = 0x4,
-  EXCEVT_STOP_POINT = 0x5,
-  EXCEVT_USER_BREAK = 0x6,
-  EXCEVT_DEBUGGER_BREAK = 0x7,
-  EXCEVT_UNDEFINED_SYSCALL = 0x8,
-} ExceptionDebugEventType;
+typedef enum {
+  EXCEVENT_UNDEFINED_INSTRUCTION = 0, ///< Undefined instruction.
+  EXCEVENT_PREFETCH_ABORT        = 1, ///< Prefetch abort.
+  EXCEVENT_DATA_ABORT            = 2, ///< Data abort (other than the below kind).
+  EXCEVENT_UNALIGNED_DATA_ACCESS = 3, ///< Unaligned data access.
+  EXCEVENT_ATTACH_BREAK          = 4, ///< Attached break.
+  EXCEVENT_STOP_POINT            = 5, ///< Stop point reached.
+  EXCEVENT_USER_BREAK            = 6, ///< User break occurred.
+  EXCEVENT_DEBUGGER_BREAK        = 7, ///< Debugger break occurred.
+  EXCEVENT_UNDEFINED_SYSCALL     = 8, ///< Undefined syscall.
+} ExceptionEventType;
 
 /* 6 */
 typedef struct ALIGN(4) KDebug
@@ -329,7 +325,7 @@ typedef struct ALIGN(4) KDebug
   bool processHasBeenTerminated;
   bool pendingSvcBreakEvent;
   u32 *regdump;
-  ExceptionDebugEventType exceptionInfo;
+  ExceptionEventType exceptionInfo;
   u16 nbExceptions;
   u16 svcID;
   u16 nbPendingEvents;
@@ -764,20 +760,18 @@ typedef struct KAttachThreadDebugEventInfo
 
 
 /// Reasons for an exit thread event.
-typedef enum ExitThreadEventReason
-{
-    EXITTHREAD_EVENT_NONE              = 0, ///< No reason.
-    EXITTHREAD_EVENT_TERMINATE         = 1, ///< Thread terminated.
-    EXITTHREAD_EVENT_UNHANDLED_EXC     = 2, ///< Unhandled exception occurred.
-    EXITTHREAD_EVENT_TERMINATE_PROCESS = 3, ///< Process terminated.
+typedef enum {
+  EXITTHREAD_EVENT_EXIT              = 0, ///< Thread exited.
+  EXITTHREAD_EVENT_TERMINATE         = 1, ///< Thread terminated.
+  EXITTHREAD_EVENT_EXIT_PROCESS      = 2, ///< Process exited either normally or due to an uncaught exception.
+  EXITTHREAD_EVENT_TERMINATE_PROCESS = 3, ///< Process has been terminated by @ref svcTerminateProcess.
 } ExitThreadEventReason;
 
 /// Reasons for an exit process event.
-typedef enum ExitProcessEventReason
-{
-    EXITPROCESS_EVENT_NONE                = 0, ///< No reason.
-    EXITPROCESS_EVENT_TERMINATE           = 1, ///< Process terminated.
-    EXITPROCESS_EVENT_UNHANDLED_EXCEPTION = 2, ///< Unhandled exception occurred.
+typedef enum {
+  EXITPROCESS_EVENT_EXIT                = 0, ///< Process exited either normally or due to an uncaught exception.
+  EXITPROCESS_EVENT_TERMINATE           = 1, ///< Process has been terminated by @ref svcTerminateProcess.
+  EXITPROCESS_EVENT_DEBUG_TERMINATE     = 2, ///< Process has been terminated by @ref svcTerminateDebugProcess.
 } ExitProcessEventReason;
 
 /* 103 */
@@ -833,7 +827,7 @@ typedef struct KDebuggerBreakDebugEventInfo
 /* 109 */
 typedef struct KExceptionDebugEventInfo
 {
-  ExceptionDebugEventType type;
+  ExceptionEventType type;
   void *address;
   u32 category;
   union

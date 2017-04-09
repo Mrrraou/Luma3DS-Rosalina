@@ -112,6 +112,9 @@ int GDB_CloseClient(GDBContext *ctx)
     }
     ctx->nbWatchpoints = 0;
 
+    svcKernelSetState(0x10002, ctx->pid, false);
+    memset_(ctx->svcMask, 0, 32);
+
     svcClearEvent(ctx->clientAcceptedEvent);
     ctx->eventToWaitFor = ctx->clientAcceptedEvent;
     RecursiveLock_Unlock(&ctx->lock);

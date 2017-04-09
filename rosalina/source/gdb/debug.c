@@ -219,6 +219,35 @@ DebugEventInfo GDB_PreprocessDebugEvent(GDBContext *ctx, const DebugEventInfo *i
             break;
         }
 
+        case DBGEVENT_EXCEPTION:
+        {
+            switch(info->exception.type)
+            {
+                case EXCEVENT_UNDEFINED_SYSCALL:
+                {
+                    u32 svcId = info->exception.fault.fault_information;
+                    if(svcId & 0x40000000)
+                    {
+                        memset_(&out, 0, sizeof(DebugEventInfo));
+                        out.type = DBGEVENT_SYSCALL_IN;
+                        out.thread_id = info->thread_id;
+                        out.flags = 1;
+                        out.syscall.syscall = svcId & 0xFF;
+                    }
+                    else if(svcId & 0x80000000)
+                    {
+                        memset_(&out, 0, sizeof(DebugEventInfo));
+                        out.type = DBGEVENT_SYSCALL_OUT;
+                        out.thread_id = info->thread_id;
+                        out.flags = 1;
+                        out.syscall.syscall = svcId & 0xFF;
+                    }
+                }
+
+                default:
+                    break;
+            }
+        }
         default:
             break;
     }

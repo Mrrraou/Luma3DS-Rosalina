@@ -13,6 +13,26 @@
 
 void *officialSVCs[0x7E] = {NULL};
 
+void signalSvcEntry(u8 *pageEnd)
+{
+    u32 svcId = *(u8 *)(pageEnd - 0xB5);
+    KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
+
+    // Since DBGEVENT_SYSCALL_ENTRY is non blocking, we'll cheat using EXCEVENT_UNDEFINED_SYSCALL
+    if(shouldSignalSyscallDebugEvent(currentProcess, svcId))
+        SignalDebugEvent(DBGEVENT_EXCEPTION, EXCEVENT_UNDEFINED_SYSCALL, 0x40000000 | svcId);
+}
+
+void signalSvcReturn(u8 *pageEnd)
+{
+    u32 svcId = *(u8 *)(pageEnd - 0xB5);
+    KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
+
+    // Since DBGEVENT_SYSCALL_RETURN is non blocking, we'll cheat using EXCEVENT_UNDEFINED_SYSCALL
+    if(shouldSignalSyscallDebugEvent(currentProcess, svcId))
+        SignalDebugEvent(DBGEVENT_EXCEPTION, EXCEVENT_UNDEFINED_SYSCALL, 0x80000000 | svcId);
+}
+
 void *svcHook(u8 *pageEnd)
 {
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
@@ -22,7 +42,7 @@ void *svcHook(u8 *pageEnd)
       (highTitleId != 0x00040130 || (highTitleId == 0x00040130 && (lowTitleId == 0x1A02 || lowTitleId == 0x1C02))))
         yield();
 
-    u32 svcId = *(u8 *)(pageEnd - 0xB5);
+    u8 svcId = *(u8 *)(pageEnd - 0xB5);
     switch(svcId)
     {
         case 0x2A:

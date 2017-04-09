@@ -28,6 +28,7 @@ static GDBQueryHandler queryHandlers[] =
     {"ThreadEvents", GDB_HandleQueryThreadEvents, GDB_QUERY_DIRECTION_WRITE},
     {"ThreadExtraInfo", GDB_HandleQueryThreadExtraInfo, GDB_QUERY_DIRECTION_READ},
     {"C", GDB_HandleQueryCurrentThreadId, GDB_QUERY_DIRECTION_READ},
+    {"CatchSyscalls", GDB_HandleQueryCatchSyscalls, GDB_QUERY_DIRECTION_WRITE},
 };
 
 static int GDB_HandleQuery(GDBContext *ctx, GDBQueryDirection direction)
@@ -70,7 +71,7 @@ int GDB_HandleWriteQuery(GDBContext *ctx)
 
 GDB_DECLARE_QUERY_HANDLER(Supported)
 {
-    return GDB_SendFormattedPacket(ctx, "PacketSize=%d;qXfer:features:read+;QStartNoAckMode+;QThreadEvents+;vContSupported+;swbreak+", sizeof(ctx->buffer));
+    return GDB_SendFormattedPacket(ctx, "PacketSize=%d;qXfer:features:read+;QStartNoAckMode+;QThreadEvents+;QCatchSyscalls+;vContSupported+;swbreak+", sizeof(ctx->buffer));
 }
 
 GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)
@@ -82,4 +83,38 @@ GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)
 GDB_DECLARE_QUERY_HANDLER(Attached)
 {
     return GDB_SendPacket(ctx, "1", 1);
+}
+
+GDB_DECLARE_QUERY_HANDLER(CatchSyscalls)
+{
+    if(ctx->commandData[0] == '0')
+    {
+        memset_(ctx->svcMask, 0, 32);
+        return R_SUCCEEDED(svcKernelSetState(0x10002, ctx->pid, false)) ? GDB_ReplyOk(ctx) : GDB_ReplyErrno(ctx, EPERM);
+    }
+    else if(ctx->commandData[0] == '1')
+    {
+        if(ctx->commandData[1] == ';')
+        {
+            u32 id;
+            const char *pos = ctx->commandData + 2;
+            memset_(ctx->svcMask, 0, 32);
+
+            do
+            {
+                pos = GDB_ParseHexIntegerList(&id, pos, 1, ',');
+                if(pos == NULL)
+                    return GDB_ReplyErrno(ctx, EILSEQ);
+
+                ctx->svcMask[id / 32] |= 1 << (31 - (id % 32));
+            }
+            while(*pos != 0);
+        }
+        else
+            memset_(ctx->svcMask, 0xFF, 32);
+
+        return R_SUCCEEDED(svcKernelSetState(0x10002, ctx->pid, true, ctx->svcMask)) ? GDB_ReplyOk(ctx) : GDB_ReplyErrno(ctx, EPERM);
+    }
+    else
+        return GDB_ReplyErrno(ctx, EILSEQ);
 }

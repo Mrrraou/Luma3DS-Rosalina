@@ -190,7 +190,7 @@ GDB_DECLARE_QUERY_HANDLER(ThreadEvents)
             ctx->catchThreadEvents = true;
             return GDB_ReplyOk(ctx);
         default:
-            return GDB_ReplyErrno(ctx, EPERM);
+            return GDB_ReplyErrno(ctx, EILSEQ);
     }
 }
 

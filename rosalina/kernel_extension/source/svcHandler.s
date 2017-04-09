@@ -28,25 +28,19 @@ svcHandler:
     beq _fallback            @ invalid svc, or svc 0xff (stop point)
 
     _handled_svc:            @ unused label, just here for formatting
-        ldr r10, =SignalDebugEvent
-        ldr r10, [r10]
-
-        cpsie i
-
-        mov r0, #9           @ DBGEVT_SYSCALL_IN
-        mov r1, r9
-        blx r10
-        ldmfd sp, {r0-r7, r12, lr}
-
-        blx r8
-
         push {r0-r12, lr}
-        mov r0, #10             @ DBGEVT_SYSCALL_OUT
-        mov r1, r9
-        blx r10
+        add r0, sp, #0x148
+        blx signalSvcEntry
         pop {r0-r12, lr}
 
+        cpsie i
+        blx r8
         cpsid i
+
+        push {r0-r12, lr}
+        add r0, sp, #0x148
+        blx signalSvcReturn
+        pop {r0-r12, lr}
 
         ldrb lr, [sp, #0x58+0] @ page end - 0xb8 + 0: scheduling flags
         b _fallback_end

@@ -23,7 +23,7 @@ TracedService *tracedServices[5] =
     &cfgIService
 };
 
-KObjectMutex processLangemuObjectMutex;
+KObjectMutex processLangemuObjectMutex = {NULL};
 LangemuAttributes processLangemuAttributes[0x40] = {{0ULL}};
 
 static void (*KClientSession__dtor_orig)(KAutoObject *this);
