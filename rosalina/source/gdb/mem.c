@@ -71,7 +71,10 @@ GDB_DECLARE_HANDLER(WriteMemory)
         return GDB_ReplyErrno(ctx, ENOMEM);
 
     u8 data[GDB_BUF_LEN / 2];
-    len = GDB_DecodeHex(data, dataStart, len);
+    int n = GDB_DecodeHex(data, dataStart, len);
+
+    if((u32)n != len)
+        return GDB_ReplyErrno(ctx, EILSEQ);
 
     return GDB_WriteProcessMemory(ctx, data, addr, len);
 }
@@ -87,11 +90,14 @@ GDB_DECLARE_HANDLER(WriteMemoryRaw)
     u32 addr = lst[0];
     u32 len = lst[1];
 
-    if(dataStart + 2 * len >= ctx->buffer + 4 + GDB_BUF_LEN)
+    if(dataStart + len >= ctx->buffer + 4 + GDB_BUF_LEN)
         return GDB_ReplyErrno(ctx, ENOMEM);
 
-    u8 data[GDB_BUF_LEN / 2];
-    GDB_UnescapeBinaryData(data, dataStart, len);
+    u8 data[GDB_BUF_LEN];
+    int n = GDB_UnescapeBinaryData(data, dataStart, len);
+
+    if((u32)n != len)
+        return GDB_ReplyErrno(ctx, n);
 
     return GDB_WriteProcessMemory(ctx, data, addr, len);
 }

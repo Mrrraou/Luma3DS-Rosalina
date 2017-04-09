@@ -65,7 +65,7 @@ int GDB_UnescapeBinaryData(void *dst, const void *src, u32 len)
             *dst8++ = *src8++;
     }
 
-    return len;
+    return dst8 - (u8 *)dst;
 }
 
 const char *GDB_ParseIntegerList(u32 *dst, const char *src, u32 nb, char sep, char lastSep, u32 base, bool allowPrefix)
@@ -90,6 +90,7 @@ const char *GDB_ParseIntegerList(u32 *dst, const char *src, u32 nb, char sep, ch
         {
             if(*endpos != lastSep && *endpos != 0)
                 return NULL;
+            pos = endpos;
         }
 
         dst[i] = n;
