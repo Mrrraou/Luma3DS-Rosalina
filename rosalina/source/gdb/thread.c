@@ -143,7 +143,7 @@ GDB_DECLARE_QUERY_HANDLER(CurrentThreadId)
     return GDB_SendFormattedPacket(ctx, "QC%x", ctx->currentThreadId);
 }
 
-GDB_DECLARE_QUERY_HANDLER(FThreadInfo)
+GDB_DECLARE_QUERY_HANDLER(fThreadInfo)
 {
     u32 aliveThreadIds[MAX_DEBUG_THREAD];
     u32 nbAliveThreads = 0; // just in case. This is probably redundant
@@ -174,7 +174,7 @@ GDB_DECLARE_QUERY_HANDLER(FThreadInfo)
     return GDB_SendPacket(ctx, buf, bufptr - buf);
 }
 
-GDB_DECLARE_QUERY_HANDLER(SThreadInfo)
+GDB_DECLARE_QUERY_HANDLER(sThreadInfo)
 {
     return GDB_SendPacket(ctx, "l", 1);
 }

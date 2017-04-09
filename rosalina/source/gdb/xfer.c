@@ -97,10 +97,8 @@ GDB_DECLARE_QUERY_HANDLER(Xfer)
                 memcpy(buf + 1, xferTargetXmlData + off, len);
                 return GDB_SendPacket(ctx, buf, 1 + len);
             }
-
-            return 0;
         }
     }
 
-    return -1;
+    return GDB_ReplyEmpty(ctx);
 }

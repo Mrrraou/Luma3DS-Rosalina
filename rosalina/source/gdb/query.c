@@ -10,25 +10,30 @@ typedef enum GDBQueryDirection
     GDB_QUERY_DIRECTION_WRITE
 } GDBQueryDirection;
 
-typedef struct GDBQueryHandler
+// https://gcc.gnu.org/onlinedocs/gcc-5.3.0/cpp/Stringification.html
+#define xstr(s) str(s)
+#define str(s) #s
+
+#define GDB_QUERY_HANDLER_LIST_ITEM_3(name, name2, direction)   { name, GDB_QUERY_HANDLER(name2), GDB_QUERY_DIRECTION_##direction }
+#define GDB_QUERY_HANDLER_LIST_ITEM(name, direction)            GDB_QUERY_HANDLER_LIST_ITEM_3(xstr(name), name, direction)
+
+static const struct
 {
     const char *name;
     GDBCommandHandler handler;
     GDBQueryDirection direction;
-} GDBQueryHandler;
-
-static GDBQueryHandler queryHandlers[] =
+} gdbQueryHandlers[] =
 {
-    {"Supported", GDB_HandleQuerySupported, GDB_QUERY_DIRECTION_READ},
-    {"Xfer", GDB_HandleQueryXfer, GDB_QUERY_DIRECTION_READ},
-    {"StartNoAckMode", GDB_HandleQueryStartNoAckMode, GDB_QUERY_DIRECTION_WRITE},
-    {"Attached", GDB_HandleQueryAttached, GDB_QUERY_DIRECTION_READ},
-    {"fThreadInfo", GDB_HandleQueryFThreadInfo, GDB_QUERY_DIRECTION_READ},
-    {"sThreadInfo", GDB_HandleQuerySThreadInfo, GDB_QUERY_DIRECTION_READ},
-    {"ThreadEvents", GDB_HandleQueryThreadEvents, GDB_QUERY_DIRECTION_WRITE},
-    {"ThreadExtraInfo", GDB_HandleQueryThreadExtraInfo, GDB_QUERY_DIRECTION_READ},
-    {"C", GDB_HandleQueryCurrentThreadId, GDB_QUERY_DIRECTION_READ},
-    {"CatchSyscalls", GDB_HandleQueryCatchSyscalls, GDB_QUERY_DIRECTION_WRITE},
+    GDB_QUERY_HANDLER_LIST_ITEM(Supported, READ),
+    GDB_QUERY_HANDLER_LIST_ITEM(Xfer, READ),
+    GDB_QUERY_HANDLER_LIST_ITEM(StartNoAckMode, WRITE),
+    GDB_QUERY_HANDLER_LIST_ITEM(Attached, READ),
+    GDB_QUERY_HANDLER_LIST_ITEM(fThreadInfo, READ),
+    GDB_QUERY_HANDLER_LIST_ITEM(sThreadInfo, READ),
+    GDB_QUERY_HANDLER_LIST_ITEM(ThreadEvents, WRITE),
+    GDB_QUERY_HANDLER_LIST_ITEM(ThreadExtraInfo, READ),
+    GDB_QUERY_HANDLER_LIST_ITEM_3("C", CurrentThreadId, READ),
+    GDB_QUERY_HANDLER_LIST_ITEM(CatchSyscalls, WRITE),
 };
 
 static int GDB_HandleQuery(GDBContext *ctx, GDBQueryDirection direction)
@@ -47,12 +52,12 @@ static int GDB_HandleQuery(GDBContext *ctx, GDBQueryDirection direction)
         queryData = nameEnd + 1;
     }
 
-    for(u32 i = 0; i < sizeof(queryHandlers) / sizeof(GDBQueryHandler); i++)
+    for(u32 i = 0; i < sizeof(gdbQueryHandlers) / sizeof(gdbQueryHandlers[0]); i++)
     {
-        if(strncmp(queryHandlers[i].name, nameBegin, strlen(queryHandlers[i].name)) == 0 && queryHandlers[i].direction == direction)
+        if(strncmp(gdbQueryHandlers[i].name, nameBegin, strlen(gdbQueryHandlers[i].name)) == 0 && gdbQueryHandlers[i].direction == direction)
         {
             ctx->commandData = queryData;
-            return queryHandlers[i].handler(ctx);
+            return gdbQueryHandlers[i].handler(ctx);
         }
     }
 

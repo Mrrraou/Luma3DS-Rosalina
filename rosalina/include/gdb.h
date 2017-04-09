@@ -15,9 +15,13 @@
 // IDA seems to want additional bytes as well.
 #define GDB_BUF_LEN (512 + 24)
 
-#define GDB_DECLARE_HANDLER(name) int GDB_Handle##name(GDBContext *ctx)
-#define GDB_DECLARE_QUERY_HANDLER(name) GDB_DECLARE_HANDLER(Query##name)
-#define GDB_DECLARE_VERBOSE_HANDLER(name) GDB_DECLARE_HANDLER(Verbose##name)
+#define GDB_HANDLER(name)           GDB_Handle##name
+#define GDB_QUERY_HANDLER(name)     GDB_HANDLER(Query##name)
+#define GDB_VERBOSE_HANDLER(name)   GDB_HANDLER(Verbose##name)
+
+#define GDB_DECLARE_HANDLER(name)           int GDB_HANDLER(name)(GDBContext *ctx)
+#define GDB_DECLARE_QUERY_HANDLER(name)     GDB_DECLARE_HANDLER(Query##name)
+#define GDB_DECLARE_VERBOSE_HANDLER(name)   GDB_DECLARE_HANDLER(Verbose##name)
 
 typedef struct Breakpoint
 {

@@ -2,17 +2,15 @@
 #include "gdb/net.h"
 #include "gdb/debug.h"
 
-typedef struct GDBVerboseCommandHandler
+static const struct
 {
     const char *name;
     GDBCommandHandler handler;
-} GDBVerboseCommandHandler;
-
-static GDBVerboseCommandHandler verboseCommandHandlers[] =
+} gdbVerboseCommandHandlers[] =
 {
-    {"Cont?", GDB_HandleVerboseContinueSupported},
-    {"Cont", GDB_HandleVerboseContinue},
-    {"MustReplyEmpty", GDB_HandleUnsupported},
+    { "Cont?", GDB_VERBOSE_HANDLER(ContinueSupported) },
+    { "Cont",  GDB_VERBOSE_HANDLER(Continue) },
+    { "MustReplyEmpty", GDB_HANDLER(Unsupported) },
 };
 
 GDB_DECLARE_HANDLER(VerboseCommand)
@@ -31,12 +29,12 @@ GDB_DECLARE_HANDLER(VerboseCommand)
         vData = nameEnd + 1;
     }
 
-    for(u32 i = 0; i < sizeof(verboseCommandHandlers) / sizeof(GDBVerboseCommandHandler); i++)
+    for(u32 i = 0; i < sizeof(gdbVerboseCommandHandlers) / sizeof(gdbVerboseCommandHandlers[0]); i++)
     {
-        if(strncmp(verboseCommandHandlers[i].name, nameBegin, strlen(verboseCommandHandlers[i].name)) == 0)
+        if(strncmp(gdbVerboseCommandHandlers[i].name, nameBegin, strlen(gdbVerboseCommandHandlers[i].name)) == 0)
         {
             ctx->commandData = vData;
-            return verboseCommandHandlers[i].handler(ctx);
+            return gdbVerboseCommandHandlers[i].handler(ctx);
         }
     }
 

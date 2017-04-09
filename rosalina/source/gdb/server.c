@@ -184,66 +184,41 @@ void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
     RecursiveLock_Unlock(&ctx->lock);
 }
 
-static inline GDBCommandHandler GDB_GetCommandHandler(char c)
+static const struct
 {
-    switch(c)
-    {
-        case 'q':
-            return GDB_HandleReadQuery;
+    char command;
+    GDBCommandHandler handler;
+} gdbCommandHandlers[] =
+{
+    { '?', GDB_HANDLER(GetStopReason) },
+    { 'c', GDB_HANDLER(Continue) },
+    { 'C', GDB_HANDLER(Continue) },
+    { 'D', GDB_HANDLER(Detach) },
+    { 'g', GDB_HANDLER(ReadRegisters) },
+    { 'G', GDB_HANDLER(WriteRegisters) },
+    { 'H', GDB_HANDLER(SetThreadId) },
+    { 'k', GDB_HANDLER(Kill) },
+    { 'm', GDB_HANDLER(ReadMemory) },
+    { 'M', GDB_HANDLER(WriteMemory) },
+    { 'p', GDB_HANDLER(ReadRegister) },
+    { 'P', GDB_HANDLER(WriteRegister) },
+    { 'q', GDB_HANDLER(ReadQuery) },
+    { 'Q', GDB_HANDLER(WriteQuery) },
+    { 'T', GDB_HANDLER(IsThreadAlive) },
+    { 'v', GDB_HANDLER(VerboseCommand) },
+    { 'X', GDB_HANDLER(WriteMemoryRaw) },
+    { 'z', GDB_HANDLER(ToggleStopPoint) },
+    { 'Z', GDB_HANDLER(ToggleStopPoint) },
+};
 
-        case 'Q':
-            return GDB_HandleWriteQuery;
+static inline GDBCommandHandler GDB_GetCommandHandler(char command)
+{
+    static const u32 nbHandlers = sizeof(gdbCommandHandlers) / sizeof(gdbCommandHandlers[0]);
 
-        case 'v':
-            return GDB_HandleVerboseCommand;
+    u32 i;
+    for(i = 0; i < nbHandlers && gdbCommandHandlers[i].command != command; i++);
 
-        case '?':
-            return GDB_HandleGetStopReason;
-
-        case 'g':
-            return GDB_HandleReadRegisters;
-
-        case 'G':
-            return GDB_HandleWriteRegisters;
-
-        case 'p':
-            return GDB_HandleReadRegister;
-
-        case 'P':
-            return GDB_HandleWriteRegister;
-
-        case 'm':
-            return GDB_HandleReadMemory;
-
-        case 'M':
-            return GDB_HandleWriteMemory;
-
-        case 'X':
-            return GDB_HandleWriteMemoryRaw;
-
-        case 'H':
-            return GDB_HandleSetThreadId;
-
-        case 'T':
-            return GDB_HandleIsThreadAlive;
-
-        case 'c':
-        case 'C':
-            return GDB_HandleContinue;
-
-        case 'D':
-            return GDB_HandleDetach;
-
-        case 'k':
-            return GDB_HandleKill;
-
-        case 'z':
-        case 'Z':
-            return GDB_HandleToggleStopPoint;
-
-        default:
-            return GDB_HandleUnsupported;
-    }
+    return i < nbHandlers ? gdbCommandHandlers[i].handler : GDB_HANDLER(Unsupported);
 }
 
 int GDB_DoPacket(GDBContext *ctx)
@@ -269,13 +244,8 @@ int GDB_DoPacket(GDBContext *ctx)
     else if(ctx->buffer[0] == '$')
     {
         GDBCommandHandler handler = GDB_GetCommandHandler(ctx->buffer[1]);
-        if(handler != NULL)
-        {
-            ctx->commandData = ctx->buffer + 2;
-            ret = handler(ctx);
-        }
-        else
-            ret = GDB_HandleUnsupported(ctx); // We don't have a handler!
+        ctx->commandData = ctx->buffer + 2;
+        ret = handler(ctx);
     }
     else
         ret = 0;
