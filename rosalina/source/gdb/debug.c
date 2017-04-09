@@ -248,6 +248,17 @@ DebugEventInfo GDB_PreprocessDebugEvent(GDBContext *ctx, const DebugEventInfo *i
                         out.flags = 1;
                         out.syscall.syscall = svcId & 0xFF;
                     }
+                    else if(svcId == 0)
+                    {
+                        // If you think confusing the kernel with svc 0 is fun, you have a problem
+                        ThreadContext regs;
+                        Result r = svcGetDebugThreadContext(&regs, ctx->debug, info->thread_id, THREADCONTEXT_CONTROL_CPU_SPRS);
+                        if(R_SUCCEEDED(r))
+                        {
+                            regs.cpu_registers.pc -= (regs.cpu_registers.cpsr & 0x20) != 0 ? 2 : 4;
+                            r = svcSetDebugThreadContext(ctx->debug, info->thread_id, &regs, THREADCONTEXT_CONTROL_CPU_SPRS);
+                        }
+                    }
                     break;
                 }
 
