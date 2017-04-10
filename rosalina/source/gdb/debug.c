@@ -297,7 +297,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
 
         case DBGEVENT_EXIT_THREAD:
         {
-            if(ctx->catchThreadEvents)
+            if(ctx->catchThreadEvents && info->exit_thread.reason < EXITTHREAD_EVENT_EXIT_PROCESS)
             {
                 // no signal, SIGTERM, SIGQUIT (process exited), SIGTERM (process terminated)
                 static int threadExitRepliesSigs[] = { 0, SIGTERM, SIGQUIT, SIGTERM };
