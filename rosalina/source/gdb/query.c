@@ -76,7 +76,7 @@ int GDB_HandleWriteQuery(GDBContext *ctx)
 
 GDB_DECLARE_QUERY_HANDLER(Supported)
 {
-    return GDB_SendFormattedPacket(ctx, "PacketSize=%d;qXfer:features:read+;QStartNoAckMode+;QThreadEvents+;QCatchSyscalls+;vContSupported+;swbreak+", sizeof(ctx->buffer));
+    return GDB_SendFormattedPacket(ctx, "PacketSize=%x;qXfer:features:read+;QStartNoAckMode+;QThreadEvents+;QCatchSyscalls+;vContSupported+;swbreak+", sizeof(ctx->buffer));
 }
 
 GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)

@@ -19,22 +19,22 @@ Menu menu_debugger = {
 
 static MyThread debuggerSocketThread;
 static MyThread debuggerDebugThread;
-static u8 ALIGN(8) debuggerSocketThreadStack[THREAD_STACK_SIZE];
-static u8 ALIGN(8) debuggerDebugThreadStack[THREAD_STACK_SIZE];
+static u8 ALIGN(8) debuggerSocketThreadStack[2 * THREAD_STACK_SIZE];
+static u8 ALIGN(8) debuggerDebugThreadStack[2 * THREAD_STACK_SIZE];
 
 GDBServer gdbServer = { 0 };
 
 void debuggerSocketThreadMain(void);
 MyThread *debuggerCreateSocketThread(void)
 {
-    MyThread_Create(&debuggerSocketThread, debuggerSocketThreadMain, debuggerSocketThreadStack, THREAD_STACK_SIZE, 0x20, CORE_SYSTEM);
+    MyThread_Create(&debuggerSocketThread, debuggerSocketThreadMain, debuggerSocketThreadStack, 2 * THREAD_STACK_SIZE, 0x20, CORE_SYSTEM);
     return &debuggerSocketThread;
 }
 
 void debuggerDebugThreadMain(void);
 MyThread *debuggerCreateDebugThread(void)
 {
-    MyThread_Create(&debuggerDebugThread, debuggerDebugThreadMain, debuggerDebugThreadStack, THREAD_STACK_SIZE, 0x20, CORE_SYSTEM);
+    MyThread_Create(&debuggerDebugThread, debuggerDebugThreadMain, debuggerDebugThreadStack, 2 * THREAD_STACK_SIZE, 0x20, CORE_SYSTEM);
     return &debuggerDebugThread;
 }
 
@@ -55,7 +55,7 @@ void Debugger_Enable(void)
         draw_string("Debugger options menu", 10, 10, COLOR_TITLE);
 
         if(alreadyEnabled)
-            draw_string("Already enabled!", 10, 10, COLOR_TITLE);
+            draw_string("Already enabled!", 10, 30, COLOR_WHILE);
 
         else
         {

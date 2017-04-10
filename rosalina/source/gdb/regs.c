@@ -44,15 +44,15 @@ static u32 GDB_ConvertRegisterNumber(ThreadContextControlFlags *flags, u32 gdbNu
         *flags = THREADCONTEXT_CONTROL_CPU_SPRS;
         return 16;
     }
-    else if(gdbNum >= 26 && gdbNum <= 57)
+    else if(gdbNum >= 26 && gdbNum <= 41)
     {
         *flags = THREADCONTEXT_CONTROL_FPU_GPRS;
         return gdbNum - 26;
     }
-    else if(gdbNum == 58 || gdbNum == 59)
+    else if(gdbNum == 42 || gdbNum == 43)
     {
         *flags = THREADCONTEXT_CONTROL_FPU_SPRS;
-        return gdbNum - 58;
+        return gdbNum - 42;
     }
     else
     {
@@ -86,8 +86,8 @@ GDB_DECLARE_HANDLER(ReadRegister)
         return GDB_SendHexPacket(ctx, &regs.cpu_registers.r[n], 4);
     else if(flags & THREADCONTEXT_CONTROL_CPU_SPRS)
         return GDB_SendHexPacket(ctx, &regs.cpu_registers.sp + (n - 13), 4); // hacky
-    else if(flags & THREADCONTEXT_CONTROL_CPU_GPRS)
-        return GDB_SendHexPacket(ctx, &regs.fpu_registers.s[n], 4);
+    else if(flags & THREADCONTEXT_CONTROL_FPU_GPRS)
+        return GDB_SendHexPacket(ctx, &regs.fpu_registers.d[n], 8);
     else
         return GDB_SendHexPacket(ctx, &regs.fpu_registers.fpscr + n, 4); // hacky
 }
@@ -109,9 +109,19 @@ GDB_DECLARE_HANDLER(WriteRegister)
 
     u32 n = GDB_ConvertRegisterNumber(&flags, gdbRegNum);
     u32 value;
-    GDB_DecodeHex(&value, valueStart, 8);
+    u64 value64;
 
-    if(!flags)
+    if(flags & THREADCONTEXT_CONTROL_FPU_GPRS)
+    {
+        if(GDB_DecodeHex(&value64, valueStart, 8) != 8 || valueStart[16] != 0)
+            return GDB_ReplyErrno(ctx, EINVAL);
+    }
+    else if(flags)
+    {
+       if(GDB_DecodeHex(&value, valueStart, 4) != 4 || valueStart[8] != 0)
+            return GDB_ReplyErrno(ctx, EINVAL);
+    }
+    else
         return GDB_ReplyErrno(ctx, EINVAL);
 
     Result r = svcGetDebugThreadContext(&regs, ctx->debug, ctx->selectedThreadId, flags);
@@ -124,7 +134,7 @@ GDB_DECLARE_HANDLER(WriteRegister)
     else if(flags & THREADCONTEXT_CONTROL_CPU_SPRS)
         *(&regs.cpu_registers.sp + (n - 13)) = value; // hacky
     else if(flags & THREADCONTEXT_CONTROL_FPU_GPRS)
-        memcpy(&regs.fpu_registers.s[n], &value, 4);
+        memcpy(&regs.fpu_registers.d[n], &value64, 8);
     else
         *(&regs.fpu_registers.fpscr + n) = value; // hacky
 
