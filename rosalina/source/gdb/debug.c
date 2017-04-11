@@ -444,7 +444,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                 u32 pending = (GDB_BUF_LEN - 1) / 2;
                 pending = pending > remaining ? pending : remaining;
 
-                int res = GDB_SendProcessMemory(ctx, "O", 1, addr + sent, pending);
+                int res = GDB_SendMemory(ctx, "O", 1, addr + sent, pending);
                 if(res < 0 || (u32) res != 5 + 2 * pending)
                     break;
 

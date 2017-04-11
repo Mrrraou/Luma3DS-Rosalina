@@ -2,7 +2,7 @@
 
 #include <3ds/types.h>
 
-void memcpy(void *dest, const void *src, u32 size);
+void *memcpy(void *dest, const void *src, u32 size);
 int memcmp(const void *buf1, const void *buf2, u32 size);
 void *memset_(void *dest, u32 value, u32 size); // thanks binutils for the nice bug involving memset.
 void *memset32(void *dest, u32 value, u32 size);

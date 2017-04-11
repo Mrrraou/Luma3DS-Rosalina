@@ -55,7 +55,8 @@ static void K_SGI0HandlerCallback(volatile struct Parameters *p)
     p->coreBarrier();
 }
 
-u32 ALIGN(0x400) L2MMUTableFor0x40000000[256] = {0};
+static u32 ALIGN(0x400) L2MMUTableFor0x40000000[256] = { 0 };
+u32 TTBCR;
 static void K_ConfigureSGI0(void)
 {
     // see /patches/k11MainHook.s
@@ -78,8 +79,6 @@ static void K_ConfigureSGI0(void)
     p->initFPU = (void (*) (void))initFPU;
     p->mcuReboot = (void (*) (void))mcuReboot;
     p->coreBarrier = (void (*) (void))coreBarrier;
-
-    u32 TTBCR;
 
     __asm__ volatile("mrc p15, 0, %0, c2, c0, 2" : "=r"(TTBCR));
     p->exceptionStackTop = (u32 *)0xFFFF2000 + (1 << (32 - TTBCR - 20));

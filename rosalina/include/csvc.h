@@ -5,16 +5,18 @@
 /**
  * @brief Executes a function in supervisor mode, using the supervisor-mode stack.
  * @param func Function to execute.
- * @param ... Function parameters, up to 3.
+ * @param ... Function parameters, up to 3 registers.
 */
 Result svcCustomBackdoor(void *func, ...);
 
 /**
  * @brief Gives the physical address corresponding to a virtual address.
+ * @param[out] attributes Memory attributes, see ARM documentation.
  * @param VA Virtual address.
+ * @param writeCheck whether to check if the VA is writable in supervisor mode
  * @return The corresponding physical address, or NULL.
 */
-void *svcConvertVAToPA(const void *VA);
+void *svcConvertVAToPA(u32 *attributes, const void *VA, bool writeCheck);
 
 /**
  * @brief Flushes a range of the data cache (L2C included).

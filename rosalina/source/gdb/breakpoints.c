@@ -39,6 +39,8 @@ int GDB_AddBreakpoint(GDBContext *ctx, u32 address, bool thumb, bool persist)
         return 0;
     else if(ctx->nbBreakpoints == MAX_BREAKPOINT)
         return -EBUSY;
+    else if((thumb && (address & 1) != 0) || (!thumb && (address & 3) != 0))
+        return -EINVAL;
 
     for(u32 i = ctx->nbBreakpoints; i > id && i != 0; i--)
         ctx->breakpoints[i] = ctx->breakpoints[i - 1];

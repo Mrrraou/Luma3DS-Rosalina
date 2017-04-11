@@ -52,8 +52,8 @@ static void setupExceptionHandlers(void)
     *(void **)PA_FROM_VA_PTR(arm11SvcTable + 0x2D) = officialSVCs[0x2D] = (void *)off[1];
     trampo_ = (u32 *)PA_FROM_VA_PTR(off + 3);
 
-    CustomBackdoor = (Result (*)(void *, ...))*((u32 *)officialSVCs[0x2F] + 2);
-    *(void **)PA_FROM_VA_PTR(arm11SvcTable + 0x2F) = officialSVCs[0x2F] = (void *)*((u32 *)officialSVCs[0x2F] + 2);
+    CustomBackdoor = (Result (*)(void *, ...))((u32 *)officialSVCs[0x2F] + 2);
+    *(void **)PA_FROM_VA_PTR(arm11SvcTable + 0x2F) = officialSVCs[0x2F] = (void *)*((u32 *)officialSVCs[0x2F] + 1);
 
     off = (u32 *)originalHandlers[(u32) SVC];
     while(*off++ != 0xE1A00009);

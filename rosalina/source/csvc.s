@@ -14,7 +14,11 @@ SVC_BEGIN svcCustomBackdoor
     bx lr
 
 SVC_BEGIN svcConvertVAToPA
+    str r0, [sp, #-4]!
     svc 0x81
+    ldr r2, [sp], #4
+    cmp r2, #0
+    strne r1, [r2]
     bx lr
 
 SVC_BEGIN svcFlushDataCacheRange

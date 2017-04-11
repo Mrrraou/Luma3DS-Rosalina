@@ -29,3 +29,4 @@ GEN_GETINFO_WRAPPER Thread
 .endm
 
 GEN_OUT1_WRAPPER ConnectToPortHook
+GEN_OUT1_WRAPPER convertVAToPA

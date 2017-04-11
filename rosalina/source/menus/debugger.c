@@ -55,7 +55,7 @@ void Debugger_Enable(void)
         draw_string("Debugger options menu", 10, 10, COLOR_TITLE);
 
         if(alreadyEnabled)
-            draw_string("Already enabled!", 10, 30, COLOR_WHILE);
+            draw_string("Already enabled!", 10, 30, COLOR_WHITE);
 
         else
         {

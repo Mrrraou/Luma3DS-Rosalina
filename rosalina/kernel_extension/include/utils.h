@@ -5,7 +5,7 @@
 
 // For accessing physmem uncached (and directly)
 #define PA_PTR(addr)            (void *)((u32)(addr) | 1u << 31)
-#define PA_FROM_VA_PTR(addr)    PA_PTR(convertVAToPA(addr))
+#define PA_FROM_VA_PTR(addr)    PA_PTR(convertVAToPA(NULL, addr, false))
 
 static inline u32 makeARMBranch(const void *src, const void *dst, bool link) // the macros for those are ugly and buggy
 {
@@ -24,7 +24,9 @@ static inline void *decodeARMBranch(const void *src)
     return (void *)((const u8 *)src + 8 + off);
 }
 
-void *convertVAToPA(const void *addr);
+void *convertVAToPA(u32 *attribs, const void *addr, bool writeCheck);
+void *convertVAToPAWrapper(const void *addr, u32 *attribs, bool writeCheck);
+
 u32 getCurrentCoreID(void);
 bool enableIRQ(void);
 u32 safecpy(void *dst, const void *src, u32 len);
