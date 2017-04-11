@@ -3,12 +3,13 @@
 
 *With Rosalina (∩ ͡° ͜ʖ ͡°)⊃━☆ﾟ*
 
-N.B.: `rosalina` needs to be built separately (then put `rosalina.cxi` in the `luma` folder). `starbit` needs a rework and is disabled.
+N.B.: `rosalina` needs to be built separately (then put `rosalina.cxi` in the `luma` folder). `starbit` needs testing and is on its own untested branch.
 
 ## Rosalina features
 
+* A GDB stub (wip, but most things work)
 * A menu which can be opened at any time (combo: **L+Down+Select**), featuring:
-    * A process list submenu
+    * A process list submenu (used to select process to attach when the debugger is enabled)
     * A FS/SM patch submenu
     * A N3DS Clock+L2 submenu (hidden on O3DS)
     * A screenshot action
@@ -17,19 +18,20 @@ N.B.: `rosalina` needs to be built separately (then put `rosalina.cxi` in the `l
     * New features for existing SVCs, for example:
         * New types for `svcGetProcessInfo`: 0x10000 to get a process's name, 0x10001 to get a process's title ID
         * New types for `svcGetSystemInfo`: 0x10000 for CFW info, 0x10001 for N3DS-related info, etc.
-        * Some other additions not listed here
+        * New types for `svcGetThreadInfo`: 0x10000 for thread local storage
+        * Many other changes not listed here
     * New SVCs:
-        * 0x80 for `Result svcCustomBackdoor(void *fn, ... /* up to 3 args */)`. This uses the supervisor stack and thus doesn't crash when an interrupt is handled
         * 0x2E for the now deprecated `svcGetCFWInfo`
+        * See `csvc.h` ( ͡° ͜ʖ ͡°)
     * IPC monitoring:
         * Perfect-compatibilty "language emulation"
     * Debug features:
         * SVC permission checks don't exist anymore
         * Everything behaves as if the "Allow debug" kernel flags was always set, and `svcKernelSetState` as well as the official debug handlers always believe that the unit is a development one. This is needed for the below item
         * Numerous fixes of Luma3DS's fatal exception handlers. Moreover, they are now only used either on privileged-mode crashes or when there is no preferred alternative, that are namely: KDebug based-debugging, or user-defined exception handlers.
-    * New memory mapping: `PA 00000000..30000000 -> VA 80000000..B0000000 [ Priv: RWX, User: RWX ] [ Shared, Strongly Ordered ]`
+    * New memory mapping: `PA 00000000..30000000 -> VA 80000000..B0000000 [ Priv: RWX, User: RWX ] [ Shared, Strongly Ordered ]` (accessible from the GDB stub)
 
-Because of memory issues, `ErrDisp` is not launched; `err:f` is still to be reimplemented.
+Because of memory issues, `ErrDisp` is not launched; `err:f` has been reimplemented.
 
 ---
 
