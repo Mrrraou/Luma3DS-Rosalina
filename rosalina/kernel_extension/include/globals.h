@@ -20,8 +20,6 @@ extern Result (*OpenProcess)(Handle *out, u32 processId);
 extern Result (*GetProcessId)(u32 *out, Handle process);
 extern Result (*DebugActiveProcess)(Handle *out, u32 processId);
 
-extern void (*KTimerAndWDTManager__Sanitize)(KTimerAndWDTManager *this);
-
 extern void (*flushDataCacheRange)(void *addr, u32 len);
 extern void (*invalidateInstructionCacheRange)(void *addr, u32 len);
 

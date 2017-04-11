@@ -163,14 +163,7 @@ static void findUsefulSymbols(void)
             for(off2 = off; *off2 != 0xE92D40F8; off2--);
             invalidateInstructionCacheRange = (void (*)(void *, u32))off2;
         }
-
-        if(kernelVersion >= SYSTEM_VERSION(2, 53, 0) && off[0] == 0xE92D41F0 && off[1] == 0xE1A06000
-            && off[2] == 0xE3A07000 && off[3] == 0xE2860020)
-            KTimerAndWDTManager__Sanitize = (void (*)(KTimerAndWDTManager *))off;
-
     }
-
-    if(kernelVersion < SYSTEM_VERSION(2, 53, 0)) KTimerAndWDTManager__Sanitize = NULL;
 }
 
 struct Parameters
@@ -208,10 +201,7 @@ static void enableDebugFeatures(void)
 static void doOtherPatches(void)
 {
     u32 *kpanic = (u32 *)kernelpanic;
-    u32 *sanitize = (u32 *)(u32 *)KTimerAndWDTManager__Sanitize;
     *(u32 *)PA_FROM_VA_PTR(kpanic) = 0xE12FFF7E; // bkpt 0xFFFE
-    if(sanitize != NULL)
-        *(u32 *)PA_FROM_VA_PTR(sanitize) = 0xE12FFF1E; // bx lr
 }
 
 void main(volatile struct Parameters *p)

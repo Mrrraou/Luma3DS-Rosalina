@@ -127,6 +127,7 @@ typedef struct KSynchronizationInterruptEvent
 } KSynchronizationInterruptEvent;
 
 /* 77 */
+// This one got added a vtable func on 11.3
 typedef struct KTimeableInterruptEvent
 {
   KSynchronizationInterruptEvent syncInterruptEvent;

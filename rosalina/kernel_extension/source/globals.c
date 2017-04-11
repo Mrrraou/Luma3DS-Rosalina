@@ -1,4 +1,4 @@
-#include "kernel.h"
+#include "globals.h"
 
 KProcess * (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, Handle processHandle);
 KThread * (*KProcessHandleTable__ToKThread)(KProcessHandleTable *this, Handle threadHandle);
@@ -17,8 +17,6 @@ Result (*ConnectToPort)(Handle *out, const char *name);
 Result (*OpenProcess)(Handle *out, u32 processId);
 Result (*GetProcessId)(u32 *out, Handle process);
 Result (*DebugActiveProcess)(Handle *out, u32 processId);
-
-void (*KTimerAndWDTManager__Sanitize)(KTimerAndWDTManager *this);
 
 void (*flushDataCacheRange)(void *addr, u32 len);
 void (*invalidateInstructionCacheRange)(void *addr, u32 len);
@@ -52,19 +50,5 @@ KBaseInterruptEvent *customInterruptEvent;
 void (*initFPU)(void);
 void (*mcuReboot)(void);
 void (*coreBarrier)(void);
-
-typedef struct PACKED CfwInfo
-{
-    char magic[4];
-
-    u8 versionMajor;
-    u8 versionMinor;
-    u8 versionBuild;
-    u8 flags;
-
-    u32 commitHash;
-
-    u32 config;
-} CfwInfo;
 
 CfwInfo cfwInfo;
