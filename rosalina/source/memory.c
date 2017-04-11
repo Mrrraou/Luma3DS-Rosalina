@@ -26,7 +26,7 @@ int memcmp(const void *buf1, const void *buf2, u32 size)
     return 0;
 }
 
-void *memset_(void *dest, u32 value, u32 size)
+void *memset(void *dest, u32 value, u32 size)
 {
     u8 *destc = (u8 *)dest;
 
@@ -92,6 +92,17 @@ s32 strlen(const char *string)
     while(*stringEnd) stringEnd++;
 
     return stringEnd - string;
+}
+
+s32 strcmp(const char *str1, const char *str2)
+{
+    while(*str1 && (*str1 == *str2))
+    {
+        str1++;
+        str2++;
+    }
+
+    return *str1 - *str2;
 }
 
 s32 strncmp(const char *str1, const char *str2, u32 size)

@@ -108,7 +108,7 @@ int GDB_ReceivePacket(GDBContext *ctx)
 {
     char backupbuf[GDB_BUF_LEN + 4];
     memcpy(backupbuf, ctx->buffer, ctx->latestSentPacketSize);
-    memset_(ctx->buffer, 0, sizeof(ctx->buffer));
+    memset(ctx->buffer, 0, sizeof(ctx->buffer));
 
     int r = soc_recv(ctx->super.sockfd, ctx->buffer, sizeof(ctx->buffer), MSG_PEEK);
     if(r < 1)

@@ -211,7 +211,7 @@ DebugEventInfo GDB_PreprocessDebugEvent(GDBContext *ctx, const DebugEventInfo *i
             {
                 for(u32 j = i; j < ctx->nbThreads - 1; j++)
                     memcpy(ctx->threadInfos + j, ctx->threadInfos + j + 1, sizeof(ThreadInfo));
-                memset_(ctx->threadInfos + --ctx->nbThreads, 0, sizeof(ThreadInfo));
+                memset(ctx->threadInfos + --ctx->nbThreads, 0, sizeof(ThreadInfo));
             }
 
             break;
@@ -247,7 +247,7 @@ DebugEventInfo GDB_PreprocessDebugEvent(GDBContext *ctx, const DebugEventInfo *i
                     u32 svcId = info->exception.fault.fault_information;
                     if(svcId & 0x40000000)
                     {
-                        memset_(&out, 0, sizeof(DebugEventInfo));
+                        memset(&out, 0, sizeof(DebugEventInfo));
                         out.type = DBGEVENT_SYSCALL_IN;
                         out.thread_id = info->thread_id;
                         out.flags = 1;
@@ -255,7 +255,7 @@ DebugEventInfo GDB_PreprocessDebugEvent(GDBContext *ctx, const DebugEventInfo *i
                     }
                     else if(svcId & 0x80000000)
                     {
-                        memset_(&out, 0, sizeof(DebugEventInfo));
+                        memset(&out, 0, sizeof(DebugEventInfo));
                         out.type = DBGEVENT_SYSCALL_OUT;
                         out.thread_id = info->thread_id;
                         out.flags = 1;

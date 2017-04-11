@@ -54,7 +54,7 @@ static int GDB_HandleQuery(GDBContext *ctx, GDBQueryDirection direction)
 
     for(u32 i = 0; i < sizeof(gdbQueryHandlers) / sizeof(gdbQueryHandlers[0]); i++)
     {
-        if(strncmp(gdbQueryHandlers[i].name, nameBegin, strlen(gdbQueryHandlers[i].name)) == 0 && gdbQueryHandlers[i].direction == direction)
+        if(strcmp(gdbQueryHandlers[i].name, nameBegin) == 0 && gdbQueryHandlers[i].direction == direction)
         {
             ctx->commandData = queryData;
             return gdbQueryHandlers[i].handler(ctx);
@@ -94,7 +94,7 @@ GDB_DECLARE_QUERY_HANDLER(CatchSyscalls)
 {
     if(ctx->commandData[0] == '0')
     {
-        memset_(ctx->svcMask, 0, 32);
+        memset(ctx->svcMask, 0, 32);
         return R_SUCCEEDED(svcKernelSetState(0x10002, ctx->pid, false)) ? GDB_ReplyOk(ctx) : GDB_ReplyErrno(ctx, EPERM);
     }
     else if(ctx->commandData[0] == '1')
@@ -103,7 +103,7 @@ GDB_DECLARE_QUERY_HANDLER(CatchSyscalls)
         {
             u32 id;
             const char *pos = ctx->commandData + 2;
-            memset_(ctx->svcMask, 0, 32);
+            memset(ctx->svcMask, 0, 32);
 
             do
             {
@@ -116,7 +116,7 @@ GDB_DECLARE_QUERY_HANDLER(CatchSyscalls)
             while(*pos != 0);
         }
         else
-            memset_(ctx->svcMask, 0xFF, 32);
+            memset(ctx->svcMask, 0xFF, 32);
 
         return R_SUCCEEDED(svcKernelSetState(0x10002, ctx->pid, true, ctx->svcMask)) ? GDB_ReplyOk(ctx) : GDB_ReplyErrno(ctx, EPERM);
     }

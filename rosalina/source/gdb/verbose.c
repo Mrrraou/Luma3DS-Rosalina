@@ -31,7 +31,7 @@ GDB_DECLARE_HANDLER(VerboseCommand)
 
     for(u32 i = 0; i < sizeof(gdbVerboseCommandHandlers) / sizeof(gdbVerboseCommandHandlers[0]); i++)
     {
-        if(strncmp(gdbVerboseCommandHandlers[i].name, nameBegin, strlen(gdbVerboseCommandHandlers[i].name)) == 0)
+        if(strcmp(gdbVerboseCommandHandlers[i].name, nameBegin) == 0)
         {
             ctx->commandData = vData;
             return gdbVerboseCommandHandlers[i].handler(ctx);

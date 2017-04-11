@@ -103,7 +103,7 @@ Result server_init(struct sock_server *serv)
         }
     }
 
-    memset_(serv, 0, sizeof(struct sock_server));
+    memset(serv, 0, sizeof(struct sock_server));
 
     for(int i = 0; i < MAX_PORTS; i++)
         serv->serv_ctxs[i].type = SOCK_NONE;

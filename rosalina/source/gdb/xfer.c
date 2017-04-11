@@ -70,9 +70,9 @@ GDB_DECLARE_QUERY_HANDLER(Xfer)
     const char *offStart = annexEnd + 1;
     char buf[GDB_BUF_LEN];
 
-    if(strncmp(objectStart, "features", strlen("features")) == 0 && strncmp(opStart, "read", 4) == 0)
+    if(strcmp(objectStart, "features") == 0 && strcmp(opStart, "read") == 0)
     {
-        if(strncmp(annexStart, "target.xml", strlen("target.xml")) == 0)
+        if(strcmp(annexStart, "target.xml") == 0)
         {
             u32 lst[2];
             if(GDB_ParseHexIntegerList(lst, offStart, 2, 0) == NULL)

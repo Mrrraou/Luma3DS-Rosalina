@@ -5,7 +5,6 @@
 #include <3ds/synchronization.h>
 #include <3ds/result.h>
 #include "sock_util.h"
-#include "macros.h"
 #include "memory.h"
 
 #define MAX_DEBUG           3

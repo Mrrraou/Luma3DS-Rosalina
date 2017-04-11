@@ -43,7 +43,7 @@ void GDB_ResetWatchpoints(void)
     svcSetHardwareBreakPoint(5, 0, 0);
     svcSetHardwareBreakPoint(0x101, 0, 0);
 
-    memset_(&manager, 0, sizeof(WatchpointManager));
+    memset(&manager, 0, sizeof(WatchpointManager));
 
     RecursiveLock_Unlock(&watchpointManagerLock);
 }
@@ -121,7 +121,7 @@ int GDB_RemoveWatchpoint(GDBContext *ctx, u32 address, WatchpointKind kind)
         svcSetHardwareBreakPoint(4 + id, 0, 0);
         svcSetHardwareBreakPoint(0x100 | id, 0, 0);
 
-        memset_(&manager.watchpoints[id], 0, sizeof(Watchpoint));
+        memset(&manager.watchpoints[id], 0, sizeof(Watchpoint));
         manager.total--;
 
         if(ctx->watchpoints[0] == address)

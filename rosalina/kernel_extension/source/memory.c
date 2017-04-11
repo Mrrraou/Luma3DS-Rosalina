@@ -1,13 +1,15 @@
 #include "memory.h"
 #include "utils.h"
 
-void memcpy(void *dest, const void *src, u32 size)
+void *memcpy(void *dest, const void *src, u32 size)
 {
     u8 *destc = (u8 *)dest;
     const u8 *srcc = (const u8 *)src;
 
     for(u32 i = 0; i < size; i++)
         destc[i] = srcc[i];
+
+    return dest;
 }
 
 int memcmp(const void *buf1, const void *buf2, u32 size)
@@ -93,6 +95,17 @@ s32 strlen(const char *string)
     return stringEnd - string;
 }
 
+s32 strcmp(const char *str1, const char *str2)
+{
+    while(*str1 && (*str1 == *str2))
+    {
+        str1++;
+        str2++;
+    }
+
+    return *str1 - *str2;
+}
+
 s32 strncmp(const char *str1, const char *str2, u32 size)
 {
     while(size && *str1 && (*str1 == *str2))
@@ -104,7 +117,7 @@ s32 strncmp(const char *str1, const char *str2, u32 size)
     if (!size)
         return 0;
     else
-        return *(u8*)str1 - *(u8*)str2;
+        return *str1 - *str2;
 }
 
 void hexItoa(u64 number, char *out, u32 digits, bool uppercase)

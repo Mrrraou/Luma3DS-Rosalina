@@ -102,7 +102,7 @@ int GDB_CloseClient(GDBContext *ctx)
         if(!ctx->breakpoints[i].persistent)
             GDB_DisableBreakpointById(ctx, i);
     }
-    memset_(&ctx->breakpoints, 0, sizeof(ctx->breakpoints));
+    memset(&ctx->breakpoints, 0, sizeof(ctx->breakpoints));
     ctx->nbBreakpoints = 0;
 
     for(u32 i = 0; i < ctx->nbWatchpoints; i++)
@@ -113,7 +113,7 @@ int GDB_CloseClient(GDBContext *ctx)
     ctx->nbWatchpoints = 0;
 
     svcKernelSetState(0x10002, ctx->pid, false);
-    memset_(ctx->svcMask, 0, 32);
+    memset(ctx->svcMask, 0, 32);
 
     svcClearEvent(ctx->clientAcceptedEvent);
     ctx->eventToWaitFor = ctx->clientAcceptedEvent;
@@ -177,10 +177,10 @@ void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
     ctx->pid = 0;
     ctx->previousThreadId = ctx->currentThreadId = ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
     ctx->nbThreads = 0;
-    memset_(ctx->threadInfos, 0, sizeof(ctx->threadInfos));
+    memset(ctx->threadInfos, 0, sizeof(ctx->threadInfos));
     ctx->catchThreadEvents = false;
     ctx->nbPendingDebugEvents = 0;
-    memset_(ctx->pendingDebugEvents, 0, sizeof(ctx->pendingDebugEvents));
+    memset(ctx->pendingDebugEvents, 0, sizeof(ctx->pendingDebugEvents));
     RecursiveLock_Unlock(&ctx->lock);
 }
 

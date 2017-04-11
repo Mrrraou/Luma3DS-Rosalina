@@ -131,7 +131,7 @@ int socBind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
     u32 *cmdbuf = getThreadCommandBuffer();
     u8 tmpaddr[0x1c];
 
-    memset_(tmpaddr, 0, 0x1c);
+    memset(tmpaddr, 0, 0x1c);
 
     if(addr->sa_family == AF_INET)
         tmp_addrlen = 8;
@@ -211,7 +211,7 @@ int socAccept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
     u8 tmpaddr[0x1c];
     u32 saved_threadstorage[2];
 
-    memset_(tmpaddr, 0, 0x1c);
+    memset(tmpaddr, 0, 0x1c);
 
     cmdbuf[0] = IPC_MakeHeader(0x4,2,2); // 0x40082
     cmdbuf[1] = (u32)sockfd;

@@ -146,7 +146,7 @@ static char *ee_number(char *str, long long num, int base, int size, int precisi
   return str;
 }
 
-static char *eaddr(char *str, unsigned char *addr, int size, int precision UNUSED, int type)
+static char *eaddr(char *str, unsigned char *addr, int size, int precision __attribute__((unused)), int type)
 {
   char tmp[24];
   char *dig = lower_digits;
@@ -168,7 +168,7 @@ static char *eaddr(char *str, unsigned char *addr, int size, int precision UNUSE
   return str;
 }
 
-static char *iaddr(char *str, unsigned char *addr, int size, int precision UNUSED, int type)
+static char *iaddr(char *str, unsigned char *addr, int size, int precision __attribute__((unused)), int type)
 {
   char tmp[24];
   int i, n, len;

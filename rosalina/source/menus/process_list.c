@@ -29,7 +29,7 @@ static inline int ProcessList_FormatInfoLine(char *out, const ProcessInfo *info)
     checkbox = !gdbServer.super.running ? "" : (id < MAX_DEBUG ? "(x) " : "( ) ");
 
     char commentBuf[23 + 1] = { 0 }; // exactly the size of "Remote: 255.255.255.255"
-    memset_(commentBuf, ' ', 23);
+    memset(commentBuf, ' ', 23);
 
     if(info->isZombie)
         memcpy(commentBuf, "Zombie", 7);
