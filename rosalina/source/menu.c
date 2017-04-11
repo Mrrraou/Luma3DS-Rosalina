@@ -109,7 +109,7 @@ void menuThreadMain(void)
             menuShow();
             menuLeave();
         }
-        svcSleepThread(50 * 1000 * 1000);
+        svcSleepThread(50 * 1000 * 1000LL);
     }
 }
 
@@ -119,6 +119,7 @@ void menuEnter(void)
     if(AtomicPostIncrement(&menuRefCount) == 0)
     {
         svcKernelSetState(0x10000, 1);
+        svcSleepThread(5 * 1000 * 100LL);
         draw_setupFramebuffer();
         draw_clearFramebuffer();
     }
