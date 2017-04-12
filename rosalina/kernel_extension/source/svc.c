@@ -18,9 +18,9 @@ void signalSvcEntry(u8 *pageEnd)
     u32 svcId = *(u8 *)(pageEnd - 0xB5);
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
 
-    // Since DBGEVENT_SYSCALL_ENTRY is non blocking, we'll cheat using EXCEVENT_UNDEFINED_SYSCALL
-    if(shouldSignalSyscallDebugEvent(currentProcess, svcId))
-        SignalDebugEvent(DBGEVENT_EXCEPTION, EXCEVENT_UNDEFINED_SYSCALL, 0x40000000 | svcId);
+    // Since DBGEVENT_SYSCALL_ENTRY is non blocking, we'll cheat using EXCEVENT_UNDEFINED_SYSCALL (debug->svcId is fortunately an u16!)
+    if(debugOfProcess(currentProcess) != NULL && shouldSignalSyscallDebugEvent(currentProcess, svcId))
+        SignalDebugEvent(DBGEVENT_EXCEPTION, EXCEVENT_UNDEFINED_SYSCALL, 0x4000 | svcId);
 }
 
 void signalSvcReturn(u8 *pageEnd)
@@ -28,9 +28,9 @@ void signalSvcReturn(u8 *pageEnd)
     u32 svcId = *(u8 *)(pageEnd - 0xB5);
     KProcess *currentProcess = currentCoreContext->objectContext.currentProcess;
 
-    // Since DBGEVENT_SYSCALL_RETURN is non blocking, we'll cheat using EXCEVENT_UNDEFINED_SYSCALL
-    if(shouldSignalSyscallDebugEvent(currentProcess, svcId))
-        SignalDebugEvent(DBGEVENT_EXCEPTION, EXCEVENT_UNDEFINED_SYSCALL, 0x80000000 | svcId);
+    // Since DBGEVENT_SYSCALL_RETURN is non blocking, we'll cheat using EXCEVENT_UNDEFINED_SYSCALL (debug->svcId is fortunately an u16!)
+    if(debugOfProcess(currentProcess) != NULL && shouldSignalSyscallDebugEvent(currentProcess, svcId))
+        SignalDebugEvent(DBGEVENT_EXCEPTION, EXCEVENT_UNDEFINED_SYSCALL, 0x8000 | svcId);
 }
 
 void *svcHook(u8 *pageEnd)

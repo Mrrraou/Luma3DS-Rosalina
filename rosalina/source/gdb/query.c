@@ -102,12 +102,12 @@ GDB_DECLARE_QUERY_HANDLER(CatchSyscalls)
         if(ctx->commandData[1] == ';')
         {
             u32 id;
-            const char *pos = ctx->commandData + 2;
+            const char *pos = ctx->commandData + 1;
             memset(ctx->svcMask, 0, 32);
 
             do
             {
-                pos = GDB_ParseHexIntegerList(&id, pos, 1, ',');
+                pos = GDB_ParseHexIntegerList(&id, pos + 1, 1, ';');
                 if(pos == NULL)
                     return GDB_ReplyErrno(ctx, EILSEQ);
 

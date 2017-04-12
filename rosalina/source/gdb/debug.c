@@ -183,9 +183,8 @@ static int GDB_ParseCommonThreadInfo(char *out, GDBContext *ctx, int sig)
     return n;
 }
 
-DebugEventInfo GDB_PreprocessDebugEvent(GDBContext *ctx, const DebugEventInfo *info)
+void GDB_PreprocessDebugEvent(GDBContext *ctx, DebugEventInfo *info)
 {
-    DebugEventInfo out = *info;
     switch(info->type)
     {
         case DBGEVENT_ATTACH_THREAD:
@@ -244,22 +243,22 @@ DebugEventInfo GDB_PreprocessDebugEvent(GDBContext *ctx, const DebugEventInfo *i
                 }
                 case EXCEVENT_UNDEFINED_SYSCALL:
                 {
-                    u32 svcId = info->exception.fault.fault_information;
-                    if(svcId & 0x40000000)
+                    u32 threadId = info->thread_id, svcId = info->exception.fault.fault_information;
+                    if(svcId & 0x4000)
                     {
-                        memset(&out, 0, sizeof(DebugEventInfo));
-                        out.type = DBGEVENT_SYSCALL_IN;
-                        out.thread_id = info->thread_id;
-                        out.flags = 1;
-                        out.syscall.syscall = svcId & 0xFF;
+                        memset(info, 0, sizeof(DebugEventInfo));
+                        info->type = DBGEVENT_SYSCALL_IN;
+                        info->thread_id = threadId;
+                        info->flags = 1;
+                        info->syscall.syscall = svcId & 0xFF;
                     }
-                    else if(svcId & 0x80000000)
+                    else if(svcId & 0x8000)
                     {
-                        memset(&out, 0, sizeof(DebugEventInfo));
-                        out.type = DBGEVENT_SYSCALL_OUT;
-                        out.thread_id = info->thread_id;
-                        out.flags = 1;
-                        out.syscall.syscall = svcId & 0xFF;
+                        memset(info, 0, sizeof(DebugEventInfo));
+                        info->type = DBGEVENT_SYSCALL_OUT;
+                        info->thread_id = threadId;
+                        info->flags = 1;
+                        info->syscall.syscall = svcId & 0xFF;
                     }
                     break;
                 }
@@ -271,8 +270,6 @@ DebugEventInfo GDB_PreprocessDebugEvent(GDBContext *ctx, const DebugEventInfo *i
         default:
             break;
     }
-
-    return out;
 }
 
 int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
@@ -518,7 +515,7 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
     if(R_FAILED(rdbg))
         return -1;
 
-    info = GDB_PreprocessDebugEvent(ctx, &info);
+    GDB_PreprocessDebugEvent(ctx, &info);
 
     int ret = 0;
     bool dontBreak = info.type == DBGEVENT_OUTPUT_STRING || info.type == DBGEVENT_ATTACH_PROCESS ||

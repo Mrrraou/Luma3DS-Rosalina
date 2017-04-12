@@ -4,6 +4,8 @@
 static const char xferTargetXmlData[] = "<?xml version=\"1.0\"?>\n\
 <!DOCTYPE target SYSTEM \"gdb-target.dtd\">\n\
 <target version=\"1.0\">\n\
+  <architecture>arm</architecture>\n\
+  <osabi>3DS</osabi>\n\
   <feature name=\"org.gnu.gdb.arm.core\">\n\
     <reg name=\"r0\" bitsize=\"32\"/>\n\
     <reg name=\"r1\" bitsize=\"32\"/>\n\
