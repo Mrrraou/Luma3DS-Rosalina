@@ -207,11 +207,19 @@ GDB_DECLARE_QUERY_HANDLER(ThreadExtraInfo)
     char sCoreIdeal[64], sCoreCreator[64];
     char buf[512];
 
+    u32 tls = 0;
+
     if(GDB_ParseHexIntegerList(&id, ctx->commandData, 1, 0) == NULL)
         return GDB_ReplyErrno(ctx, EILSEQ);
 
+    for(u32 i = 0; i < MAX_DEBUG_THREAD; i++)
+    {
+        if(ctx->threadInfos[i].id == id)
+            tls = ctx->threadInfos[i].tls;
+    }
+
     r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
-    sStatus = R_SUCCEEDED(r) ? (val == 1 ? "running, " : "idle, ") : "";
+    sStatus = R_SUCCEEDED(r) ? (val == 1 ? ", running, " : ", idle, ") : "";
 
     val = (u32)GDB_GetDynamicThreadPriority(ctx, id);
     if(val == 65)
@@ -231,13 +239,13 @@ GDB_DECLARE_QUERY_HANDLER(ThreadExtraInfo)
     else
         sprintf(sCoreIdeal, "ideal core: %u, ", val);
 
-    r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_CPU_CREATOR);
+    r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_CPU_CREATOR); // Creator = "first ran, and running the thread"
     if(R_FAILED(r))
         sCoreCreator[0] = 0;
     else
-        sprintf(sCoreCreator, "created by core %u", val);
+        sprintf(sCoreCreator, "running on core %u", val);
 
-    n = sprintf(buf, "%s%s%s%s%s", sStatus, sThreadDynamicPriority, sThreadStaticPriority,
+    n = sprintf(buf, "TLS: 0x%08x%s%s%s%s%s", tls, sStatus, sThreadDynamicPriority, sThreadStaticPriority,
                 sCoreIdeal, sCoreCreator);
 
     return GDB_SendHexPacket(ctx, buf, (u32)n);
