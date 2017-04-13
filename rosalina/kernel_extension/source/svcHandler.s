@@ -22,6 +22,7 @@ svcHandler:
     @ sp = page end - 0x110
     add r0, sp, #0x110       @ page end
     blx svcHook
+    cpsid i
     mov r8, r0
     ldmfd sp, {r0-r7, r12, lr}
     cmp r8, #0
