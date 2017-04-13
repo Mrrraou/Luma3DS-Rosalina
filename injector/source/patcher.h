@@ -20,7 +20,7 @@ enum multiOptions
     BRIGHTNESS,
     SPLASH,
     PIN,
-    NEWCPU,
+    NEWCPU
 };
 
 enum singleOptions
