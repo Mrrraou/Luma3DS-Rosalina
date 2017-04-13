@@ -11,9 +11,9 @@ static u32 masks[MAX_DEBUG][8] = {0};
 
 s32 rosalinaState;
 
-bool shouldSignalSyscallDebugEvent(const KProcess *process, u8 svcId)
+bool shouldSignalSyscallDebugEvent(KProcess *process, u8 svcId)
 {
-    u32 pid = KPROCESS_GET_RVALUE(process, processId);
+    u32 pid = idOfProcess(process);
     u32 id;
     for(id = 0; id < nbEnabled && maskedPids[id] != pid; id++);
     if(id == MAX_DEBUG)

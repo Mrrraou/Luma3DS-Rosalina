@@ -1,4 +1,5 @@
 #include "svc.h"
+#include "svc/ControlMemory.h"
 #include "svc/GetProcessInfo.h"
 #include "svc/GetThreadInfo.h"
 #include "svc/GetSystemInfo.h"
@@ -45,6 +46,8 @@ void *svcHook(u8 *pageEnd)
     u8 svcId = *(u8 *)(pageEnd - 0xB5);
     switch(svcId)
     {
+        case 0x01:
+            return ControlMemoryHookWrapper;
         case 0x2A:
             return GetSystemInfoHookWrapper;
         case 0x2B:
@@ -80,6 +83,8 @@ void *svcHook(u8 *pageEnd)
             return invalidateEntireInstructionCache;
         case 0x86:
             return MapProcessMemoryWithSource;
+        case 0x87:
+            return ControlMemoryEx;
 
         default:
             return (svcId <= 0x7D) ? officialSVCs[svcId] : NULL;

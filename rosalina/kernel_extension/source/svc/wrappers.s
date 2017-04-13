@@ -30,3 +30,29 @@ GEN_GETINFO_WRAPPER Thread
 
 GEN_OUT1_WRAPPER ConnectToPortHook
 GEN_OUT1_WRAPPER convertVAToPA
+
+.global ControlMemoryHookWrapper
+.type   ControlMemoryHookWrapper, %function
+ControlMemoryHookWrapper:
+    push {lr}
+    sub sp, #12
+    stmia sp, {r0, r4}
+    add r0, sp, #8
+    blx ControlMemoryHook
+    ldr r1, [sp, #8]
+    add sp, #12
+    pop {pc}
+
+.global ControlMemoryEx
+.type   ControlMemoryEx, %function
+ControlMemoryEx:
+    push {lr}
+    sub sp, #8
+    cmp r5, #0
+    movne r5, #1
+    push {r0, r4, r5}
+    add r0, sp, #12
+    blx ControlMemory
+    ldr r1, [sp, #12]
+    add sp, #20
+    pop {pc}

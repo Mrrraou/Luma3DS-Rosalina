@@ -24,6 +24,21 @@ static inline void *decodeARMBranch(const void *src)
     return (void *)((const u8 *)src + 8 + off);
 }
 
+// For ARM prologs in the form of: push {regs} ... sub sp, #off (this obviously doesn't intend to cover all cases)
+static inline u32 computeARMFrameSize(const u32 *prolog)
+{
+    const u32 *off;
+
+    for(off = prolog; (*off >> 16) != 0xE92D; off++); // look for stmfd sp! = push
+    u32 nbPushedRegs = 0;
+    for(u32 val = *off & 0xFFFF; val != 0; val >>= 1) // 1 bit = 1 pushed register
+        nbPushedRegs += val & 1;
+    for(; (*off >> 8) != 0xE24DD0; off++); // look for sub sp, #offset
+    u32 localVariablesSpaceSize = *off & 0xFF;
+
+    return 4 * nbPushedRegs + localVariablesSpaceSize;
+}
+
 void *convertVAToPA(u32 *attribs, const void *addr, bool writeCheck);
 void *convertVAToPAWrapper(const void *addr, u32 *attribs, bool writeCheck);
 

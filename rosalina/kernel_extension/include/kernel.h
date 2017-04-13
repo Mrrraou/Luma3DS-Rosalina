@@ -1115,6 +1115,11 @@ offsetof(KProcessO3DSPre8x, field)))
 
 #define KPROCESS_GET_RVALUE_TYPE(type, obj, field) *(KPROCESS_GET_PTR(type, obj, field))
 
+static inline u32 idOfProcess(KProcess *process)
+{
+    return KPROCESS_GET_RVALUE(process, processId);
+}
+
 static inline KProcessHwInfo *hwInfoOfProcess(KProcess *process)
 {
     return KPROCESS_GET_PTR_TYPE(KProcessHwInfo, process, hwInfo);

@@ -129,6 +129,9 @@ static void findUsefulSymbols(void)
         }
     }
 
+    // The official prototype of ControlMemory doesn't have that extra param'
+    ControlMemory = (Result (*)(u32 *, u32, u32, u32, MemOp, MemPerm, bool))
+                    decodeARMBranch((u32 *)officialSVCs[0x01] + 5);
     GetSystemInfo = (Result (*)(s64 *, s32, s32))decodeARMBranch((u32 *)officialSVCs[0x2A] + 3);
     GetProcessInfo = (Result (*)(s64 *, Handle, u32))decodeARMBranch((u32 *)officialSVCs[0x2B] + 3);
     GetThreadInfo = (Result (*)(s64 *, Handle, u32))decodeARMBranch((u32 *)officialSVCs[0x2C] + 3);
@@ -189,12 +192,11 @@ static void enableDebugFeatures(void)
     // Also patch kernelpanic with bkpt 0xFFFE
     *isDevUnit = true; // for debug SVCs and user exc. handlers, etc.
 
-    u32 *off = (u32 *)officialSVCs[0x7C];
-    while(off[0] != 0xE5D00001 || off[1] != 0xE3500000) off++;
+    u32 *off;
+    for(off = (u32 *)officialSVCs[0x7C]; off[0] != 0xE5D00001 || off[1] != 0xE3500000; off++);
     *(u32 *)PA_FROM_VA_PTR(off + 2) = 0xE1A00000; // in case 6: beq -> nop
 
-    off = (u32 *)DebugActiveProcess;
-    while(*off != 0xE3110001) off++;
+    for(off = (u32 *)DebugActiveProcess; *off != 0xE3110001; off++);
     *(u32 *)PA_FROM_VA_PTR(off) = 0xE3B01001; // tst r1, #1 -> movs r1, #1
 }
 
@@ -202,6 +204,20 @@ static void doOtherPatches(void)
 {
     u32 *kpanic = (u32 *)kernelpanic;
     *(u32 *)PA_FROM_VA_PTR(kpanic) = 0xE12FFF7E; // bkpt 0xFFFE
+
+    u32 *off;
+    for(off = (u32 *)ControlMemory; (off[0] & 0xFFF0FFFF) != 0xE3500001 || (off[1] & 0xFFFF0FFF) != 0x13A00000; off++);
+    off -= 2;
+
+    /*
+        Here we replace currentProcess->processID == 1 by additionnalParameter == 1.
+        This patch should be generic enough to work even on firmware version 5.0.
+
+        It effectively changes the prototype of the ControlMemory function which
+        only caller is the svc 0x01 handler on OFW.
+    */
+    *(u32 *)PA_FROM_VA_PTR(off) = 0xE59D0000 | (*off & 0x0000F000) | (8 + computeARMFrameSize((u32 *)ControlMemory)); // ldr r0, [sp, #(frameSize + 8)]
+
 }
 
 void main(volatile struct Parameters *p)

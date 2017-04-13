@@ -52,3 +52,14 @@ SVC_BEGIN svcMapProcessMemoryWithSource
     svc 0x86
     bx lr
 SVC_END
+
+SVC_BEGIN svcControlMemoryEx
+    push {r0, r4, r5}
+    ldr  r0, [sp, #0xC]
+    ldr  r4, [sp, #0xC+0x4]
+    ldr  r5, [sp, #0xC+0x8]
+    svc  0x87
+    pop  {r2, r4, r5}
+    str  r1, [r2]
+    bx   lr
+SVC_END

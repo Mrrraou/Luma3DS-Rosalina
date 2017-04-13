@@ -15,7 +15,7 @@ dir_build := build
 ARCH    := -mcpu=mpcore -mfpu=vfp  
 ASFLAGS := $(ARCH)
 CFLAGS  := -Wall -Wextra -MMD -MP -mthumb -mthumb-interwork $(ASFLAGS) -I$(dir_include) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math \
--mword-relocations -fomit-frame-pointer -ffunction-sections -fdata-sections
+-mword-relocations -ffunction-sections -fdata-sections
 LDFLAGS := -nostdlib -Wl,--gc-sections $(ARCH)
 
 objects = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
