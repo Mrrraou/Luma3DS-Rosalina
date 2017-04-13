@@ -31,6 +31,7 @@ svcHandler:
         push {r0-r12, lr}
         add r0, sp, #0x148
         blx signalSvcEntry
+        cpsid i
         pop {r0-r12, lr}
 
         cpsie i
@@ -40,6 +41,7 @@ svcHandler:
         push {r0-r12, lr}
         add r0, sp, #0x148
         blx signalSvcReturn
+        cpsid i
         pop {r0-r12, lr}
 
         ldrb lr, [sp, #0x58+0] @ page end - 0xb8 + 0: scheduling flags
