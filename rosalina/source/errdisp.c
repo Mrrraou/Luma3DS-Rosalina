@@ -214,7 +214,7 @@ void errDispThreadMain(void)
     Handle handles[2];
     Handle serverHandle, clientHandle, sessionHandle = 0;
 
-    u32 replyTarget;
+    u32 replyTarget = 0;
     s32 index;
 
     Result res;
