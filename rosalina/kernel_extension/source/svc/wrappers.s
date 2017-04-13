@@ -52,7 +52,9 @@ ControlMemoryEx:
     movne r5, #1
     push {r0, r4, r5}
     add r0, sp, #12
-    blx ControlMemory
+    ldr r12, =ControlMemory
+    ldr r12, [r12]
+    blx r12
     ldr r1, [sp, #12]
     add sp, #20
     pop {pc}
