@@ -548,7 +548,7 @@ int GDB_HandleDebugEvents(GDBContext *ctx)
         {
             if(R_FAILED(r) || info.type != DBGEVENT_EXCEPTION || info.exception.type != EXCEVENT_DEBUGGER_BREAK)
             {
-                GDB_PreprocessDebugEvent(ctx, info);
+                GDB_PreprocessDebugEvent(ctx, &info);
                 ctx->pendingDebugEvents[ctx->nbPendingDebugEvents++] = info;
                 if(info.type != DBGEVENT_EXCEPTION || info.exception.type != EXCEVENT_DEBUGGER_BREAK || !(info.flags & 1))
                     svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
