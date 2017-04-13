@@ -9,7 +9,7 @@
 
 u32 GDB_FindClosestBreakpointSlot(GDBContext *ctx, u32 address)
 {
-    if(address <= ctx->breakpoints[0].address)
+    if(ctx->nbBreakpoints == 0 || address <= ctx->breakpoints[0].address)
         return 0;
     else if(address > ctx->breakpoints[ctx->nbBreakpoints - 1].address)
         return ctx->nbBreakpoints;
