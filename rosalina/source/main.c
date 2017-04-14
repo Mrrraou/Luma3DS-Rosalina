@@ -4,6 +4,7 @@
 #include "fsreg.h"
 #include "menu.h"
 #include "errdisp.h"
+#include "hbloader.h"
 #include "utils.h"
 #include "MyThread.h"
 #include "kernel_extension_setup.h"
@@ -66,7 +67,7 @@ int main(void)
     Result res = 0;
     Handle notificationHandle;
 
-    MyThread *menuThread = menuCreateThread(), *errDispThread = errDispCreateThread();
+    MyThread *menuThread = menuCreateThread(), *errDispThread = errDispCreateThread(), *hbldrThread = hbldrCreateThread();
 
     if(R_FAILED(srvEnableNotification(&notificationHandle)))
         svcBreak(USERBREAK_ASSERT);
@@ -97,6 +98,7 @@ int main(void)
 
     MyThread_Join(menuThread, -1LL);
     MyThread_Join(errDispThread, -1LL);
+    MyThread_Join(hbldrThread, -1LL);
 
     svcCloseHandle(notificationHandle);
     return 0;

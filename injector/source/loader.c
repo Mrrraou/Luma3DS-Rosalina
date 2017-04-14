@@ -169,7 +169,7 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
 
   if (prog_handle >> 32 == 0xFFFF0000)
   {
-    return FSREG_GetProgramInfo(exheader, 1, prog_handle);
+    res = FSREG_GetProgramInfo(exheader, 1, prog_handle);
   }
   else
   {
@@ -178,13 +178,22 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
     //so use PXIPM if FSREG fails OR returns "info", is the second condition a bug?
     if (R_FAILED(res) || (R_SUCCEEDED(res) && R_LEVEL(res) != RL_SUCCESS))
     {
-      return PXIPM_GetProgramInfo(exheader, prog_handle);
+      res = PXIPM_GetProgramInfo(exheader, prog_handle);
     }
     else
     {
-      return FSREG_GetProgramInfo(exheader, 1, prog_handle);
+      res = FSREG_GetProgramInfo(exheader, 1, prog_handle);
     }
   }
+
+  // Force always having sdmc:/ permission
+  if (R_SUCCEEDED(res))
+  {
+    exheader->arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x80;
+    exheader->accessdesc.arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x80;
+  }
+
+  return res;
 }
 
 static Result loader_LoadProcess(Handle *process, u64 prog_handle)
@@ -228,6 +237,47 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
     return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, 1, 2);
   }
 
+  // check for 3dsx process
+  progid = g_exheader.arm11systemlocalcaps.programid;
+  if (progid == 0x000400000FF99900ULL)
+  {
+    Handle hbldr = 0;
+    while (1)
+    {
+      res = svcConnectToPort(&hbldr, "hb:ldr");
+      if (R_LEVEL(res) != RL_PERMANENT ||
+          R_SUMMARY(res) != RS_NOTFOUND ||
+          R_DESCRIPTION(res) != RD_NOT_FOUND
+         ) break;
+      svcSleepThread(500000);
+    }
+    if (R_FAILED(res))
+    {
+      return res;
+    }
+    u32* cmdbuf = getThreadCommandBuffer();
+    cmdbuf[0] = IPC_MakeHeader(1,6,0);
+    cmdbuf[1] = g_exheader.codesetinfo.text.address;
+    cmdbuf[2] = flags & 0xF00;
+    cmdbuf[3] = progid;
+    cmdbuf[4] = progid>>32;
+    memcpy(&cmdbuf[5], g_exheader.codesetinfo.name, 8);
+    res = svcSendSyncRequest(hbldr);
+    svcCloseHandle(hbldr);
+    if (R_SUCCEEDED(res))
+    {
+      res = cmdbuf[1];
+    }
+    if (R_FAILED(res))
+    {
+      return res;
+    }
+    codeset = (Handle)cmdbuf[3];
+    res = svcCreateProcess(process, codeset, g_exheader.arm11kernelcaps.descriptors, count);
+    svcCloseHandle(codeset);
+    return res;
+  }
+
   // allocate process memory
   vaddr.text_addr = g_exheader.codesetinfo.text.address;
   vaddr.text_size = (g_exheader.codesetinfo.text.codesize + 4095) >> 12;
@@ -243,7 +293,6 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
   }
 
   // load code
-  progid = g_exheader.arm11systemlocalcaps.programid;
   if ((res = load_code(progid, &shared_addr, prog_handle, g_exheader.codesetinfo.flags.flag & 1)) >= 0)
   {
     memcpy(&codesetinfo.name, g_exheader.codesetinfo.name, 8);
