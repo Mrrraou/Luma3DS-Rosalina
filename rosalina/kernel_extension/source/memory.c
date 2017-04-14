@@ -73,8 +73,12 @@ u8 *memsearch(u8 *startPos, const void *pattern, u32 size, u32 patternSize)
 
 char *strncpy(char *dest, const char *src, u32 size)
 {
-    for(u32 i = 0; i < size && src[i] != 0; i++)
+    u32 i;
+    for(i = 0; i < size && src[i] != 0; i++)
         dest[i] = src[i];
+
+    for(; i < size; i++)
+        dest[i] = 0;
 
     return dest;
 }
