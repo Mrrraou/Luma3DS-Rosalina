@@ -33,6 +33,12 @@ N.B.: `rosalina` needs to be built separately (then put `rosalina.cxi` in the `l
 
 Because of memory issues, `ErrDisp` is not launched; `err:f` has been reimplemented.
 
+### Setup & other quick notes
+
+* Build this version of Luma3DS itself, then build `rosalina` and put `rosalina.cxi` under `/luma/`.
+* The GDB stub requires https://github.com/TuxSH/binutils-gdb/tree/3ds to work (if using GDB). The GDB stubs also works with IDA (`Use single-step support`, in the specific debugger options prompt, should be unchecked).
+* Use the process menu when the debugger is enabled to select processes to attach to. Make sure to disable the debugger when finished, otherwise your 3DS will not be able to cleanly shutdown/reboot/firmlaunch.
+
 ---
 
 ## What it is
