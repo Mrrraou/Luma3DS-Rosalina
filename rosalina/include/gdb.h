@@ -85,6 +85,7 @@ typedef struct GDBContext
     u32 nbWatchpoints;
     u32 watchpoints[2];
 
+    bool isGDB;
     char *commandData;
     int latestSentPacketSize;
     char buffer[GDB_BUF_LEN + 4];

@@ -51,6 +51,8 @@ static int GDB_HandleQuery(GDBContext *ctx, GDBQueryDirection direction)
         *nameEnd = 0;
         queryData = nameEnd + 1;
     }
+    else
+        queryData = nameEnd;
 
     for(u32 i = 0; i < sizeof(gdbQueryHandlers) / sizeof(gdbQueryHandlers[0]); i++)
     {
@@ -81,6 +83,7 @@ GDB_DECLARE_QUERY_HANDLER(Supported)
 
 GDB_DECLARE_QUERY_HANDLER(StartNoAckMode)
 {
+    ctx->isGDB = true;
     ctx->state = GDB_STATE_NOACK_SENT;
     return GDB_ReplyOk(ctx);
 }
