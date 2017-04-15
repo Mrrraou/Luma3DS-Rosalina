@@ -152,8 +152,8 @@ void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
         There's a possibility of a race condition with a possible user exception handler, but you shouldn't
         use 'kill' on APPLICATION titles in the first place (reboot hanging because the debugger is still running, etc).
     */
-    if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
-        ctx->continueFlags = (DebugFlags)0;
+
+    ctx->continueFlags = (DebugFlags)0;
     while(R_SUCCEEDED(svcGetProcessDebugEvent(&dummy, ctx->debug)));
     while(R_SUCCEEDED(svcContinueDebugEvent(ctx->debug, ctx->continueFlags)));
     if(ctx->flags & GDB_FLAG_TERMINATE_PROCESS)
@@ -179,8 +179,6 @@ void GDB_ReleaseClient(GDBServer *server, GDBContext *ctx)
     ctx->nbThreads = 0;
     memset(ctx->threadInfos, 0, sizeof(ctx->threadInfos));
     ctx->catchThreadEvents = false;
-    ctx->nbPendingDebugEvents = 0;
-    memset(ctx->pendingDebugEvents, 0, sizeof(ctx->pendingDebugEvents));
     RecursiveLock_Unlock(&ctx->lock);
 }
 

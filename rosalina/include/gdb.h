@@ -75,8 +75,7 @@ typedef struct GDBContext
     bool catchThreadEvents;
     bool processEnded, processExited;
 
-    DebugEventInfo pendingDebugEvents[0x10], latestDebugEvent;
-    u32 nbPendingDebugEvents;
+    DebugEventInfo latestDebugEvent;
     DebugFlags continueFlags;
     u32 svcMask[8];
 
