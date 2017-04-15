@@ -34,13 +34,8 @@ static inline void swapHandlerInVeneer(enum VECTORS vector, void *handler)
 
 static u32 *trampo_;
 
-static void setupExceptionHandlers(void)
+static void setupSvcHandler(void)
 {
-    swapHandlerInVeneer(FIQ, FIQHandler);
-    swapHandlerInVeneer(UNDEFINED_INSTRUCTION, undefinedInstructionHandler);
-    swapHandlerInVeneer(PREFETCH_ABORT, prefetchAbortHandler);
-    swapHandlerInVeneer(DATA_ABORT, dataAbortHandler);
-
     swapHandlerInVeneer(SVC, svcHandler);
 
     void **arm11SvcTable = (void**)originalHandlers[(u32)SVC];
@@ -58,8 +53,18 @@ static void setupExceptionHandlers(void)
     off = (u32 *)originalHandlers[(u32) SVC];
     while(*off++ != 0xE1A00009);
     svcFallbackHandler = (void (*)(u8))decodeARMBranch(off);
-    for(;*off != 0xE8DD6F00; off++);
-    officialSvcHandlerTail = off;
+    for(; *off != 0xE92D000F; off++);
+    PostprocessSvc = (void (*)(void))decodeARMBranch(off + 1);
+}
+
+static void setupExceptionHandlers(void)
+{
+    swapHandlerInVeneer(FIQ, FIQHandler);
+    swapHandlerInVeneer(UNDEFINED_INSTRUCTION, undefinedInstructionHandler);
+    swapHandlerInVeneer(PREFETCH_ABORT, prefetchAbortHandler);
+    swapHandlerInVeneer(DATA_ABORT, dataAbortHandler);
+
+    setupSvcHandler();
 }
 
 static void findUsefulSymbols(void)

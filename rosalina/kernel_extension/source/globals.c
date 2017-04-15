@@ -33,7 +33,7 @@ Result (*CustomBackdoor)(void *function, ...);
 
 void (*svcFallbackHandler)(u8 svcId);
 void (*kernelpanic)(void);
-u32 *officialSvcHandlerTail;
+void (*PostprocessSvc)(void);
 
 Result (*SignalDebugEvent)(DebugEventType type, u32 info, ...);
 

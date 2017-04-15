@@ -31,6 +31,7 @@ svcHandler:
     _handled_svc:            @ unused label, just here for formatting
         push {r0-r12, lr}
         add r0, sp, #0x148
+        cpsie i
         blx signalSvcEntry
         cpsid i
         pop {r0-r12, lr}
@@ -41,6 +42,7 @@ svcHandler:
 
         push {r0-r12, lr}
         add r0, sp, #0x148
+        cpsie i
         blx signalSvcReturn
         cpsid i
         pop {r0-r12, lr}
@@ -65,6 +67,29 @@ svcHandler:
     popne {r0-r7, r12}
     add sp, #4
 
-    ldr r8, =officialSvcHandlerTail
-    ldr r8, [r8]
-    bx r8
+    _svc_finished:
+    ldmfd sp, {r8-r11, sp, lr}^
+    cmp lr, #0
+    bne _postprocess_svc
+
+    _svc_return:
+        add sp, #0x18
+        rfefd sp!               @ return to user mode
+
+    _postprocess_svc:
+        mov lr, #0
+        push {r0-r7, r12, lr}
+
+        push {r0-r3}
+        ldr r0, =PostprocessSvc
+        ldr r0, [r0]
+        blx r0
+        pop {r0-r3}
+
+        ldrb lr, [sp, #0x58+0] @ page end - 0xb8 + 0: scheduling flags
+        ldr r8, [sp, #0x24]    @ page_end - 0xec: saved lr (see above) : should reload regs
+        cmp r8, #0
+        addeq sp, #0x24
+        popne {r0-r7, r12}
+        add sp, #4
+        b _svc_finished
