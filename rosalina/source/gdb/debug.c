@@ -210,6 +210,21 @@ void GDB_PreprocessDebugEvent(GDBContext *ctx, DebugEventInfo *info)
             break;
         }
 
+        case DBGEVENT_OUTPUT_STRING:
+        {
+            if(info->output_string.string_addr == 0xFFFFFFFF && (info->output_string.string_size & 0x60000000))
+            {
+                u32 sz = info->output_string.string_size, threadId = info->thread_id;
+                memset(info, 0, sizeof(DebugEventInfo));
+                info->type = (sz & 0x40000000) ? DBGEVENT_SYSCALL_OUT : DBGEVENT_SYSCALL_IN;
+                info->thread_id = threadId;
+                info->flags = 1;
+                info->syscall.syscall = sz & 0xFF;
+            }
+
+            break;
+        }
+
         case DBGEVENT_EXCEPTION:
         {
             switch(info->exception.type)
@@ -225,27 +240,6 @@ void GDB_PreprocessDebugEvent(GDBContext *ctx, DebugEventInfo *info)
                         r = svcSetDebugThreadContext(ctx->debug, info->thread_id, &regs, THREADCONTEXT_CONTROL_CPU_SPRS);
                     }
 
-                    break;
-                }
-                case EXCEVENT_UNDEFINED_SYSCALL:
-                {
-                    u32 threadId = info->thread_id, svcId = info->exception.fault.fault_information;
-                    if(svcId & 0x4000)
-                    {
-                        memset(info, 0, sizeof(DebugEventInfo));
-                        info->type = DBGEVENT_SYSCALL_IN;
-                        info->thread_id = threadId;
-                        info->flags = 1;
-                        info->syscall.syscall = svcId & 0xFF;
-                    }
-                    else if(svcId & 0x8000)
-                    {
-                        memset(info, 0, sizeof(DebugEventInfo));
-                        info->type = DBGEVENT_SYSCALL_OUT;
-                        info->thread_id = threadId;
-                        info->flags = 1;
-                        info->syscall.syscall = svcId & 0xFF;
-                    }
                     break;
                 }
 
