@@ -40,13 +40,6 @@ svcHandler:
         blx r8
         cpsid i
 
-        push {r0-r12, lr}
-        add r0, sp, #0x148
-        cpsie i
-        blx signalSvcReturn
-        cpsid i
-        pop {r0-r12, lr}
-
         ldrb lr, [sp, #0x58+0] @ page end - 0xb8 + 0: scheduling flags
         b _fallback_end
 
@@ -59,22 +52,37 @@ svcHandler:
 
     _fallback_end:
 
-    mov r8, #0
-    strb r8, [sp, #0x58+3]  @ page_end - 0xb8 + 3: svc being handled
     ldr r8, [sp, #0x24]     @ page_end - 0xec: saved lr (see above) : should reload regs
     cmp r8, #0
     addeq sp, #0x24
     popne {r0-r7, r12}
     add sp, #4
 
+    cmp r9, #0xff
+    beq _no_signal_return
+
+    push {r0-r7, r12, lr}
+    add r0, sp, #0x110      @ page end
+    cpsie i
+    blx signalSvcReturn
+    cpsid i
+    pop {r0-r7, r12}
+    add sp, #4
+
+    _no_signal_return:
+
+    mov r8, #0
+    strb r8, [sp, #0x30+3]  @ page_end - 0xb8 + 3: svc being handled
+
     _svc_finished:
+
     ldmfd sp, {r8-r11, sp, lr}^
     cmp lr, #0
     bne _postprocess_svc
 
     _svc_return:
         add sp, #0x18
-        rfefd sp!               @ return to user mode
+        rfefd sp!           @ return to user mode
 
     _postprocess_svc:
         mov lr, #0
