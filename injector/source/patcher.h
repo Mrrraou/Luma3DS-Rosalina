@@ -36,4 +36,4 @@ enum singleOptions
     PATCHUNITINFO
 };
 
-void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize);
+void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 roSize);
