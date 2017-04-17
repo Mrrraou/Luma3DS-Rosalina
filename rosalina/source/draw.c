@@ -158,9 +158,9 @@ static inline void convertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Framebuffer
         case GSP_RGBA8_OES:
         {
             u32 px = *(u32 *)src;
-            dst[2] = px & 0xFF;
-            dst[1] = (px >> 8) & 0xFF;
-            dst[0] = (px >> 16) & 0xFF;
+            dst[2] = (px >>  8) & 0xFF;
+            dst[1] = (px >> 16) & 0xFF;
+            dst[0] = (px >> 24) & 0xFF;
             break;
         }
         case GSP_BGR8_OES:
@@ -178,9 +178,9 @@ static inline void convertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Framebuffer
             green = (px >> 5) & 0x3F;
             red = (px >> 11) & 0x1F;
 
-            dst[2] = (blue  << 3) | (blue  >> 2);
+            dst[0] = (blue  << 3) | (blue  >> 2);
             dst[1] = (green << 2) | (green >> 4);
-            dst[0] = (red   << 3) | (red   >> 2);
+            dst[2] = (red   << 3) | (red   >> 2);
 
             break;
         }
@@ -191,9 +191,9 @@ static inline void convertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Framebuffer
             green = (px >> 5) & 0x1F;
             red = (px >> 10) & 0x1F;
 
-            dst[2] = (blue  << 3) | (blue  >> 2);
+            dst[0] = (blue  << 3) | (blue  >> 2);
             dst[1] = (green << 3) | (green >> 2);
-            dst[0] = (red   << 3) | (red   >> 2);
+            dst[2] = (red   << 3) | (red   >> 2);
 
             break;
         }
@@ -204,9 +204,9 @@ static inline void convertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Framebuffer
             green = (px >> 4) & 0xF;
             red = (px >> 8) & 0xF;
 
-            dst[2] = (blue  << 4) | (blue  >> 4);
+            dst[0] = (blue  << 4) | (blue  >> 4);
             dst[1] = (green << 4) | (green >> 4);
-            dst[0] = (red   << 4) | (red   >> 4);
+            dst[2] = (red   << 4) | (red   >> 4);
 
             break;
         }
