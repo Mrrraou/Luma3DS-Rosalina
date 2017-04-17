@@ -1,49 +1,118 @@
 #include "ipc.h"
 #include "memory.h"
 
-KAutoObject *srvSessions[0x40] = {NULL};
-TracedService srvPort = {"srv:", srvSessions, 0x40, {NULL}};
+static ClientSessionInfo sessionInfos[MAX_SESSION] = { {NULL} };
+static u32 nbActiveSessions = 0;
+static KObjectMutex sessionInfosMutex = { NULL };
 
-KAutoObject *srvPmSessions[2] = {NULL};
-KAutoObject *fsREGSessions[2] = {NULL};
-KAutoObject *cfgUSessions[25] = {NULL}, *cfgSSessions[25] = {NULL}, *cfgISessions[25] = {NULL};
+KObjectMutex processLangemuObjectMutex;
+LangemuAttributes processLangemuAttributes[0x40];
 
-TracedService   srvPmService = {"srv:pm", srvPmSessions, 2, {NULL}},
-                fsREGService = {"fs:REG", fsREGSessions, 2, {NULL}},
-                cfgUService  = {"cfg:u", cfgUSessions,  25, {NULL}},
-                cfgSService  = {"cfg:s", cfgSSessions,  25, {NULL}},
-                cfgIService  = {"cfg:i", cfgISessions,  25, {NULL}};
-
-TracedService *tracedServices[5] =
+static u32 ClientSessionInfo_FindClosestSlot(KAutoObject *session)
 {
-    &srvPmService, // it's a port on < 7.x
-    &fsREGService,
-    &cfgUService,
-    &cfgSService,
-    &cfgIService
-};
+    if(nbActiveSessions == 0 || session <= sessionInfos[0].session)
+        return 0;
+    else if(session > sessionInfos[nbActiveSessions - 1].session)
+        return nbActiveSessions;
 
-KObjectMutex processLangemuObjectMutex = {NULL};
-LangemuAttributes processLangemuAttributes[0x40] = {{0ULL}};
+    u32 a = 0, b = nbActiveSessions - 1, m;
+
+    do
+    {
+        m = (a + b) / 2;
+        if(sessionInfos[m].session < session)
+            a = m;
+        else if(sessionInfos[m].session > session)
+            b = m;
+        else
+            return m;
+    }
+    while(b - a > 1);
+
+    return b;
+}
+
+ClientSessionInfo *ClientSessionInfo_Lookup(KAutoObject *session)
+{
+    u32 id = ClientSessionInfo_FindClosestSlot(session);
+    return id == nbActiveSessions ? NULL : &sessionInfos[id];
+}
+
+ClientSessionInfo *ClientSessionInfo_FindFirst(const char *name)
+{
+    u32 i;
+    for(i = 0; i < nbActiveSessions && strncmp(sessionInfos[i].name, name, 12) != 0; i++);
+
+    return i == nbActiveSessions ? NULL : &sessionInfos[i];
+}
+
+void ClientSessionInfo_Add(KAutoObject *session, const char *name)
+{
+    if(nbActiveSessions == MAX_SESSION)
+        return;
+
+    KObjectMutex__Acquire(&sessionInfosMutex);
+
+    u32 id = ClientSessionInfo_FindClosestSlot(session);
+
+    if(id != nbActiveSessions && sessionInfos[id].session == session)
+    {
+        KObjectMutex__Release(&sessionInfosMutex);
+        return;
+    }
+
+    for(u32 i = nbActiveSessions; i > id && i != 0; i--)
+        sessionInfos[i] = sessionInfos[i - 1];
+
+    nbActiveSessions++;
+
+    sessionInfos[id].session = session;
+    strncpy(sessionInfos[id].name, name, 12);
+
+    ClientSessionInfo_ChangeVtable(session);
+    KObjectMutex__Release(&sessionInfosMutex);
+}
+
+void ClientSessionInfo_Remove(KAutoObject *session)
+{
+    if(nbActiveSessions == 0)
+        return;
+
+    KObjectMutex__Acquire(&sessionInfosMutex);
+
+    u32 id = ClientSessionInfo_FindClosestSlot(session);
+
+    if(id == nbActiveSessions)
+    {
+        KObjectMutex__Release(&sessionInfosMutex);
+        return;
+    }
+
+    for(u32 i = id; i < nbActiveSessions - 1; i++)
+        sessionInfos[i] = sessionInfos[i + 1];
+
+    memset(&sessionInfos[--nbActiveSessions], 0, sizeof(ClientSessionInfo));
+
+    KObjectMutex__Release(&sessionInfosMutex);
+}
 
 static void (*KClientSession__dtor_orig)(KAutoObject *this);
 static void KClientSession__dtor_hook(KAutoObject *this)
 {
-    bool res = TracedService_Remove(&srvPort, this);
-    for(u32 i = 0; !res && i < sizeof(tracedServices) / sizeof(TracedService *) && !TracedService_Remove(tracedServices[i], this); i++);
     KClientSession__dtor_orig(this);
+    ClientSessionInfo_Remove(this);
 }
 
-void TracedService_ChangeClientSessionVtable(KAutoObject *obj)
+void ClientSessionInfo_ChangeVtable(KAutoObject *session)
 {
-    static void *vtable[0x10] = {NULL}; // should be enough
+    static void *vtable[0x10] = { NULL }; // should be enough
     if(vtable[2] == NULL)
     {
-        memcpy(vtable, obj->vtable, 0x40);
-        KClientSession__dtor_orig = obj->vtable->dtor;
+        memcpy(vtable, session->vtable, 0x40);
+        KClientSession__dtor_orig = session->vtable->dtor;
         vtable[2] = (void *)KClientSession__dtor_hook;
     }
-    obj->vtable = (Vtable__KAutoObject *)vtable;
+    session->vtable = (Vtable__KAutoObject *)vtable;
 }
 
 bool doLangEmu(bool region, u32 *cmdbuf)

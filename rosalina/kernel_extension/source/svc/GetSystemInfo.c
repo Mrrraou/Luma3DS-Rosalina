@@ -64,15 +64,28 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
 
         case 0x20000: // service handles
         {
+            ClientSessionInfo *info = NULL;
+
             switch(param)
             {
                 case 0:
-                    while(fsREGSessions[0] == NULL && fsREGSessions[1] == NULL) yield();
-                    res = createHandleForThisProcess((Handle *)out, fsREGSessions[0] == NULL ? fsREGSessions[1] : fsREGSessions[0]);
+                {
+                    info = ClientSessionInfo_FindFirst("fs:REG");
+                    do
+                    {
+                        yield();
+                        info = ClientSessionInfo_FindFirst("fs:REG");
+                    }
+                    while(info == NULL);
+
+                    res = createHandleForThisProcess((Handle *)out, info->session);
                     break;
+                }
                 default:
+                {
                     res = 0xF8C007F4;
                     break;
+                }
             }
             break;
         }
