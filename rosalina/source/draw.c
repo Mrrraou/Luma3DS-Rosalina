@@ -158,9 +158,9 @@ static inline void convertPixelToBGR8(u8 *dst, const u8 *src, GSPGPU_Framebuffer
         case GSP_RGBA8_OES:
         {
             u32 px = *(u32 *)src;
-            dst[2] = (px >>  8) & 0xFF;
+            dst[0] = (px >>  8) & 0xFF;
             dst[1] = (px >> 16) & 0xFF;
-            dst[0] = (px >> 24) & 0xFF;
+            dst[2] = (px >> 24) & 0xFF;
             break;
         }
         case GSP_BGR8_OES:
