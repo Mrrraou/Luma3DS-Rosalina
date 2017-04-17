@@ -188,7 +188,7 @@ static inline bool findLayeredFsSymbols(u8* code, u32 size, u32 *fsMountArchive,
             {
                 if((*(u32 *)(code + addr + 4) == 0xE1CD20D8) && ((*(u32 *)(code + addr + 8) & 0xFFFFFF) == 0x008D0000))
                     *fsMountArchive = findFunctionStart(code, addr);
-            } 
+            }
             else if(addr <= size - 16 && *(u32 *)(code + addr) == 0xE24DD028)
             {
                 if((*(u32 *)(code + addr + 4) == 0xE1A04000) && (*(u32 *)(code + addr + 8) == 0xE59F60A8) && (*(u32 *)(code + addr + 0xC) == 0xE3A0C001))
@@ -680,33 +680,6 @@ void patchCode(u64 progId, u16 progVer, u8 *code, u32 size, u32 textSize, u32 ro
                 patch,
                 sizeof(patch), 1
             )) goto error;
-    }
-
-    else if(progId == 0x0004003000008A02LL && CONFIG(ENABLEEXCEPTIONHANDLERS) && !CONFIG(PATCHUNITINFO)) //ErrDisp
-    {
-        static const u8 pattern[] = {
-            0x00, 0xD0, 0xE5, 0xDB
-        },
-                        pattern2[] = {
-            0x14, 0x00, 0xD0, 0xE5, 0x01
-        },
-                        patch[] = {
-            0x00, 0x00, 0xA0, 0xE3
-        };
-
-        //Patch UNITINFO checks to make ErrDisp more verbose
-        if(!patchMemory(code, textSize,
-                pattern,
-                sizeof(pattern), -1,
-                patch,
-                sizeof(patch), 1
-            ) ||
-           patchMemory(code, textSize,
-               pattern2,
-               sizeof(pattern2), 0,
-               patch,
-               sizeof(patch), 3
-           ) != 3) goto error;
     }
 
     else if(progId == 0x0004013000002802LL) //DLP
