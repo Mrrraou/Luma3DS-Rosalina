@@ -5,26 +5,38 @@
 Result SendSyncRequestHook(Handle handle)
 {
     KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
-    KAutoObject *session = KProcessHandleTable__ToKAutoObject(handleTable, handle);
+    KClientSession *clientSession = (KClientSession *)KProcessHandleTable__ToKAutoObject(handleTable, handle);
 
     u32 *cmdbuf = (u32 *)((u8 *)currentCoreContext->objectContext.currentThread->threadLocalStorage + 0x80);
     bool skip = false;
     Result res = 0;
 
-    if(session != NULL)
+    bool isValidClientSession = false;
+    if(clientSession != NULL && kernelVersion >= SYSTEM_VERSION(2, 46, 0))
+    {
+        KClassToken tok;
+        clientSession->syncObject.autoObject.vtable->GetClassToken(&tok, &clientSession->syncObject.autoObject);
+        isValidClientSession = tok.flags == 0xA5;
+    }
+    else if(clientSession != NULL)
+        isValidClientSession = strcmp(clientSession->syncObject.autoObject.vtable->GetClassName(&clientSession->syncObject.autoObject), "KClientSession");
+
+    if(isValidClientSession)
     {
         switch (cmdbuf[0])
         {
             case 0x10042:
             case 0x4010042:
             {
-                ClientSessionInfo *info = ClientSessionInfo_Lookup(session);
+                SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(info != NULL && strcmp(info->name, "srv:pm") == 0)
                 {
                     res = doPublishToProcessHook(handle, cmdbuf);
                     skip = true;
                 }
 
+                /*if(info != NULL)
+                    info->session->autoObject.vtable->DecrementReferenceCount(&info->session->autoObject);*/
                 break;
             }
 
@@ -33,25 +45,31 @@ Result SendSyncRequestHook(Handle handle)
                 if(cmdbuf[1] != 1 || cmdbuf[2] != 0xA0002 || cmdbuf[3] != 0x1C)
                     break;
 
-                ClientSessionInfo *info = ClientSessionInfo_Lookup(session);
+                SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(info != NULL && (strcmp(info->name, "cfg:u") == 0 || strcmp(info->name, "cfg:s") == 0 || strcmp(info->name, "cfg:i") == 0))
                     skip = doLangEmu(false, cmdbuf);
+
+                /*if(info != NULL)
+                    info->session->autoObject.vtable->DecrementReferenceCount(&info->session->autoObject);*/
 
                 break;
             }
 
             case 0x20000:
             {
-                ClientSessionInfo *info = ClientSessionInfo_Lookup(session);
+                SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(info != NULL && (strcmp(info->name, "cfg:u") == 0 || strcmp(info->name, "cfg:s") == 0 || strcmp(info->name, "cfg:i") == 0))
                     skip = doLangEmu(true, cmdbuf);
+
+                /*if(info != NULL)
+                    info->session->autoObject.vtable->DecrementReferenceCount(&info->session->autoObject);*/
 
                 break;
             }
 
             case 0x50100:
             {
-                ClientSessionInfo *info = ClientSessionInfo_Lookup(session);
+                SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession);
                 if(info != NULL && strcmp(info->name, "srv:") == 0)
                 {
                     char name[9] = { 0 };
@@ -61,41 +79,51 @@ Result SendSyncRequestHook(Handle handle)
                     res = ((Result (*)(Handle))officialSVCs[0x32])(handle);
                     if(res == 0)
                     {
-                        KAutoObject *outSession;
+                        KClientSession *outClientSession;
 
-                        outSession = KProcessHandleTable__ToKAutoObject(handleTable, (Handle)cmdbuf[3]);
-                        if(outSession != NULL)
+                        outClientSession = (KClientSession *)KProcessHandleTable__ToKAutoObject(handleTable, (Handle)cmdbuf[3]);
+                        if(outClientSession != NULL)
                         {
-                            ClientSessionInfo_Add(outSession, name);
-                            session->vtable->DecrementReferenceCount(outSession);
+                            SessionInfo_Add(outClientSession->parentSession, name);
+                            outClientSession->syncObject.autoObject.vtable->DecrementReferenceCount(&outClientSession->syncObject.autoObject);
                         }
                     }
                 }
+
+                /*if(info != NULL)
+                    info->session->autoObject.vtable->DecrementReferenceCount(&info->session->autoObject);*/
 
                 break;
             }
 
             case 0x4060000:
             {
-                ClientSessionInfo *info = ClientSessionInfo_Lookup(session); // SecureInfoGetRegion
+                SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession); // SecureInfoGetRegion
                 if(info != NULL && strcmp(info->name, "cfg:s") == 0)
                     skip = doLangEmu(true, cmdbuf);
+
+                /*if(info != NULL)
+                    info->session->autoObject.vtable->DecrementReferenceCount(&info->session->autoObject);*/
 
                 break;
             }
 
             case 0x8160000:
             {
-                ClientSessionInfo *info = ClientSessionInfo_Lookup(session); // SecureInfoGetRegion
+                SessionInfo *info = SessionInfo_Lookup(clientSession->parentSession); // SecureInfoGetRegion
                 if(info != NULL && strcmp(info->name, "cfg:i") == 0)
                     skip = doLangEmu(true, cmdbuf);
+
+                /*if(info != NULL)
+                    info->session->autoObject.vtable->DecrementReferenceCount(&info->session->autoObject);*/
 
                 break;
             }
         }
-
-        session->vtable->DecrementReferenceCount(session);
     }
+
+    if(clientSession != NULL)
+        clientSession->syncObject.autoObject.vtable->DecrementReferenceCount(&clientSession->syncObject.autoObject);
 
     res = skip ? res : ((Result (*)(Handle))officialSVCs[0x32])(handle);
 

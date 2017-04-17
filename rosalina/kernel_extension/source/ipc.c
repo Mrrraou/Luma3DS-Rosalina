@@ -1,14 +1,16 @@
 #include "ipc.h"
 #include "memory.h"
 
-static ClientSessionInfo sessionInfos[MAX_SESSION] = { {NULL} };
+static SessionInfo sessionInfos[MAX_SESSION] = { {NULL} };
 static u32 nbActiveSessions = 0;
-static KObjectMutex sessionInfosMutex = { NULL };
+static KRecursiveLock sessionInfosLock = { NULL };
 
-KObjectMutex processLangemuObjectMutex;
+KRecursiveLock processLangemuLock;
 LangemuAttributes processLangemuAttributes[0x40];
 
-static u32 ClientSessionInfo_FindClosestSlot(KAutoObject *session)
+static void *customSessionVtable[0x10] = { NULL }; // should be enough
+
+static u32 SessionInfo_FindClosestSlot(KSession *session)
 {
     if(nbActiveSessions == 0 || session <= sessionInfos[0].session)
         return 0;
@@ -32,32 +34,72 @@ static u32 ClientSessionInfo_FindClosestSlot(KAutoObject *session)
     return b;
 }
 
-ClientSessionInfo *ClientSessionInfo_Lookup(KAutoObject *session)
+SessionInfo *SessionInfo_Lookup(KSession *session)
 {
-    u32 id = ClientSessionInfo_FindClosestSlot(session);
-    return id == nbActiveSessions ? NULL : &sessionInfos[id];
+    KRecursiveLock__Lock(criticalSectionLock);
+    KRecursiveLock__Lock(&sessionInfosLock);
+
+    SessionInfo *ret;
+    u32 id = SessionInfo_FindClosestSlot(session);
+    if(id == nbActiveSessions)
+        ret = NULL;
+    else
+    {
+        ret = (void **)(sessionInfos[id].session->autoObject.vtable) == customSessionVtable ? &sessionInfos[id] : NULL;
+        /*if(ret != NULL)
+            KAutoObject__AddReference(&ret->session->autoObject);*/
+    }
+    KRecursiveLock__Unlock(&sessionInfosLock);
+    KRecursiveLock__Unlock(criticalSectionLock);
+
+    return ret;
 }
 
-ClientSessionInfo *ClientSessionInfo_FindFirst(const char *name)
+SessionInfo *SessionInfo_FindFirst(const char *name)
 {
-    u32 i;
-    for(i = 0; i < nbActiveSessions && strncmp(sessionInfos[i].name, name, 12) != 0; i++);
+    KRecursiveLock__Lock(criticalSectionLock);
+    KRecursiveLock__Lock(&sessionInfosLock);
 
-    return i == nbActiveSessions ? NULL : &sessionInfos[i];
+    SessionInfo *ret;
+    u32 id;
+    for(id = 0; id < nbActiveSessions && strncmp(sessionInfos[id].name, name, 12) != 0; id++);
+    if(id == nbActiveSessions)
+        ret = NULL;
+    else
+    {
+        ret = (void **)(sessionInfos[id].session->autoObject.vtable) == customSessionVtable ? &sessionInfos[id] : NULL;
+        /*if(ret != NULL)
+            KAutoObject__AddReference(&ret->session->autoObject);*/
+    }
+
+    KRecursiveLock__Unlock(&sessionInfosLock);
+    KRecursiveLock__Unlock(criticalSectionLock);
+
+    return ret;
 }
 
-void ClientSessionInfo_Add(KAutoObject *session, const char *name)
+void SessionInfo_Add(KSession *session, const char *name)
 {
+    KAutoObject__AddReference(&session->autoObject);
+    SessionInfo_ChangeVtable(session);
+    session->autoObject.vtable->DecrementReferenceCount(&session->autoObject);
+
+    KRecursiveLock__Lock(criticalSectionLock);
+    KRecursiveLock__Lock(&sessionInfosLock);
+
     if(nbActiveSessions == MAX_SESSION)
+    {
+        KRecursiveLock__Unlock(&sessionInfosLock);
+        KRecursiveLock__Unlock(criticalSectionLock);
         return;
+    }
 
-    KObjectMutex__Acquire(&sessionInfosMutex);
-
-    u32 id = ClientSessionInfo_FindClosestSlot(session);
+    u32 id = SessionInfo_FindClosestSlot(session);
 
     if(id != nbActiveSessions && sessionInfos[id].session == session)
     {
-        KObjectMutex__Release(&sessionInfosMutex);
+        KRecursiveLock__Unlock(&sessionInfosLock);
+        KRecursiveLock__Unlock(criticalSectionLock);
         return;
     }
 
@@ -69,54 +111,63 @@ void ClientSessionInfo_Add(KAutoObject *session, const char *name)
     sessionInfos[id].session = session;
     strncpy(sessionInfos[id].name, name, 12);
 
-    ClientSessionInfo_ChangeVtable(session);
-    KObjectMutex__Release(&sessionInfosMutex);
+    KRecursiveLock__Unlock(&sessionInfosLock);
+    KRecursiveLock__Unlock(criticalSectionLock);
 }
 
-void ClientSessionInfo_Remove(KAutoObject *session)
+void SessionInfo_Remove(KSession *session)
 {
-    if(nbActiveSessions == 0)
+    KRecursiveLock__Lock(criticalSectionLock);
+    KRecursiveLock__Lock(&sessionInfosLock);
+
+    if(nbActiveSessions == MAX_SESSION)
+    {
+        KRecursiveLock__Unlock(&sessionInfosLock);
+        KRecursiveLock__Unlock(criticalSectionLock);
         return;
+    }
 
-    KObjectMutex__Acquire(&sessionInfosMutex);
-
-    u32 id = ClientSessionInfo_FindClosestSlot(session);
+    u32 id = SessionInfo_FindClosestSlot(session);
 
     if(id == nbActiveSessions)
     {
-        KObjectMutex__Release(&sessionInfosMutex);
+        KRecursiveLock__Unlock(&sessionInfosLock);
+        KRecursiveLock__Unlock(criticalSectionLock);
         return;
     }
 
     for(u32 i = id; i < nbActiveSessions - 1; i++)
         sessionInfos[i] = sessionInfos[i + 1];
 
-    memset(&sessionInfos[--nbActiveSessions], 0, sizeof(ClientSessionInfo));
+    memset(&sessionInfos[--nbActiveSessions], 0, sizeof(SessionInfo));
 
-    KObjectMutex__Release(&sessionInfosMutex);
+    KRecursiveLock__Unlock(&sessionInfosLock);
+    KRecursiveLock__Unlock(criticalSectionLock);
 }
 
-static void (*KClientSession__dtor_orig)(KAutoObject *this);
-static void KClientSession__dtor_hook(KAutoObject *this)
+static void (*KSession__dtor_orig)(KAutoObject *this);
+static void KSession__dtor_hook(KAutoObject *this)
 {
-    KClientSession__dtor_orig(this);
-    ClientSessionInfo_Remove(this);
+    KSession__dtor_orig(this);
+    SessionInfo_Remove((KSession *)this);
 }
 
-void ClientSessionInfo_ChangeVtable(KAutoObject *session)
+void SessionInfo_ChangeVtable(KSession *session)
 {
-    static void *vtable[0x10] = { NULL }; // should be enough
-    if(vtable[2] == NULL)
+    if(customSessionVtable[2] == NULL)
     {
-        memcpy(vtable, session->vtable, 0x40);
-        KClientSession__dtor_orig = session->vtable->dtor;
-        vtable[2] = (void *)KClientSession__dtor_hook;
+        memcpy(customSessionVtable, session->autoObject.vtable, 0x40);
+        KSession__dtor_orig = session->autoObject.vtable->dtor;
+        customSessionVtable[2] = (void *)KSession__dtor_hook;
     }
-    session->vtable = (Vtable__KAutoObject *)vtable;
+    session->autoObject.vtable = (Vtable__KAutoObject *)customSessionVtable;
 }
 
 bool doLangEmu(bool region, u32 *cmdbuf)
 {
+    KRecursiveLock__Lock(criticalSectionLock);
+    KRecursiveLock__Lock(&processLangemuLock);
+
     u8 res = 0; // none
     u64 titleId = codeSetOfProcess(currentCoreContext->objectContext.currentProcess)->titleId;
     for(u32 i = 0; i < 0x40; i++)
@@ -126,7 +177,11 @@ bool doLangEmu(bool region, u32 *cmdbuf)
     }
 
     if(res == 0)
+    {
+        KRecursiveLock__Unlock(&processLangemuLock);
+        KRecursiveLock__Unlock(criticalSectionLock);
         return false;
+    }
 
     cmdbuf[1] = 0;
     if(region)
@@ -141,6 +196,8 @@ bool doLangEmu(bool region, u32 *cmdbuf)
         cmdbuf[2] = cmdbuf[3] = cmdbuf[4] = 0; // just in case
     }
 
+    KRecursiveLock__Unlock(&processLangemuLock);
+    KRecursiveLock__Unlock(criticalSectionLock);
     return true;
 }
 

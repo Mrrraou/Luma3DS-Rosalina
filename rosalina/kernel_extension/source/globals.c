@@ -1,5 +1,11 @@
 #include "globals.h"
 
+KRecursiveLock *criticalSectionLock;
+
+void (*KRecursiveLock__Lock)(KRecursiveLock *this);
+void (*KRecursiveLock__Unlock)(KRecursiveLock *this);
+
+void (*KAutoObject__AddReference)(KAutoObject *this);
 KProcess * (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, Handle processHandle);
 KThread * (*KProcessHandleTable__ToKThread)(KProcessHandleTable *this, Handle threadHandle);
 KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, Handle handle);

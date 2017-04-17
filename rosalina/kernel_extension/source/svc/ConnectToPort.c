@@ -19,11 +19,11 @@ Result ConnectToPortHook(Handle *out, const char *name)
         return res;
 
     KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
-    KAutoObject *session = KProcessHandleTable__ToKAutoObject(handleTable, *out);
-    if(session != NULL)
+    KClientSession *clientSession = (KClientSession *)KProcessHandleTable__ToKAutoObject(handleTable, *out);
+    if(clientSession != NULL)
     {
-        ClientSessionInfo_Add(session, portName);
-        session->vtable->DecrementReferenceCount(session);
+        SessionInfo_Add(clientSession->parentSession, portName);
+        clientSession->syncObject.autoObject.vtable->DecrementReferenceCount(&clientSession->syncObject.autoObject);
     }
 
     return res;

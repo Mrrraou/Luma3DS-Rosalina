@@ -69,14 +69,26 @@ static void setupExceptionHandlers(void)
 
 static void findUsefulSymbols(void)
 {
-    KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
-
     u32 *off;
 
-    for(off = (u32 *)KProcessHandleTable__ToKProcess; *off != 0xE8BD80F0; off++);
+    KProcessHandleTable__ToKProcess = (KProcess * (*)(KProcessHandleTable *, Handle))decodeARMBranch(5 + (u32 *)officialSVCs[0x76]);
+
+    for(off = (u32 *)KProcessHandleTable__ToKProcess; *off != 0xE28DD014; off++);
+    KAutoObject__AddReference = (void (*)(KAutoObject *))decodeARMBranch(off - 1);
+
+    for(; *off != 0xE8BD80F0; off++);
     KProcessHandleTable__ToKAutoObject = (KAutoObject * (*)(KProcessHandleTable *, Handle))decodeARMBranch(off + 2);
 
-    for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[9]); /* KThread::Terminate */ *off != 0xE5C4007D; off++);
+    for(off = (u32 *)decodeARMBranch(3 + (u32 *)officialSVCs[9]); /* KThread::Terminate */ *off != 0xE5D42034; off++);
+    off -= 2;
+    criticalSectionLock = (KRecursiveLock *)off[2 + (off[0] & 0xFF) / 4];
+    KRecursiveLock__Lock = (void (*)(KRecursiveLock *))decodeARMBranch(off + 1);
+    off += 4;
+
+    for(; (*off >> 16) != 0xE59F; off++);
+    KRecursiveLock__Unlock = (void (*)(KRecursiveLock *))decodeARMBranch(off + 1);
+
+    for(; *off != 0xE5C4007D; off++);
     KSynchronizationObject__Signal = (void (*)(KSynchronizationObject *, bool))decodeARMBranch(off + 3);
 
     for(off = (u32 *)officialSVCs[0x24]; *off != 0xE59F004C; off++);

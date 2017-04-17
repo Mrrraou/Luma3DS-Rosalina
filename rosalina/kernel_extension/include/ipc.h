@@ -9,11 +9,11 @@
 
 // the structure of sessions is apparently not the same on older versions...
 
-typedef struct ClientSessionInfo
+typedef struct SessionInfo
 {
-    KAutoObject *session;
+    KSession *session;
     char name[12];
-} ClientSessionInfo;
+} SessionInfo;
 
 typedef struct LangemuAttributes
 {
@@ -22,14 +22,14 @@ typedef struct LangemuAttributes
 } LangemuAttributes;
 
 
-extern KObjectMutex processLangemuObjectMutex;
+extern KRecursiveLock processLangemuLock;
 extern LangemuAttributes processLangemuAttributes[0x40];
 
-ClientSessionInfo *ClientSessionInfo_Lookup(KAutoObject *session);
-ClientSessionInfo *ClientSessionInfo_FindFirst(const char *name);
-void ClientSessionInfo_ChangeVtable(KAutoObject *session);
-void ClientSessionInfo_Add(KAutoObject *session, const char *name);
-void ClientSessionInfo_Remove(KAutoObject *session);
+SessionInfo *SessionInfo_Lookup(KSession *session);
+SessionInfo *SessionInfo_FindFirst(const char *name);
+void SessionInfo_ChangeVtable(KSession *session);
+void SessionInfo_Add(KSession *session, const char *name);
+void SessionInfo_Remove(KSession *session);
 
 bool doLangEmu(bool region, u32 *cmdbuf);
 Result doPublishToProcessHook(Handle handle, u32 *cmdbuf);

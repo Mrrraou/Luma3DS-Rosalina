@@ -24,7 +24,7 @@ bool shouldSignalSyscallDebugEvent(KProcess *process, u8 svcId)
 
 Result SetSyscallDebugEventMask(u32 pid, bool enable, const u32 *mask)
 {
-    static KObjectMutex syscallDebugEventMaskMutex = {NULL};
+    static KRecursiveLock syscallDebugEventMaskLock = { NULL };
 
     u32 tmpMask[8];
     if(enable && nbEnabled == MAX_DEBUG)
@@ -33,7 +33,8 @@ Result SetSyscallDebugEventMask(u32 pid, bool enable, const u32 *mask)
     if(enable && !usrToKernelMemcpy8(&tmpMask, mask, 32))
         return 0xE0E01BF5;
 
-    KObjectMutex__Acquire(&syscallDebugEventMaskMutex);
+    KRecursiveLock__Lock(criticalSectionLock);
+    KRecursiveLock__Lock(&syscallDebugEventMaskLock);
 
     if(enable)
     {
@@ -46,8 +47,9 @@ Result SetSyscallDebugEventMask(u32 pid, bool enable, const u32 *mask)
         for(id = 0; id < nbEnabled && maskedPids[id] != pid; id++);
         if(id == nbEnabled)
         {
-            KObjectMutex__Release(&syscallDebugEventMaskMutex);
-            return 0xE0E01BFD; // out of range (it's not fully technically correct but meh)
+                KRecursiveLock__Unlock(&syscallDebugEventMaskLock);
+                KRecursiveLock__Unlock(criticalSectionLock);
+                return 0xE0E01BFD; // out of range (it's not fully technically correct but meh)
         }
 
         for(u32 i = id; i < nbEnabled - 1; i++)
@@ -59,7 +61,8 @@ Result SetSyscallDebugEventMask(u32 pid, bool enable, const u32 *mask)
         memset(&masks[nbEnabled], 0, 32);
     }
 
-    KObjectMutex__Release(&syscallDebugEventMaskMutex);
+    KRecursiveLock__Unlock(&syscallDebugEventMaskLock);
+    KRecursiveLock__Unlock(criticalSectionLock);
     return 0;
 }
 
@@ -76,7 +79,8 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
         }
         case 0x10001:
         {
-            KObjectMutex__Acquire(&processLangemuObjectMutex);
+            KRecursiveLock__Lock(criticalSectionLock);
+            KRecursiveLock__Lock(&processLangemuLock);
 
             u32 i;
             for(i = 0; i < 0x40 && processLangemuAttributes[i].titleId != 0ULL; i++);
@@ -89,8 +93,8 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
             else
                 res = 0xD8609013;
 
-            KObjectMutex__Release(&processLangemuObjectMutex);
-
+            KRecursiveLock__Unlock(&processLangemuLock);
+            KRecursiveLock__Unlock(criticalSectionLock);
             break;
         }
         case 0x10002:

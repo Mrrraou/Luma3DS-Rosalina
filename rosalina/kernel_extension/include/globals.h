@@ -2,6 +2,13 @@
 
 #include "kernel.h"
 
+extern KRecursiveLock *criticalSectionLock;
+
+extern void (*KRecursiveLock__Lock)(KRecursiveLock *this);
+extern void (*KRecursiveLock__Unlock)(KRecursiveLock *this);
+
+extern void (*KAutoObject__AddReference)(KAutoObject *this);
+
 extern KProcess * (*KProcessHandleTable__ToKProcess)(KProcessHandleTable *this, Handle processHandle);
 extern KThread * (*KProcessHandleTable__ToKThread)(KProcessHandleTable *this, Handle threadHandle);
 extern KAutoObject * (*KProcessHandleTable__ToKAutoObject)(KProcessHandleTable *this, Handle handle);
