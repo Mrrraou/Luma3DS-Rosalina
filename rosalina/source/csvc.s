@@ -63,3 +63,8 @@ SVC_BEGIN svcControlMemoryEx
     str  r1, [r2]
     bx   lr
 SVC_END
+
+SVC_BEGIN svcControlService
+    svc 0x88
+    bx lr
+SVC_END

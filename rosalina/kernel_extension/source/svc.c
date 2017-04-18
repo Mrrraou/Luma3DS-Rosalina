@@ -11,6 +11,7 @@
 #include "svc/Backdoor.h"
 #include "svc/KernelSetState.h"
 #include "svc/MapProcessMemoryWithSource.h"
+#include "svc/ControlService.h"
 
 void *officialSVCs[0x7E] = {NULL};
 
@@ -85,6 +86,8 @@ void *svcHook(u8 *pageEnd)
             return MapProcessMemoryWithSource;
         case 0x87:
             return ControlMemoryEx;
+        case 0x88:
+            return ControlService;
 
         default:
             return (svcId <= 0x7D) ? officialSVCs[svcId] : NULL;

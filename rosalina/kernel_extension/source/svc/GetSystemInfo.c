@@ -62,35 +62,6 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
             break;
         }
 
-        case 0x20000: // service handles
-        {
-            SessionInfo *info = NULL;
-
-            switch(param)
-            {
-                case 0:
-                {
-                    info = SessionInfo_FindFirst("fs:REG");
-                    do
-                    {
-                        yield();
-                        info = SessionInfo_FindFirst("fs:REG");
-                    }
-                    while(info == NULL);
-
-                    res = createHandleForThisProcess((Handle *)out, &info->session->clientSession.syncObject.autoObject);
-                    //info->session->autoObject.vtable->DecrementReferenceCount(&info->session->autoObject);
-                    break;
-                }
-                default:
-                {
-                    res = 0xF8C007F4;
-                    break;
-                }
-            }
-            break;
-        }
-
         default:
             GetSystemInfo(out, type, param);
             break;

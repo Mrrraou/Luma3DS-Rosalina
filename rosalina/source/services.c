@@ -8,7 +8,6 @@ static int srvRefCount;
 static RecursiveLock initLock;
 static int initLockinit = 0;
 
-
 Result srvSysInit(void)
 {
   Result rc = 0;
@@ -33,9 +32,9 @@ Result srvSysInit(void)
         R_SUMMARY(rc) != RS_NOTFOUND ||
         R_DESCRIPTION(rc) != RD_NOT_FOUND
        ) break;
-    svcSleepThread(500000);
+    svcSleepThread(500 * 1000LL);
   }
-  
+
   if(R_SUCCEEDED(rc))
   {
     rc = srvRegisterClient();

@@ -18,7 +18,7 @@ Result SendSyncRequestHook(Handle handle)
         clientSession->syncObject.autoObject.vtable->GetClassToken(&tok, &clientSession->syncObject.autoObject);
         isValidClientSession = tok.flags == 0xA5;
     }
-    else if(clientSession != NULL)
+    else if(clientSession != NULL) // not the exact same test but it should work
         isValidClientSession = strcmp(clientSession->syncObject.autoObject.vtable->GetClassName(&clientSession->syncObject.autoObject), "KClientSession");
 
     if(isValidClientSession)

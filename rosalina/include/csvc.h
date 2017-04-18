@@ -2,6 +2,13 @@
 
 #include <3ds/types.h>
 
+/// Operations for svcControlService
+typedef enum ServiceOp
+{
+    SERVICEOP_STEAL_CLIENT_SESSION = 0, ///< Steal a client session given a service or global port name
+    SERVICEOP_GET_NAME,                 ///< Get the name of a service or global port given a client or session handle
+} ServiceOp;
+
 /**
  * @brief Executes a function in supervisor mode, using the supervisor-mode stack.
  * @param func Function to execute.
@@ -52,7 +59,7 @@ void svcInvalidateEntireInstructionCache(void);
 Result svcMapProcessMemoryWithSource(Handle process, u32 destAddr, u32 srcAddr, u32 size);
 
 /**
- * @brief Controls memory mapping, with the choice to use region attributes or not
+ * @brief Controls memory mapping, with the choice to use region attributes or not.
  * @param[out] addr_out The virtual address resulting from the operation. Usually the same as addr0.
  * @param addr0    The virtual address to be used for the operation.
  * @param addr1    The virtual address to be (un)mirrored by @p addr0 when using @ref MEMOP_MAP or @ref MEMOP_UNMAP.
@@ -69,3 +76,13 @@ Result svcMapProcessMemoryWithSource(Handle process, u32 destAddr, u32 srcAddr, 
  * @sa svcControlMemory
  */
 Result svcControlMemoryEx(u32* addr_out, u32 addr0, u32 addr1, u32 size, MemOp op, MemPerm perm, bool isLoader);
+
+/**
+ * @brief Performs actions related to services or global handles.
+ * @param op The operation to perform, see @ref ServiceOp.
+ *
+ * Examples:
+ *     svcControlService(SERVICEOP_GET_NAME, (char [12])outName, (Handle)clientOrSessionHandle);
+ *     svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, (Handle *)&outHandle, (const char *)name);
+ */
+Result svcControlService(ServiceOp op, ...);

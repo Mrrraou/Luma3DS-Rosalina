@@ -2,6 +2,7 @@
 #include <string.h>
 #include "fsreg.h"
 #include "services.h"
+#include "csvc.h"
 
 static Handle fsregHandle;
 static int fsregRefCount;
@@ -13,9 +14,12 @@ Result fsregInit(void)
     if(AtomicPostIncrement(&fsregRefCount))
         return 0;
 
-    s64 fsregHandle_;
-    ret = svcGetSystemInfo(&fsregHandle_, 0x20000, 0);
-    fsregHandle = (Handle) fsregHandle_;
+    ret = svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, &fsregHandle, "fs:REG");
+    while(ret == 0x9401BFE)
+    {
+        svcSleepThread(500 * 1000LL);
+        ret = svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, &fsregHandle, "fs:REG");
+    }
 
     if(R_FAILED(ret))
         AtomicDecrement(&fsregRefCount);
