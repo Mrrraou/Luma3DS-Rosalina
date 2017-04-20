@@ -12,9 +12,9 @@ dir_source := source
 dir_include := include
 dir_build := build
 
-ARCH    := -mcpu=mpcore -mfpu=vfp  
+ARCH    := -mcpu=mpcore -mfpu=vfp
 ASFLAGS := $(ARCH)
-CFLAGS  := -Wall -Wextra -MMD -MP -mthumb -mthumb-interwork $(ASFLAGS) -I$(dir_include) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math \
+CFLAGS  := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -I$(dir_include) -fno-builtin -std=c11 -Wno-main -O2 -flto -ffast-math \
 -mword-relocations -ffunction-sections -fdata-sections
 LDFLAGS := -nostdlib -Wl,--gc-sections $(ARCH)
 

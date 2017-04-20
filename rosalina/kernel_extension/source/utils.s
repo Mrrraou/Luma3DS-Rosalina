@@ -32,32 +32,6 @@ convertVAToPA:
     movne r0, #0
     pop {r4-r6, pc}
 
-.global getCurrentCoreID
-.type   getCurrentCoreID, %function
-getCurrentCoreID:
-    mrc p15, 0, R0, c0, c0, 5
-    and r0, #3
-    bx lr
-
-.global enableIRQ
-.type   enableIRQ, %function
-enableIRQ:
-    mrs r0, cpsr
-    lsr r0, #7
-    and r0, #1
-
-    cpsie i
-    bx lr
-
-.global atomicStore32
-.type   atomicStore32, %function
-atomicStore32:
-    ldrex r2, [r0]
-    strex r2, r1, [r0]
-    cmp r2, #0
-    bne atomicStore32
-    bx lr
-
 .global flushEntireDataCache
 .type   flushEntireDataCache, %function
 flushEntireDataCache:

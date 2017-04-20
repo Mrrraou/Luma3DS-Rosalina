@@ -15,6 +15,6 @@ void executeFunctionOnCores(SGI0Handler_t handler, u8 targetList, u8 targetListF
     SGI0Handler = handler;
 
     if(targetListFilter == 0 && (targetListFilter & (1 << coreID)) != 0)
-        enableIRQ(); // make sure interrupts are enabled
+        __asm__ volatile("cpsie i"); // make sure interrupts are enabled
     MPCORE_GID_SGI = (targetListFilter << 24) | (targetList << 16) | 0;
 }

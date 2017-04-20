@@ -39,16 +39,19 @@ static inline u32 computeARMFrameSize(const u32 *prolog)
     return 4 * nbPushedRegs + localVariablesSpaceSize;
 }
 
+static inline u32 getCurrentCoreID(void)
+{
+    u32 coreId;
+    __asm__ volatile("mrc p15, 0, %0, c0, c0, 5" : "=r"(coreId));
+    return coreId & 3;
+}
+
 void *convertVAToPA(u32 *attribs, const void *addr, bool writeCheck);
 void *convertVAToPAWrapper(const void *addr, u32 *attribs, bool writeCheck);
 
-u32 getCurrentCoreID(void);
-bool enableIRQ(void);
 u32 safecpy(void *dst, const void *src, u32 len);
 void KObjectMutex__Acquire(KObjectMutex *this);
 void KObjectMutex__Release(KObjectMutex *this);
-
-void atomicStore32(s32 *dst, s32 value);
 
 void flushEntireDataCache(void);
 void invalidateEntireInstructionCache(void);

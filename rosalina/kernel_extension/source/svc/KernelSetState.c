@@ -9,7 +9,7 @@ static u32 nbEnabled = 0;
 static u32 maskedPids[MAX_DEBUG];
 static u32 masks[MAX_DEBUG][8] = {0};
 
-s32 rosalinaState;
+u32 rosalinaState;
 
 bool shouldSignalSyscallDebugEvent(KProcess *process, u8 svcId)
 {
@@ -74,7 +74,12 @@ Result KernelSetStateHook(u32 type, u32 varg1, u32 varg2, u32 varg3)
     {
         case 0x10000:
         {
-            atomicStore32(&rosalinaState, (s32) varg1);
+            do
+            {
+                __ldrex((s32 *)&rosalinaState);
+            }
+            while(__strex((s32 *)&rosalinaState, (s32)varg1));
+
             break;
         }
         case 0x10001:
