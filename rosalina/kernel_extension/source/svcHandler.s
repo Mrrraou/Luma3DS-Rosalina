@@ -21,7 +21,7 @@ svcHandler:
 
     @ sp = page end - 0x110
     add r0, sp, #0x110       @ page end
-    blx svcHook
+    bl svcHook
     cpsid i
     mov r8, r0
     ldmfd sp, {r0-r7, r12, lr}
@@ -32,7 +32,7 @@ svcHandler:
         push {r0-r12, lr}
         add r0, sp, #0x148
         cpsie i
-        blx signalSvcEntry
+        bl signalSvcEntry
         cpsid i
         pop {r0-r12, lr}
 
@@ -64,7 +64,7 @@ svcHandler:
     push {r0-r7, r12, lr}
     add r0, sp, #0x110      @ page end
     cpsie i
-    blx signalSvcReturn
+    bl signalSvcReturn
     cpsid i
     pop {r0-r7, r12}
     add sp, #4

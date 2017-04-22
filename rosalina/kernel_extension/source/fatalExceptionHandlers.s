@@ -43,7 +43,7 @@
 
         push {r0-r12, lr}
         mrs r0, spsr
-        blx isExceptionFatal
+        bl isExceptionFatal
         cmp r0, #0
         pop {r0-r12, lr}
         bne _exc_is_fatal_\name
@@ -162,7 +162,7 @@ _commonHandler:
     mcr p15, 0, r0, c7, c10, 5   @ Drain Memory Barrier
     ldr r0, =_regs
     mrc p15, 0, r2, c0, c0, 5    @ CPU ID register
-    blx fatalExceptionHandlersMain
+    bl fatalExceptionHandlersMain
 
     ldr r12, =mcuReboot
     ldr r12, [r12]
@@ -228,7 +228,7 @@ dataAbortHandler:
     push {r0-r12, lr}
     mrs r0, spsr
     sub r1, lr, #8
-    blx isDataAbortExceptionRangeControlled
+    bl isDataAbortExceptionRangeControlled
     cmp r0, #0
     pop {r0-r12, lr}
     beq _dataAbortNormalHandler

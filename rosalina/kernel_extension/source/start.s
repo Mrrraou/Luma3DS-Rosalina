@@ -18,7 +18,7 @@ _start:
     b end
 
     _core1_only:
-        blx main
+        bl main
         ldr r0, =_setupFinished
         str r4, [r0]
         sev

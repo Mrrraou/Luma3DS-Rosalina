@@ -9,7 +9,7 @@
         push {r12, lr}
         sub sp, #8
         mov r0, sp
-        blx Get\name\()InfoHook
+        bl Get\name\()InfoHook
         pop {r1, r2, r12, pc}
 .endm
 
@@ -24,7 +24,7 @@ GEN_GETINFO_WRAPPER Thread
         push {lr}
         sub sp, #4
         mov r0, sp
-        blx \name
+        bl \name
         pop {r1, pc}
 .endm
 
@@ -39,7 +39,7 @@ ControlMemoryHookWrapper:
     sub sp, #12
     stmia sp, {r0, r4}
     add r0, sp, #8
-    blx ControlMemoryHook
+    bl ControlMemoryHook
     ldr r1, [sp, #8]
     add sp, #12
     pop {pc}
