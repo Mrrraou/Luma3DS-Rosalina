@@ -52,6 +52,9 @@ typedef s32 Result;                 ///< Function result.
 #define SYSTEM_VERSION(major, minor, revision) \
     (((major)<<24)|((minor)<<16)|((revision)<<8))
 
+#define CUR_THREAD_HANDLE       0xFFFF8000
+#define CUR_PROCESS_HANDLE      0xFFFF8001
+
 #define MPCORE_REGS_BASE        (0x17E00000 | (1u << 31))
 #define MPCORE_SCU_CFG          (*(vu32 *)(MPCORE_REGS_BASE + 4))
 #define MPCORE_INT_ACK          (*(vu32 *)(MPCORE_REGS_BASE + 0x10C))

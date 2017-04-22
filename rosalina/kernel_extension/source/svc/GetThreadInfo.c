@@ -8,7 +8,15 @@ Result GetThreadInfoHook(s64 *out, Handle threadHandle, u32 type)
     if(type == 0x10000) // Get TLS
     {
         KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
-        KThread *thread = KProcessHandleTable__ToKThread(handleTable, threadHandle);
+        KThread *thread;
+
+        if(threadHandle == CUR_THREAD_HANDLE)
+        {
+            thread = currentCoreContext->objectContext.currentThread;
+            KAutoObject__AddReference(&thread->syncObject.autoObject);
+        }
+        else
+            thread = KProcessHandleTable__ToKThread(handleTable, threadHandle);
 
         if(thread == NULL)
             return 0xD8E007F7; // invalid handle

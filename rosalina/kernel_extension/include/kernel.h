@@ -1139,3 +1139,26 @@ static inline KDebug *debugOfProcess(KProcess *process)
 {
     return KPROCESS_GET_RVALUE(process, debug);
 }
+
+extern Result (*KProcessHandleTable__CreateHandle)(KProcessHandleTable *this, Handle *out, KAutoObject *obj, u8 token);
+
+static inline Result createHandleForProcess(Handle *out, KProcess *process, KAutoObject *obj)
+{
+    u8 token;
+    if(kernelVersion >= SYSTEM_VERSION(2, 46, 0))
+    {
+        KClassToken tok;
+        obj->vtable->GetClassToken(&tok, obj);
+        token = tok.flags;
+    }
+    else
+        token = (u8)(u32)(obj->vtable->GetClassName(obj));
+
+    KProcessHandleTable *handleTable = handleTableOfProcess(process);
+    return KProcessHandleTable__CreateHandle(handleTable, out, obj, token);
+}
+
+static inline Result createHandleForThisProcess(Handle *out, KAutoObject *obj)
+{
+    return createHandleForProcess(out, currentCoreContext->objectContext.currentProcess, obj);
+}

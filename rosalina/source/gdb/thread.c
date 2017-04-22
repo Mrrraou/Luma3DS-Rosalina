@@ -63,7 +63,7 @@ static int thread_compare_func(const void *a_, const void *b_)
         return prioAStatic - prioBStatic;
 }
 
-void GDB_UpdateCurrentThreadFromList(GDBContext *ctx, u32 *threadIds, u32 nbThreads)
+u32 GDB_GetCurrentThreadFromList(GDBContext *ctx, u32 *threadIds, u32 nbThreads)
 {
     struct ThreadIdWithCtx lst[MAX_DEBUG_THREAD];
     for(u32 i = 0; i < nbThreads; i++)
@@ -71,8 +71,22 @@ void GDB_UpdateCurrentThreadFromList(GDBContext *ctx, u32 *threadIds, u32 nbThre
         lst[i].ctx = ctx;
         lst[i].id = threadIds[i];
     }
+
     qsort(lst, nbThreads, sizeof(struct ThreadIdWithCtx), thread_compare_func);
-    ctx->currentThreadId = lst[0].id;
+    return lst[0].id;
+}
+
+u32 GDB_GetCurrentThread(GDBContext *ctx)
+{
+    u32 threadIds[MAX_DEBUG_THREAD];
+
+    if(ctx->nbThreads == 0)
+        return 0;
+
+    for(u32 i = 0; i < ctx->nbThreads; i++)
+        threadIds[i] = ctx->threadInfos[i].id;
+
+    return GDB_GetCurrentThreadFromList(ctx, threadIds, ctx->nbThreads);
 }
 
 GDB_DECLARE_HANDLER(SetThreadId)
@@ -126,21 +140,9 @@ GDB_DECLARE_HANDLER(IsThreadAlive)
 GDB_DECLARE_QUERY_HANDLER(CurrentThreadId)
 {
     if(ctx->currentThreadId == 0)
-    {
-        u32 threadIds[MAX_DEBUG_THREAD];
+        ctx->currentThreadId = GDB_GetCurrentThread(ctx);
 
-        if(ctx->nbThreads == 0)
-            return GDB_ReplyErrno(ctx, EPERM);
-
-        for(u32 i = 0; i < ctx->nbThreads; i++)
-            threadIds[i] = ctx->threadInfos[i].id;
-
-        GDB_UpdateCurrentThreadFromList(ctx, threadIds, ctx->nbThreads);
-        if(ctx->currentThreadId == 0)
-            ctx->currentThreadId = threadIds[0];
-    }
-
-    return GDB_SendFormattedPacket(ctx, "QC%x", ctx->currentThreadId);
+    return ctx->currentThreadId != 0 ? GDB_SendFormattedPacket(ctx, "QC%x", ctx->currentThreadId) : GDB_ReplyErrno(ctx, EPERM);
 }
 
 GDB_DECLARE_QUERY_HANDLER(fThreadInfo)
@@ -243,7 +245,7 @@ GDB_DECLARE_QUERY_HANDLER(ThreadExtraInfo)
     if(R_FAILED(r))
         sCoreCreator[0] = 0;
     else
-        sprintf(sCoreCreator, "running on core %u", val);
+        sprintf(sCoreCreator, "running on core %d", (int)val);
 
     n = sprintf(buf, "TLS: 0x%08x%s%s%s%s%s", tls, sStatus, sThreadDynamicPriority, sThreadStaticPriority,
                 sCoreIdeal, sCoreCreator);

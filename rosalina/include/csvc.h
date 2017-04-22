@@ -86,3 +86,12 @@ Result svcControlMemoryEx(u32* addr_out, u32 addr0, u32 addr1, u32 size, MemOp o
  *     svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, (Handle *)&outHandle, (const char *)name);
  */
 Result svcControlService(ServiceOp op, ...);
+
+/**
+ * @brief Copy a handle from a process to another one.
+ * @param[out] out The output handle.
+ * @param outProcess Handle of the process of the output handle.
+ * @param in The input handle.
+ * @param inProcess Handle of the process of the input handle.
+*/
+Result svcCopyHandle(Handle *out, Handle outProcess, Handle in, Handle inProcess);

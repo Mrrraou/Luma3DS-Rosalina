@@ -3,10 +3,6 @@
 #define _REENT_ONLY
 #include <errno.h>
 
-// We'll actually use SVC 0xFF for breakpoints :P
-#define BREAKPOINT_INSTRUCTION_ARM      0xEF0000FF
-#define BREAKPOINT_INSTRUCTION_THUMB    0xDFFF
-
 u32 GDB_FindClosestBreakpointSlot(GDBContext *ctx, u32 address)
 {
     if(ctx->nbBreakpoints == 0 || address <= ctx->breakpoints[0].address)
@@ -29,6 +25,19 @@ u32 GDB_FindClosestBreakpointSlot(GDBContext *ctx, u32 address)
     while(b - a > 1);
 
     return b;
+}
+
+int GDB_GetBreakpointInstruction(u32 *instruction, GDBContext *ctx, u32 address)
+{
+    u32 id = GDB_FindClosestBreakpointSlot(ctx, address);
+
+    if(id == ctx->nbBreakpoints || ctx->breakpoints[id].address != address)
+        return -EINVAL;
+
+    if(instruction != NULL)
+        *instruction = ctx->breakpoints[id].savedInstruction;
+
+    return 0;
 }
 
 int GDB_AddBreakpoint(GDBContext *ctx, u32 address, bool thumb, bool persist)

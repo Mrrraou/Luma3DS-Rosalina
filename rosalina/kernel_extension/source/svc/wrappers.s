@@ -30,6 +30,7 @@ GEN_GETINFO_WRAPPER Thread
 
 GEN_OUT1_WRAPPER ConnectToPortHook
 GEN_OUT1_WRAPPER convertVAToPA
+GEN_OUT1_WRAPPER CopyHandle
 
 .global ControlMemoryHookWrapper
 .type   ControlMemoryHookWrapper, %function

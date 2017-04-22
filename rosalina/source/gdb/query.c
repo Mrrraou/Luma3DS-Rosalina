@@ -2,7 +2,7 @@
 #include "gdb/xfer.h"
 #include "gdb/thread.h"
 #include "gdb/net.h"
-#include "minisoc.h"
+#include "gdb/remote_command.h"
 
 typedef enum GDBQueryDirection
 {
@@ -34,6 +34,7 @@ static const struct
     GDB_QUERY_HANDLER_LIST_ITEM(ThreadExtraInfo, READ),
     GDB_QUERY_HANDLER_LIST_ITEM_3("C", CurrentThreadId, READ),
     GDB_QUERY_HANDLER_LIST_ITEM(CatchSyscalls, WRITE),
+    GDB_QUERY_HANDLER_LIST_ITEM(Rcmd, READ),
 };
 
 static int GDB_HandleQuery(GDBContext *ctx, GDBQueryDirection direction)

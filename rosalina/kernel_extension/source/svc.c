@@ -12,6 +12,7 @@
 #include "svc/KernelSetState.h"
 #include "svc/MapProcessMemoryWithSource.h"
 #include "svc/ControlService.h"
+#include "svc/CopyHandle.h"
 
 void *officialSVCs[0x7E] = {NULL};
 
@@ -88,6 +89,8 @@ void *svcHook(u8 *pageEnd)
             return ControlMemoryEx;
         case 0x88:
             return ControlService;
+        case 0x89:
+            return CopyHandleWrapper;
 
         default:
             return (svcId <= 0x7D) ? officialSVCs[svcId] : NULL;

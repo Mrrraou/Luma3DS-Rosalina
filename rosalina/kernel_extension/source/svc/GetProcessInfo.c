@@ -8,7 +8,14 @@ Result GetProcessInfoHook(s64 *out, Handle processHandle, u32 type)
     if(type >= 0x10000)
     {
         KProcessHandleTable *handleTable = handleTableOfProcess(currentCoreContext->objectContext.currentProcess);
-        KProcess *process = KProcessHandleTable__ToKProcess(handleTable, processHandle);
+        KProcess *process;
+        if(processHandle == CUR_PROCESS_HANDLE)
+        {
+            process = currentCoreContext->objectContext.currentProcess;
+            KAutoObject__AddReference((KAutoObject *)process);
+        }
+        else
+            process = KProcessHandleTable__ToKProcess(handleTable, processHandle);
 
         if(process == NULL)
             return 0xD8E007F7; // invalid handle
@@ -37,8 +44,7 @@ Result GetProcessInfoHook(s64 *out, Handle processHandle, u32 type)
                 break;
         }
 
-        KAutoObject *obj = (KAutoObject *)process;
-        obj->vtable->DecrementReferenceCount(obj);
+        ((KAutoObject *)process)->vtable->DecrementReferenceCount((KAutoObject *)process);
     }
 
     else

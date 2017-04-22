@@ -68,3 +68,11 @@ SVC_BEGIN svcControlService
     svc 0x88
     bx lr
 SVC_END
+
+SVC_BEGIN svcCopyHandle
+    str r0, [sp, #-4]!
+    svc 0x89
+    ldr r2, [sp], #4
+    str r1, [r2]
+    bx lr
+SVC_END

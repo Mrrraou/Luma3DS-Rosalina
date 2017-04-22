@@ -41,6 +41,7 @@ GDB_DECLARE_HANDLER(Break)
 
 static void GDB_ContinueExecution(GDBContext *ctx)
 {
+    ctx->selectedThreadId = ctx->selectedThreadIdForContinuing = 0;
     svcContinueDebugEvent(ctx->debug, ctx->continueFlags);
     ctx->flags |= GDB_FLAG_PROCESS_CONTINUING;
 }
@@ -294,16 +295,6 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
         {
             ExceptionEvent exc = info->exception;
 
-            {
-                u32 i = 0;
-                for(i = 0; i < ctx->nbThreads && ctx->threadInfos[i].id != info->thread_id; i++);
-                if(i == ctx->nbThreads && exc.type != EXCEVENT_ATTACH_BREAK && exc.type != EXCEVENT_DEBUGGER_BREAK)
-                {
-                    GDB_SendDebugString(ctx, "Exception of kind %d caught in unknown thread %d, addr = %08x, this is not normal!\n", exc.type,
-                                        info->thread_id, exc.address);
-                }
-            }
-
             switch(exc.type)
             {
                 case EXCEVENT_UNDEFINED_INSTRUCTION:
@@ -321,7 +312,7 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                 }
 
                 case EXCEVENT_ATTACH_BREAK:
-                    return GDB_SendPacket(ctx, "S05", 3);
+                    return GDB_SendPacket(ctx, "S00", 3);
 
                 case EXCEVENT_STOP_POINT:
                 {
@@ -379,16 +370,21 @@ int GDB_SendStopReply(GDBContext *ctx, const DebugEventInfo *info)
                         if(exc.debugger_break.thread_ids[i] > 0)
                             threadIds[nbThreads++] = (u32)exc.debugger_break.thread_ids[i];
                     }
-                    if(nbThreads > 0)
-                        GDB_UpdateCurrentThreadFromList(ctx, threadIds, nbThreads);
 
-                    if(ctx->currentThreadId == 0)
-                        return GDB_SendPacket(ctx, "S02", 3);
-                    else
+                    u32 currentThreadId = nbThreads > 0 ? GDB_GetCurrentThreadFromList(ctx, threadIds, nbThreads) : GDB_GetCurrentThread(ctx);
+                    s64 dummy;
+                    u32 mask = 0;
+
+                    svcGetDebugThreadParam(&dummy, &mask, ctx->debug, currentThreadId, DBGTHREAD_PARAMETER_SCHEDULING_MASK_LOW);
+
+                    if(mask == 1)
                     {
+                        ctx->currentThreadId = currentThreadId;
                         GDB_ParseCommonThreadInfo(buffer, ctx, SIGINT);
                         return GDB_SendFormattedPacket(ctx, "%s", buffer);
                     }
+                    else
+                        return GDB_SendPacket(ctx, "S02", 3);
                 }
 
                 default:
