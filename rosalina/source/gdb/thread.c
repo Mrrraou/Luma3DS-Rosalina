@@ -227,13 +227,13 @@ GDB_DECLARE_QUERY_HANDLER(ThreadExtraInfo)
     if(val == 65)
         sThreadDynamicPriority[0] = 0;
     else
-        sprintf(sThreadDynamicPriority, "dynamic priority: %d, ", (s32)val);
+        sprintf(sThreadDynamicPriority, "dynamic prio.: %d, ", (s32)val);
 
     r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_PRIORITY);
     if(R_FAILED(r))
         sThreadStaticPriority[0] = 0;
     else
-        sprintf(sThreadStaticPriority, "static priority: %d, ", (s32)val);
+        sprintf(sThreadStaticPriority, "static prio.: %d, ", (s32)val);
 
     r = svcGetDebugThreadParam(&dummy, &val, ctx->debug, id, DBGTHREAD_PARAMETER_CPU_IDEAL);
     if(R_FAILED(r))
@@ -245,7 +245,7 @@ GDB_DECLARE_QUERY_HANDLER(ThreadExtraInfo)
     if(R_FAILED(r))
         sCoreCreator[0] = 0;
     else
-        sprintf(sCoreCreator, "running on core %d", (int)val);
+        sprintf(sCoreCreator, "running on core %u", val);
 
     n = sprintf(buf, "TLS: 0x%08x%s%s%s%s%s", tls, sStatus, sThreadDynamicPriority, sThreadStaticPriority,
                 sCoreIdeal, sCoreCreator);
