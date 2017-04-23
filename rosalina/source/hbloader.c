@@ -248,7 +248,7 @@ static void hbldrHandleCommands(void)
 			localcaps1->flags[1] = 0x01;
 			localcaps0->flags[2] = 0x04;
 			localcaps1->flags[2] = 0x05;
-			localcaps0->priority = 16;
+			localcaps0->priority = 0x30;
 			localcaps1->priority = 0;
 			memset(localcaps0->resourcelimitdescriptor, 0, 0x10);
 			memset(localcaps1->resourcelimitdescriptor, 0, 0x10);
