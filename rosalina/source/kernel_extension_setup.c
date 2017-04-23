@@ -15,7 +15,9 @@ struct Parameters
     void (*mcuReboot)(void);
     void (*coreBarrier)(void);
 
-    u32 *exceptionStackTop;
+    u32 TTBCR;
+    u32 L1MMUTableAddrs[4];
+
     u32 kernelVersion;
 
     struct CfwInfo
@@ -36,14 +38,21 @@ struct Parameters
 
 static void K_SGI0HandlerCallback(volatile struct Parameters *p)
 {
+    u32 L1MMUTableAddr;
     vu32 *L1MMUTable;
+    u32 coreId;
 
     __asm__ volatile("cpsid aif"); // disable interrupts
 
     p->coreBarrier();
 
-    __asm__ volatile("mrc p15, 0, %0, c2, c0, 1" : "=r"(L1MMUTable));
-    L1MMUTable = (vu32 *)(((u32)L1MMUTable & ~0x3FFF) | (1 << 31));
+    __asm__ volatile("mrc p15, 0, %0, c0, c0, 5" : "=r"(coreId));
+    coreId &= 3;
+
+    __asm__ volatile("mrc p15, 0, %0, c2, c0, 1" : "=r"(L1MMUTableAddr));
+    L1MMUTableAddr &= ~0x3FFF;
+    p->L1MMUTableAddrs[coreId] = L1MMUTableAddr;
+    L1MMUTable = (vu32 *)(L1MMUTableAddr | (1 << 31));
 
     // Actually map the kernel ext
     u32 L2MMUTableAddr = (u32)(p->L2MMUTable) & ~(1 << 31);
@@ -81,10 +90,9 @@ static void K_ConfigureSGI0(void)
     p->coreBarrier = (void (*) (void))coreBarrier;
 
     __asm__ volatile("mrc p15, 0, %0, c2, c0, 2" : "=r"(TTBCR));
-    p->exceptionStackTop = (u32 *)0xFFFF2000 + (1 << (32 - TTBCR - 20));
+    p->TTBCR = TTBCR;
 
-
-    p->kernelVersion = *(vu32*)0x1FF80000;
+    p->kernelVersion = *(vu32 *)0x1FF80000;
 
     // Now let's configure the L2 table
 

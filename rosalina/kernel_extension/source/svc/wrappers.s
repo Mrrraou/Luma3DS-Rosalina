@@ -29,7 +29,6 @@ GEN_GETINFO_WRAPPER Thread
 .endm
 
 GEN_OUT1_WRAPPER ConnectToPortHook
-GEN_OUT1_WRAPPER convertVAToPA
 GEN_OUT1_WRAPPER CopyHandle
 GEN_OUT1_WRAPPER TranslateHandle
 

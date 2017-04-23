@@ -2,8 +2,6 @@
 #include "gdb/net.h"
 #include "utils.h"
 
-extern u32 TTBCR;
-
 static void *k_memcpy_no_interrupt(void *dst, const void *src, u32 len)
 {
     __asm__ volatile("cpsid aif");
@@ -12,7 +10,10 @@ static void *k_memcpy_no_interrupt(void *dst, const void *src, u32 len)
 
 Result GDB_ReadMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len)
 {
-    if(addr < (1u << (32 - TTBCR)))
+    s64 TTBCR;
+    svcGetSystemInfo(&TTBCR, 0x10002, 0);
+
+    if(addr < (1u << (32 - (u32)TTBCR)))
         return svcReadProcessMemory(out, ctx->debug, addr, len);
     else if(addr >= 0x80000000 && addr < 0xB0000000)
     {
@@ -21,9 +22,9 @@ Result GDB_ReadMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len)
     }
     else
     {
-        void *PA = svcConvertVAToPA(NULL, (const void *)addr, false);
+        u32 PA = svcConvertVAToPA((const void *)addr, false);
 
-        if(PA == NULL)
+        if(PA == 0)
             return -1;
         else
         {
@@ -35,8 +36,12 @@ Result GDB_ReadMemoryInPage(void *out, GDBContext *ctx, u32 addr, u32 len)
 
 Result GDB_WriteMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len)
 {
-    if(addr < (1u << (32 - TTBCR))) // not sure if it checks if it's IO or not. It probably does
-        return svcWriteProcessMemory(ctx->debug, in, addr, len);
+    s64 TTBCR;
+    svcGetSystemInfo(&TTBCR, 0x10002, 0);
+
+    if(addr < (1u << (32 - (u32)TTBCR)))
+        return svcWriteProcessMemory(ctx->debug, in, addr, len); // not sure if it checks if it's IO or not. It probably does
+
     else if(addr >= 0x80000000 && addr < 0xB0000000)
     {
         memcpy((void *)addr, in, len);
@@ -44,9 +49,9 @@ Result GDB_WriteMemoryInPage(GDBContext *ctx, const void *in, u32 addr, u32 len)
     }
     else
     {
-        void *PA = svcConvertVAToPA(NULL, (const void *)addr, true);
+        u32 PA = svcConvertVAToPA((const void *)addr, true);
 
-        if(PA != NULL)
+        if(PA != 0)
         {
             svcCustomBackdoor(k_memcpy_no_interrupt, (void *)addr, in, len);
             return 0;

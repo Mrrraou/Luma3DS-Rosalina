@@ -75,7 +75,7 @@ void *svcHook(u8 *pageEnd)
         case 0x80:
             return CustomBackdoor;
         case 0x81:
-            return convertVAToPAWrapper;
+            return convertVAToPA;
         case 0x82:
             return flushDataCacheRange;
         case 0x83:

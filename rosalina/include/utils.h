@@ -8,7 +8,7 @@
 #define PA_PTR(addr)            (void *)((u32)(addr) | 1 << 31)
 
 #ifndef PA_FROM_VA_PTR
-#define PA_FROM_VA_PTR(addr)    PA_PTR(svcConvertVAToPA(NULL, (const void *)(addr), false))
+#define PA_FROM_VA_PTR(addr)    PA_PTR(svcConvertVAToPA((const void *)(addr), false))
 #endif
 
 #define REG32(addr)             (*(vu32 *)(PA_PTR(addr)))

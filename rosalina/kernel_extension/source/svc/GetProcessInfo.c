@@ -39,6 +39,20 @@ Result GetProcessInfoHook(s64 *out, Handle processHandle, u32 type)
                 break;
             case 0x10005:
                 *out = (s64)(u64)(u32)codeSetOfProcess(process)->textSection.section.loadAddress;
+                break;
+            case 0x10006:
+                *out = (s64)(u64)(u32)codeSetOfProcess(process)->rodataSection.section.loadAddress;
+                break;
+            case 0x10007:
+                *out = (s64)(u64)(u32)codeSetOfProcess(process)->dataSection.section.loadAddress;
+                break;
+            case 0x10008:
+                *out = (isN3DS ? hwInfoOfProcess(process)->N3DS.translationTableBase :
+                                (kernelVersion >= SYSTEM_VERSION(2, 44, 6)
+                                    ? hwInfoOfProcess(process)->O3DS8x.translationTableBase
+                                    : hwInfoOfProcess(process)->O3DSPre8x.translationTableBase)
+                        ) & ~((1 << (14 - TTBCR)) - 1);
+                break;
             default:
                 res = 0xD8E007ED; // invalid enum value
                 break;

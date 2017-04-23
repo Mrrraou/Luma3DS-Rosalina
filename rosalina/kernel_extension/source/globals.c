@@ -44,8 +44,12 @@ void (*PostprocessSvc)(void);
 Result (*SignalDebugEvent)(DebugEventType type, u32 info, ...);
 
 bool isN3DS;
-
 u32 *exceptionStackTop;
+
+u32 TTBCR;
+u32 L1MMUTableAddrs[4];
+
+u32 kernelVersion;
 void *kernelUsrCopyFuncsStart, *kernelUsrCopyFuncsEnd;
 
 bool *isDevUnit;

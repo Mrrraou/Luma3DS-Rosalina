@@ -18,12 +18,11 @@ Result svcCustomBackdoor(void *func, ...);
 
 /**
  * @brief Gives the physical address corresponding to a virtual address.
- * @param[out] attributes Memory attributes, see ARM documentation.
  * @param VA Virtual address.
  * @param writeCheck whether to check if the VA is writable in supervisor mode
  * @return The corresponding physical address, or NULL.
 */
-void *svcConvertVAToPA(u32 *attributes, const void *VA, bool writeCheck);
+u32 svcConvertVAToPA(const void *VA, bool writeCheck);
 
 /**
  * @brief Flushes a range of the data cache (L2C included).

@@ -196,13 +196,13 @@ struct Parameters
     void (*mcuReboot)(void);
     void (*coreBarrier)(void);
 
-    u32 *exceptionStackTop;
+    u32 TTBCR;
+    u32 L1MMUTableAddrs[4];
+
     u32 kernelVersion;
 
     CfwInfo cfwInfo;
 };
-
-u32 kernelVersion;
 
 static void enableDebugFeatures(void)
 {
@@ -246,7 +246,9 @@ void main(volatile struct Parameters *p)
     mcuReboot = p->mcuReboot;
     coreBarrier = p->coreBarrier;
 
-    exceptionStackTop = p->exceptionStackTop;
+    TTBCR = p->TTBCR;
+    memcpy(L1MMUTableAddrs, (const void *)p->L1MMUTableAddrs, 16);
+    exceptionStackTop = (u32 *)0xFFFF2000 + (1 << (32 - TTBCR - 20));
     kernelVersion = p->kernelVersion;
     cfwInfo = p->cfwInfo;
 

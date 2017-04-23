@@ -65,7 +65,8 @@ customHandler: .ascii "hdlr"
 interruptManager: .word 0
 L2MMUTable: .word 0
 funcs: .word 0,0,0
-exceptionStackTop: .word 0
+TTBCR: .word 0
+L1MMUTableAddrs: .word 0,0,0,0
 kernelVersion: .word 0
 CFWInfo: .word 0,0,0,0
 

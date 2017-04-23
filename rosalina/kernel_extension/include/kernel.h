@@ -932,7 +932,7 @@ typedef struct ALIGN(4) KProcessHwInfoN3DS
   KLinkedList ownedKMemoryBlocks;
   u32 unknown_3;
   u32 field_28;
-  void *translationTableBase;
+  u32 translationTableBase;
   u8 contextId;
   bool globalTLBFlushRequired;
   bool isCurrentlyLoadedApp;
@@ -951,7 +951,7 @@ typedef struct ALIGN(4) KProcessHwInfoO3DS8x
   KLinkedList ownedKMemoryBlocks;
   u32 unknown_3;
   u32 field_28;
-  void *translationTableBase;
+  u32 translationTableBase;
   u8 contextId;
   bool globalTLBFlushRequired;
   bool isCurrentlyLoadedApp;
@@ -970,7 +970,7 @@ typedef struct ALIGN(4) KProcessHwInfoO3DSPre8x
   KLinkedList ownedKMemoryBlocks;
   u32 unknown_3;
   u32 field_28;
-  void *translationTableBase;
+  u32 translationTableBase;
   u8 contextId;
   bool globalTLBFlushRequired;
   bool isCurrentlyLoadedApp;

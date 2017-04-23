@@ -1,6 +1,7 @@
 #include "svc/GetSystemInfo.h"
 #include "utils.h"
 #include "ipc.h"
+#include "synchronization.h"
 
 Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
 {
@@ -57,11 +58,33 @@ Result GetSystemInfoHook(s64 *out, s32 type, s32 param)
                         break;
                 }
             }
-            else res = 0xF8C007F4;
+            else
+                res = 0xF8C007F4;
 
             break;
         }
 
+        case 0x10002: // MMU config (cached values from booting)
+        {
+            switch(param)
+            {
+                case 0:
+                    *out = TTBCR;
+                    break;
+
+                default:
+                {
+                    if((u32)param <= getNumberOfCores())
+                        *out = L1MMUTableAddrs[param - 1];
+                    else
+                        res = 0xF8C007F4;
+
+                    break;
+                }
+            }
+
+            break;
+        }
         default:
             GetSystemInfo(out, type, param);
             break;

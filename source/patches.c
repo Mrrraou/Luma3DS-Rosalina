@@ -146,7 +146,7 @@ void installK11MainHook(u8 *pos, u32 size, bool isSafeMode, u32 baseK11VA, u32 *
     off++;
     *off++ = interruptManager;
 
-    off += 6;
+    off += 10;
 
     struct CfwInfo
     {

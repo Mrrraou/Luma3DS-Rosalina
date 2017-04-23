@@ -12,6 +12,7 @@ struct
 {
     { "syncrequestinfo", GDB_REMOTE_COMMAND_HANDLER(SyncRequestInfo) },
     { "translatehandle", GDB_REMOTE_COMMAND_HANDLER(TranslateHandle) },
+    { "getmmuconfig"   , GDB_REMOTE_COMMAND_HANDLER(GetMmuConfig) },
 };
 
 static const char *GDB_SkipSpaces(const char *pos)
@@ -23,7 +24,7 @@ static const char *GDB_SkipSpaces(const char *pos)
 
 GDB_DECLARE_REMOTE_COMMAND_HANDLER(SyncRequestInfo)
 {
-    char outbuf[GDB_BUF_LEN / 2];
+    char outbuf[GDB_BUF_LEN / 2 + 1];
     Result r;
     int n;
 
@@ -116,7 +117,7 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(TranslateHandle)
     s64 refcountRaw;
     u32 refcount;
     char classBuf[32], serviceBuf[12] = { 0 };
-    char outbuf[GDB_BUF_LEN / 2];
+    char outbuf[GDB_BUF_LEN / 2 + 1];
 
     if(ctx->commandData[0] == 0)
         return GDB_ReplyErrno(ctx, EILSEQ);
@@ -157,6 +158,42 @@ GDB_DECLARE_REMOTE_COMMAND_HANDLER(TranslateHandle)
 end:
     svcCloseHandle(handle);
     svcCloseHandle(process);
+    return GDB_SendHexPacket(ctx, outbuf, n);
+}
+
+extern bool isN3DS;
+GDB_DECLARE_REMOTE_COMMAND_HANDLER(GetMmuConfig)
+{
+    int n;
+    char outbuf[GDB_BUF_LEN / 2 + 1];
+    Result r;
+    Handle process;
+
+    if(ctx->commandData[0] != 0)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    r = svcOpenProcess(&process, ctx->pid);
+    if(R_FAILED(r))
+        n = sprintf(outbuf, "Invalid process (wtf?)\n");
+    else
+    {
+        s64 TTBCR, TTBR0;
+        svcGetSystemInfo(&TTBCR, 0x10002, 0);
+        svcGetProcessInfo(&TTBR0, process, 0x10008);
+        n = sprintf(outbuf, "TTBCR = %u\nTTBR0 = 0x%08x\nTTBR1 =", (u32)TTBCR, (u32)TTBR0);
+        for(u32 i = 0; i < (isN3DS ? 4 : 2); i++)
+        {
+            s64 TTBR1;
+            svcGetSystemInfo(&TTBR1, 0x10002, 1 + i);
+
+            if(i == (isN3DS ? 3 : 1))
+                n += sprintf(outbuf + n, " 0x%08x\n", (u32)TTBR1);
+            else
+                n += sprintf(outbuf + n, " 0x%08x /", (u32)TTBR1);
+        }
+        svcCloseHandle(process);
+    }
+
     return GDB_SendHexPacket(ctx, outbuf, n);
 }
 

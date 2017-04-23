@@ -5,16 +5,12 @@
 .global convertVAToPA
 .type   convertVAToPA, %function
 convertVAToPA:
-    push {r4-r6, lr}
-    mov r4, r0
-    mov r5, r1
-    mov r6, r2
-    mov r0, r1
+    mov r3, r1
     mov r1, #0xf00
     orr r1, #0xff
     and r2, r0, r1
     bic r0, r1
-    cmp r6, #1
+    cmp r3, #1
     beq _convertVAToPA_write_check
     _convertVAToPA_read_check:
         mcr p15, 0, r0, c7, c8, 0    @ VA to PA translation with privileged read permission check
@@ -23,14 +19,11 @@ convertVAToPA:
         mcr p15, 0, r0, c7, c8, 1    @ VA to PA translation with privileged write permission check
     _convertVAToPA_end_check:
     mrc p15, 0, r0, c7, c4, 0    @ read PA register
-    and r3, r0, r1
-    cmp r4, #0
-    strne r3, [r4]
     tst r0, #1                   @ failure bit
     bic r0, r1
     addeq r0, r2
     movne r0, #0
-    pop {r4-r6, pc}
+    bx lr
 
 .global flushEntireDataCache
 .type   flushEntireDataCache, %function
