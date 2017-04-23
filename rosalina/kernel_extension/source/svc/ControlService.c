@@ -44,7 +44,7 @@ Result ControlService(ServiceOp op, u32 varg1, u32 varg2)
                 // kernelToUsrStrncpy doesn't clear trailing bytes
                 char name[12] = { 0 };
                 strncpy(name, info->name, 12);
-                res = kernelToUsrMemcpy8((void *)varg1, name, strlen(name) + 1) ? 0 : 0xD9001814;
+                res = kernelToUsrMemcpy8((void *)varg1, name, strlen(name) + 1) ? 0 : 0xE0E01BF5;
             }
 
             obj->vtable->DecrementReferenceCount(obj);

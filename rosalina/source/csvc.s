@@ -76,3 +76,11 @@ SVC_BEGIN svcCopyHandle
     str r1, [r2]
     bx lr
 SVC_END
+
+SVC_BEGIN svcTranslateHandle
+    str r0, [sp, #-4]!
+    svc 0x8A
+    ldr r2, [sp], #4
+    str r1, [r2]
+    bx lr
+SVC_END

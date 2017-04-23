@@ -13,6 +13,7 @@
 #include "svc/MapProcessMemoryWithSource.h"
 #include "svc/ControlService.h"
 #include "svc/CopyHandle.h"
+#include "svc/TranslateHandle.h"
 
 void *officialSVCs[0x7E] = {NULL};
 
@@ -91,6 +92,8 @@ void *svcHook(u8 *pageEnd)
             return ControlService;
         case 0x89:
             return CopyHandleWrapper;
+        case 0x8A:
+            return TranslateHandleWrapper;
 
         default:
             return (svcId <= 0x7D) ? officialSVCs[svcId] : NULL;

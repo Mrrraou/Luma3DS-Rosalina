@@ -91,7 +91,15 @@ Result svcControlService(ServiceOp op, ...);
  * @brief Copy a handle from a process to another one.
  * @param[out] out The output handle.
  * @param outProcess Handle of the process of the output handle.
- * @param in The input handle.
+ * @param in The input handle. Pseudo-handles are not accepted.
  * @param inProcess Handle of the process of the input handle.
 */
 Result svcCopyHandle(Handle *out, Handle outProcess, Handle in, Handle inProcess);
+
+/**
+ * @brief Get the address and class name of the underlying kernel object corresponding to a handle.
+ * @param[out] outKAddr The output kernel address.
+ * @param[out] outName Output class name. The buffer should be large enough to contain it.
+ * @param in The input handle.
+*/
+Result svcTranslateHandle(u32 *outKAddr, char *outClassName, Handle in);

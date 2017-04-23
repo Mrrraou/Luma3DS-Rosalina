@@ -10,8 +10,16 @@ struct
     GDBCommandHandler handler;
 } remoteCommandHandlers[] =
 {
-    { "syncrequestinfo",  GDB_REMOTE_COMMAND_HANDLER(SyncRequestInfo)},
+    { "syncrequestinfo", GDB_REMOTE_COMMAND_HANDLER(SyncRequestInfo) },
+    { "translatehandle", GDB_REMOTE_COMMAND_HANDLER(TranslateHandle) },
 };
+
+static const char *GDB_SkipSpaces(const char *pos)
+{
+    const char *nextpos;
+    for(nextpos = pos; *nextpos != 0 && ((*nextpos >= 9 && *nextpos <= 13) || *nextpos == ' '); nextpos++);
+    return nextpos;
+}
 
 GDB_DECLARE_REMOTE_COMMAND_HANDLER(SyncRequestInfo)
 {
@@ -96,6 +104,62 @@ end:
     return GDB_SendHexPacket(ctx, outbuf, n);
 }
 
+GDB_DECLARE_REMOTE_COMMAND_HANDLER(TranslateHandle)
+{
+    bool ok;
+    u32 val;
+    char *end;
+    int n;
+    Result r;
+    u32 kernelAddr;
+    Handle handle, process;
+    s64 refcountRaw;
+    u32 refcount;
+    char classBuf[32], serviceBuf[12] = { 0 };
+    char outbuf[GDB_BUF_LEN / 2];
+
+    if(ctx->commandData[0] == 0)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    val = xstrtoul(ctx->commandData, &end, 0, true, &ok);
+
+    if(!ok)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    end = (char *)GDB_SkipSpaces(end);
+
+    if(*end != 0)
+        return GDB_ReplyErrno(ctx, EILSEQ);
+
+    r = svcOpenProcess(&process, ctx->pid);
+    if(R_FAILED(r))
+    {
+        n = sprintf(outbuf, "Invalid process (wtf?)\n");
+        goto end;
+    }
+
+    r = svcCopyHandle(&handle, CUR_PROCESS_HANDLE, (Handle)val, process);
+    if(R_FAILED(r))
+    {
+        n = sprintf(outbuf, "Invalid handle.\n");
+        goto end;
+    }
+
+    svcTranslateHandle(&kernelAddr, classBuf, handle);
+    svcGetHandleInfo(&refcountRaw, handle, 1);
+    svcControlService(SERVICEOP_GET_NAME, serviceBuf, handle);
+    refcount = (u32)(refcountRaw - 1);
+    if(serviceBuf[0] != 0)
+        n = sprintf(outbuf, "(%s *)0x%08x /* %s handle, %u %s */\n", classBuf, kernelAddr, serviceBuf, refcount, refcount == 1 ? "reference" : "references");
+    else
+        n = sprintf(outbuf, "(%s *)0x%08x /* %u %s */\n", classBuf, kernelAddr, refcount, refcount == 1 ? "reference" : "references");
+
+end:
+    svcCloseHandle(handle);
+    svcCloseHandle(process);
+    return GDB_SendHexPacket(ctx, outbuf, n);
+}
+
 GDB_DECLARE_QUERY_HANDLER(Rcmd)
 {
     char commandData[GDB_BUF_LEN / 2 + 1];
@@ -109,9 +173,7 @@ GDB_DECLARE_QUERY_HANDLER(Rcmd)
 
     for(endpos = commandData; !(*endpos >= 9 && *endpos <= 13) && *endpos != ' ' && *endpos != 0; endpos++);
 
-    char *nextpos;
-    for(nextpos = endpos; *nextpos != 0 && ((*nextpos >= 9 && *nextpos <= 13) || *nextpos == ' '); nextpos++);
-
+    char *nextpos = (char *)GDB_SkipSpaces(endpos);
     *endpos = 0;
 
     for(u32 i = 0; i < sizeof(remoteCommandHandlers) / sizeof(remoteCommandHandlers[0]); i++)
