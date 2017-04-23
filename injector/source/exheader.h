@@ -53,11 +53,13 @@ typedef struct
 typedef struct
 {
 	u64 programid;
-	u8 flags[8];
+	u32 coreversion;
+	u8 flags[3];
+	u8 priority;
 	u16 resourcelimitdescriptor[0x10];
 	exheader_storageinfo storageinfo;
-	u64 serviceaccesscontrol[0x20];
-	u8 reserved[0x1f];
+	u64 serviceaccesscontrol[0x22];
+	u8 reserved[0xf];
 	u8 resourcelimitcategory;
 } PACKED exheader_arm11systemlocalcaps;
 

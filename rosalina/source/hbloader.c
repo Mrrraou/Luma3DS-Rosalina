@@ -4,8 +4,90 @@
 #include "menu.h"
 #include "csvc.h"
 #include "memory.h"
+#include "../../injector/source/exheader.h"
 
 #define MAP_BASE 0x10000000
+
+static const char serviceList[32][8] =
+{
+	"APT:U",
+	"ac:u",
+	"am:net",
+	"boss:P",
+	"cam:u",
+	"cfg:nor",
+	"cfg:u",
+	"csnd:SND",
+	"dsp::DSP",
+	"fs:USER",
+	"gsp::Lcd",
+	"gsp::Gpu",
+	"hid:USER",
+	"http:C",
+	"ir:USER",
+	"ir:rst",
+	"ir:u",
+	"ldr:ro",
+	"mic:u",
+	"ndm:u",
+	"news:s",
+	"nim:s",
+	"ns:s",
+	"nwm::UDS",
+	"nwm::EXT",
+	"ptm:u",
+	"ptm:sysm",
+	"pxi:dev",
+	"qtm:u",
+	"soc:U",
+	"ssl:C",
+	"y2r:u",
+};
+
+static const u64 dependencyList[] =
+{
+	0x0004013000002402LL, //ac
+	0x0004013000001502LL, //am
+	0x0004013000003402LL, //boss
+	0x0004013000001602LL, //camera
+	0x0004013000001702LL, //cfg
+	0x0004013000001802LL, //codec
+	0x0004013000002702LL, //csnd
+	0x0004013000002802LL, //dlp
+	0x0004013000001A02LL, //dsp
+	0x0004013000001B02LL, //gpio
+	0x0004013000001C02LL, //gsp
+	0x0004013000001D02LL, //hid
+	0x0004013000002902LL, //http
+	0x0004013000001E02LL, //i2c
+	0x0004013000003302LL, //ir
+	0x0004013000001F02LL, //mcu
+	0x0004013000002002LL, //mic
+	0x0004013000002B02LL, //ndm
+	0x0004013000003502LL, //news
+	0x0004013000002C02LL, //nim
+	0x0004013000002D02LL, //nwm
+	0x0004013000002102LL, //pdn
+	0x0004013000003102LL, //ps
+	0x0004013000002202LL, //ptm
+	0x0004013000003702LL, //ro
+	0x0004013000002E02LL, //socket
+	0x0004013000002302LL, //spi
+	0x0004013000002F02LL, //ssl
+};
+
+static const u32 kernelCaps[] =
+{
+	0xFC00022C, // Kernel release version: 8.0 (necessary for using the new linear mapping)
+	0xFF81FF50, // RW static mapping: 0x1FF50000
+	0xFF81FF58, // RW static mapping: 0x1FF58000
+	0xFF81FF70, // RW static mapping: 0x1FF70000
+	0xFF81FF78, // RW static mapping: 0x1FF78000
+	0xFF91F000, // RO static mapping: 0x1F000000
+	0xFF91F600, // RO static mapping: 0x1F600000
+	0xFF002101, // Exflags: APPLICATION memtype + "Allow debug" + "Access core2"
+	0xFE000200, // Handle table size: 0x200
+};
 
 static inline void assertSuccess(Result res)
 {
@@ -140,6 +222,72 @@ static void hbldrHandleCommands(void)
 			// No need to do anything - the kernel already copied the data to our buffer
 			cmdbuf[0] = IPC_MakeHeader(3, 1, 0);
 			cmdbuf[1] = 0;
+			break;
+		}
+		case 4:
+		{
+			if (cmdbuf[0] != IPC_MakeHeader(4, 0, 2) || cmdbuf[1] != IPC_Desc_Buffer(sizeof(exheader_header), IPC_BUFFER_RW))
+			{
+				error(cmdbuf, 0xD9001830);
+				break;
+			}
+
+			// Perform ExHeader patches
+			exheader_header* exh = (exheader_header*)cmdbuf[2];
+			u32 stacksize = 4096; // 3dsx/libctru don't require anymore than this
+			memcpy(exh->codesetinfo.name, "3dsx_app", 8);
+			memcpy(exh->codesetinfo.stacksize, &stacksize, 4);
+			memset(&exh->deplist, 0, sizeof(exh->deplist));
+			memcpy(exh->deplist.programid, dependencyList, sizeof(dependencyList));
+
+			exheader_arm11systemlocalcaps* localcaps0 = &exh->arm11systemlocalcaps;
+			exheader_arm11systemlocalcaps* localcaps1 = &exh->accessdesc.arm11systemlocalcaps;
+			localcaps0->flags[0] = 0x00;
+			localcaps1->flags[0] = 0x00;
+			localcaps0->flags[1] = 0x01;
+			localcaps1->flags[1] = 0x01;
+			localcaps0->flags[2] = 0x04;
+			localcaps1->flags[2] = 0x05;
+			localcaps0->priority = 16;
+			localcaps1->priority = 0;
+			memset(localcaps0->resourcelimitdescriptor, 0, 0x10);
+			memset(localcaps1->resourcelimitdescriptor, 0, 0x10);
+			memset(localcaps0->storageinfo.accessinfo, 0xFF, 7);
+			memset(localcaps1->storageinfo.accessinfo, 0xFF, 7);
+			memcpy(localcaps0->serviceaccesscontrol, serviceList, sizeof(serviceList));
+			memcpy(localcaps1->serviceaccesscontrol, serviceList, sizeof(serviceList));
+			memset(localcaps0->serviceaccesscontrol+0x20, 0, 2);
+			memset(localcaps1->serviceaccesscontrol+0x20, 0, 2);
+			localcaps0->resourcelimitcategory = 0;
+			localcaps1->resourcelimitcategory = 0;
+
+			exheader_arm11kernelcapabilities* kcaps0 = &exh->arm11kernelcaps;
+			exheader_arm11kernelcapabilities* kcaps1 = &exh->accessdesc.arm11kernelcaps;
+			memset(kcaps0->descriptors, 0xFF, sizeof(kcaps0->descriptors));
+			memset(kcaps1->descriptors, 0xFF, sizeof(kcaps1->descriptors));
+			memcpy(kcaps0->descriptors, kernelCaps, sizeof(kernelCaps));
+			memcpy(kcaps1->descriptors, kernelCaps, sizeof(kernelCaps));
+
+			u64 lastdep = sizeof(dependencyList)/8;
+			if (osGetFirmVersion() >= SYSTEM_VERSION(2,50,0)) // 9.6+ FIRM
+			{
+				exh->deplist.programid[lastdep++] = 0x0004013000004002ULL; // nfc
+				strncpy((char*)&localcaps0->serviceaccesscontrol[0x20], "nfc:u", 8);
+				strncpy((char*)&localcaps1->serviceaccesscontrol[0x20], "nfc:u", 8);
+				s64 dummy = 0;
+				bool isN3DS = svcGetSystemInfo(&dummy, 0x10001, 0) == 0;
+				if (isN3DS)
+				{
+					exh->deplist.programid[lastdep++] = 0x0004013020004102ULL; // mvd
+					strncpy((char*)&localcaps0->serviceaccesscontrol[0x21], "mvd:STD", 8);
+					strncpy((char*)&localcaps1->serviceaccesscontrol[0x21], "mvd:STD", 8);
+				}
+			}
+
+			cmdbuf[0] = IPC_MakeHeader(4, 1, 2);
+			cmdbuf[1] = 0;
+			cmdbuf[2] = IPC_Desc_Buffer(sizeof(exheader_header), IPC_BUFFER_RW);
+			cmdbuf[3] = (u32)exh;
 			break;
 		}
 		default:

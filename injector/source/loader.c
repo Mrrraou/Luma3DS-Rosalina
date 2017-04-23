@@ -9,6 +9,7 @@
 #include "srvsys.h"
 
 #define MAX_SESSIONS 1
+#define HBLDR_3DSX_TID 0x000400000D921E00ULL
 
 const char CODE_PATH[] = {0x01, 0x00, 0x00, 0x00, 0x2E, 0x63, 0x6F, 0x64, 0x65, 0x00, 0x00, 0x00};
 
@@ -163,6 +164,21 @@ static Result load_code(u64 progid, prog_addrs_t *shared, u64 prog_handle, int i
   return 0;
 }
 
+static Result HBLDR_Init(Handle *session)
+{
+  Result res;
+  while (1)
+  {
+    res = svcConnectToPort(session, "hb:ldr");
+    if (R_LEVEL(res) != RL_PERMANENT ||
+        R_SUMMARY(res) != RS_NOTFOUND ||
+        R_DESCRIPTION(res) != RD_NOT_FOUND
+       ) break;
+    svcSleepThread(500000);
+  }
+  return res;
+}
+
 static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
 {
   Result res;
@@ -186,11 +202,30 @@ static Result loader_GetProgramInfo(exheader_header *exheader, u64 prog_handle)
     }
   }
 
-  // Force always having sdmc:/ permission
   if (R_SUCCEEDED(res))
   {
+    // Force always having sdmc:/ permission
     exheader->arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x80;
     exheader->accessdesc.arm11systemlocalcaps.storageinfo.accessinfo[0] |= 0x80;
+
+    // Tweak 3dsx placeholder title exheader
+    if (exheader->arm11systemlocalcaps.programid == HBLDR_3DSX_TID)
+    {
+      Handle hbldr = 0;
+      res = HBLDR_Init(&hbldr);
+      if (R_SUCCEEDED(res))
+      {
+        u32* cmdbuf = getThreadCommandBuffer();
+        cmdbuf[0] = IPC_MakeHeader(4,0,2);
+        cmdbuf[1] = IPC_Desc_Buffer(sizeof(*exheader), IPC_BUFFER_RW);
+        cmdbuf[2] = (u32)exheader;
+        res = svcSendSyncRequest(hbldr);
+        svcCloseHandle(hbldr);
+        if (R_SUCCEEDED(res)) {
+          res = cmdbuf[1];
+        }
+      }
+    }
   }
 
   return res;
@@ -239,18 +274,10 @@ static Result loader_LoadProcess(Handle *process, u64 prog_handle)
 
   // check for 3dsx process
   progid = g_exheader.arm11systemlocalcaps.programid;
-  if (progid == 0x000400000FF99900ULL)
+  if (progid == HBLDR_3DSX_TID)
   {
     Handle hbldr = 0;
-    while (1)
-    {
-      res = svcConnectToPort(&hbldr, "hb:ldr");
-      if (R_LEVEL(res) != RL_PERMANENT ||
-          R_SUMMARY(res) != RS_NOTFOUND ||
-          R_DESCRIPTION(res) != RD_NOT_FOUND
-         ) break;
-      svcSleepThread(500000);
-    }
+    res = HBLDR_Init(&hbldr);
     if (R_FAILED(res))
     {
       return res;
