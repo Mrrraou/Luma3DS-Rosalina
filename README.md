@@ -4,7 +4,7 @@ Commit history for the Luma3DS fork containing Rosalina.
 
 Originally created by myself (August/September 2016) and developed only by myself until TuxSH joined later ; I then gave the project to TuxSH (January, 13th -- however, this commit seems to have been slightly modified? doesn't matter much).
 
-I do not care about being credited. Myself being in the original credits below is just here to show that I have contributed to this project. I had asked for TuxSH to remove me from the credits, when giving the project to him, because I didn't want to be linked to it anymore.
+**I do not care about being credited.** Myself being in the original credits below is just here to show that I have contributed to this project. I had asked for TuxSH to remove me from the credits, when giving the project to him, because I didn't want to be linked to it anymore.
 
 However, due to their recent actions, in April, mostly, I decided to make this public.
 
@@ -25,7 +25,7 @@ I ended up being kicked of the project during the witch hunt against my boyfrien
 
 ## Original patches
 
-TiniVi's original patch can be found (here)[https://github.com/TiniVi/AHPCFW/commit/9d144117b604314aca48fe1633c605229bf8911f#diff-f434083360904ab69ef79235b2a2b034R51] ([mirror](https://github.com/Mrrraou/AHPCFW/commit/9d144117b604314aca48fe1633c605229bf8911f#diff-f434083360904ab69ef79235b2a2b034R51))
+TiniVi's original patch can be found [here](https://github.com/TiniVi/AHPCFW/commit/9d144117b604314aca48fe1633c605229bf8911f#diff-f434083360904ab69ef79235b2a2b034R51) ([mirror](https://github.com/Mrrraou/AHPCFW/commit/9d144117b604314aca48fe1633c605229bf8911f#diff-f434083360904ab69ef79235b2a2b034R51))
 
 ## My original TODO list for Rosalina
 ```
