@@ -60,6 +60,7 @@ Bugs:
    
 # Original README
 
+```
 # Luma3DS
 *Noob-proof (N)3DS "Custom Firmware"*
 
@@ -130,3 +131,4 @@ See https://github.com/AuroraWright/Luma3DS/wiki/Credits + credits in the Rosali
 
 This software is licensed under the terms of the GPLv3.  
 You can find a copy of the license in the LICENSE.txt file.
+```
