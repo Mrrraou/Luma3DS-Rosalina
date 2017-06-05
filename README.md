@@ -2,7 +2,11 @@
 
 Commit history for the Luma3DS fork containing Rosalina.
 
-Originally created by myself (August/September 2016) and developed only by myself until TuxSH joined later ; I then gave the project to TuxSH (January, 13rd -- however, this commit seems to have been slightly modified? doesn't matter much).
+Originally created by myself (August/September 2016) and developed only by myself until TuxSH joined later ; I then gave the project to TuxSH (January, 13th -- however, this commit seems to have been slightly modified? doesn't matter much).
+
+I do not care about being credited. Myself being in the original credits below is just here to show that I have contributed to this project. I had asked for TuxSH to remove me from the credits, when giving the project to him, because I didn't want to be linked to it anymore.
+
+However, due to their recent actions, in April, mostly, I decided to make this public.
 
 I ended up being kicked of the project during the witch hunt against my boyfriend for reasons I don't know about ; the only way I knew I was kicked was because I had received a GitLab email.
 
@@ -56,7 +60,8 @@ Temporary stuff I am actually doing for now:
 	- taking FS:REG before loader and getting loader to get the session handle from Rosalina is not a solution (and it doesn't even work for now! the IPC is broken for some reason)
 
 Bugs:
-	- find a way to unpause the paused processes via the debug svcs```
+	- find a way to unpause the paused processes via the debug svcs
+```
    
 # Original README
 
